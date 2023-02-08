@@ -1,0 +1,57 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Start Database(s)
+        run: npm run db:up
+
+      - name: Run npm install
+        run: npm install
+
+      - name: Build and test
+        run: |
+          npm run build
+          npm run test:coverage
+        env:
+          CI: true
+          DB: ${{ matrix.database-type }}
+
+      - name: Code Coverage Report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage/cobertura-coverage.xml
+          badge: false
+          fail_below_min: true
+          format: markdown
+          hide_branch_rate: false
+          hide_complexity: true
+          indicators: true
+          output: console
+          thresholds: '75 90'
+
+      - name: Upload coverage to Codecov
+        if:  ${{ matrix.database-type == 'sqlite3' && matrix.node-version == '18.x'}}
+        uses: codecov/codecov-action@v3
+
+      - name: Stop Database(s)
+        run: npm run db:down

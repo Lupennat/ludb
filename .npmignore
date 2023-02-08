@@ -1,0 +1,32 @@
+# Generated Files
+coverage/
+
+# Source code
+src/
+
+# Logs
+*.log
+
+# Tests
+test/
+*.test.js
+
+# Configs
+.github/
+.vscode/
+.travis.yml
+tsconfig.json
+typescript/
+.eslintrc.yml
+.prettierrc.yml
+.huskyrc.json
+.nvmrc
+.publishrc
+.prettierrc
+.snyk
+
+# Lock files
+package-lock.json
+
+# MacOS specific files
+.DS_Store
