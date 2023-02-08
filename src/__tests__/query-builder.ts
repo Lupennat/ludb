@@ -2,6 +2,7 @@ import { Pdo } from 'lupdo';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import Connection from '../connections/connection';
 import Builder from '../query/builder';
+import Grammar from '../query/grammars/grammar';
 import MySqlGrammar from '../query/grammars/mysql-grammar';
 import PostgresGrammar from '../query/grammars/postgres-grammar';
 import MySqlProcessor from '../query/processors/mysql-processor';
@@ -26,7 +27,7 @@ describe('Query Builder', () => {
     });
 
     function getBuilder(): BuilderI {
-        return new Builder(connection.session());
+        return new Builder(connection.session(), new Grammar(), new Processor());
     }
 
     function getMySqlBuilderWithProcessor(): BuilderI {
