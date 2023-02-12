@@ -14,13 +14,6 @@ class Expression extends ExpressionContract {
     public getValue(): string | number | bigint {
         return this.value;
     }
-
-    /**
-     * clone Expression
-     */
-    public clone(): Expression {
-        return new Expression(this.value);
-    }
 }
 
 export default Expression;
