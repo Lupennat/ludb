@@ -18,12 +18,12 @@ import {
     Where,
     WhereBasic,
     WhereBetween,
+    WhereBetweenColumns,
     WhereBoolean,
     WhereColumn,
     WhereContains,
     WhereDateTime,
     WhereExists,
-    WhereFullText,
     WhereIn,
     WhereInRaw,
     WhereKeyContains,
@@ -32,7 +32,8 @@ import {
     WhereNested,
     WhereNull,
     WhereRaw,
-    WhereSub
+    WhereSub,
+    whereFulltext
 } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
@@ -277,7 +278,7 @@ class Grammar extends BaseGrammar implements GrammarI {
             case 'Between':
                 return this.compileWhereBetween(query, where as WhereBetween);
             case 'BetweenColumns':
-                return this.compileWhereBetweenColumns(query, where as WhereBetween);
+                return this.compileWhereBetweenColumns(query, where as WhereBetweenColumns);
             case 'Date':
                 return this.compileWhereDate(query, where as WhereDateTime);
             case 'Time':
@@ -307,7 +308,7 @@ class Grammar extends BaseGrammar implements GrammarI {
             case 'JsonLength':
                 return this.compileWhereJsonLength(query, where as WhereLength);
             case 'Fulltext':
-                return this.compileWhereFullText(query, where as WhereFullText);
+                return this.compilewhereFulltext(query, where as whereFulltext);
             default:
                 return this.compileWhereBasic(query, where as WhereBasic);
         }
@@ -397,11 +398,11 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "between" where clause.
      */
-    protected compileWhereBetweenColumns(_query: BuilderContract, where: WhereBetween): string {
+    protected compileWhereBetweenColumns(_query: BuilderContract, where: WhereBetweenColumns): string {
         const between = where.not ? 'not between' : 'between';
 
-        const min = this.wrap(where.values[0] as Stringable);
-        const max = this.wrap(where.values[1] as Stringable);
+        const min = this.wrap(where.values[0]);
+        const max = this.wrap(where.values[1]);
 
         return `${this.wrap(where.column)} ${between} ${min} and ${max}`;
     }
@@ -574,7 +575,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where fulltext" clause.
      */
-    protected compileWhereFullText(_query: BuilderContract, _where: WhereFullText): string {
+    protected compilewhereFulltext(_query: BuilderContract, _where: whereFulltext): string {
         throw new Error('This database engine does not support fulltext search operations.');
     }
 
@@ -666,7 +667,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile a nested having clause.
      */
     protected compileHavingNested(_query: BuilderContract, having: HavingNested): string {
-        const havings = this.compileWheres(having.query);
+        const havings = this.compileHavings(having.query);
         const not = having.not ? 'not ' : '';
 
         return `${not}(${havings.slice(7)})`;
@@ -1016,14 +1017,14 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Wrap the given JSON boolean value.
      */
     protected wrapJsonBooleanValue(value: Stringable): string {
-        return value.toString();
+        return this.getValue(value).toString();
     }
 
     /**
      * Split the given JSON selector into the field and the optional path and wrap them separately.
      */
     protected wrapJsonFieldAndPath(column: Stringable): [string, string] {
-        const [first, ...rest] = column.toString().split('->');
+        const [first, ...rest] = this.getValue(column).toString().split('->');
 
         const field = this.wrap(first);
         const path = rest.length > 0 ? `, ${this.wrapJsonPath(rest.join('->'), '->')}` : '';

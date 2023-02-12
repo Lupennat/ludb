@@ -1,7 +1,7 @@
 import { Pdo } from 'lupdo';
 import EventEmitter from 'node:events';
 import ConnectionFactory from './connectors/connection-factory';
-import Expression from './query/expression';
+import ExpressionContract from './query/expression-contract';
 import { ConnectionConfig, DatabaseConfig, ReadWriteType } from './types/config';
 import DriverConnectionI from './types/connection';
 import { DatabaseI, Extension } from './types/database';
@@ -139,7 +139,7 @@ class DatabaseManager implements DatabaseI {
     /**
      * Get a new raw query expression.
      */
-    public raw(value: string): Expression {
+    public raw(value: string | bigint | number): ExpressionContract {
         return raw(value);
     }
 

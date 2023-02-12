@@ -2,7 +2,6 @@ import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
-import Expression from '../expression';
 import Grammar from './grammar';
 
 class SqlServerGrammar extends Grammar {
@@ -64,7 +63,7 @@ class SqlServerGrammar extends Grammar {
      * Compile the "select *" portion of the query.
      */
     protected compileColumns(query: BuilderContract, columns: Stringable[]): string {
-        if (query.getRegistry().aggregate === null) {
+        if (query.getRegistry().aggregate !== null) {
             return '';
         }
 
@@ -146,7 +145,7 @@ class SqlServerGrammar extends Grammar {
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
-        const segments = column.split('->');
+        const segments = this.getValue(column).toString().split('->');
         const lastSegment = segments.pop() as string;
         const matches = lastSegment.match(/\[([0-9]+)\]$/);
         let key = '';
@@ -228,7 +227,7 @@ class SqlServerGrammar extends Grammar {
      */
     protected compileOffset(_query: BuilderContract, offset: number): string {
         if (offset > 0) {
-            return `offset ${offset} rowa`;
+            return `offset ${offset} rows`;
         }
 
         return '';
@@ -370,7 +369,7 @@ class SqlServerGrammar extends Grammar {
      * Wrap the given JSON boolean value.
      */
     protected wrapJsonBooleanValue(value: Stringable): string {
-        return `'${value.toString()}'`;
+        return `'${this.getValue(value).toString()}'`;
     }
 
     /**
@@ -381,7 +380,7 @@ class SqlServerGrammar extends Grammar {
             return this.wrapTableValuedFunction(super.wrapTable(table));
         }
 
-        return this.getValue(table as Expression);
+        return this.getValue(table).toString();
     }
 
     /**

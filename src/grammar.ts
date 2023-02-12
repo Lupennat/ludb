@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import Expression from './query/expression';
+import ExpressionContract from './query/expression-contract';
 import BaseGrammarI from './types/base-grammar';
 import { Binding, Stringable } from './types/query/builder';
 
@@ -25,7 +25,7 @@ abstract class Grammar implements BaseGrammarI {
             return this.wrap(`${this.tablePrefix}${table}`, true);
         }
 
-        return this.getValue(table as Expression);
+        return this.getValue(table).toString();
     }
 
     /**
@@ -33,14 +33,14 @@ abstract class Grammar implements BaseGrammarI {
      */
     public wrap(value: Stringable, prefixAlias = false): string {
         if (this.isExpression(value)) {
-            return this.getValue(value as Expression);
+            return this.getValue(value).toString();
         }
 
         // If the value being wrapped has a column alias we will need to separate out
         // the pieces so we can wrap each of the segments of the expression on its
         // own, and then join these both back together using the "as" connector.
         if (value.toLowerCase().includes(' as ')) {
-            return this.wrapAliasedValue(value as string, prefixAlias);
+            return this.wrapAliasedValue(value, prefixAlias);
         }
 
         // If the given value is a JSON selector we will wrap it differently than a
@@ -50,7 +50,7 @@ abstract class Grammar implements BaseGrammarI {
             return this.wrapJsonSelector(value);
         }
 
-        return this.wrapSegments((value as string).split('.'));
+        return this.wrapSegments(value.split('.'));
     }
 
     /**
@@ -103,7 +103,7 @@ abstract class Grammar implements BaseGrammarI {
      * Determine if the given string is a JSON selector.
      */
     protected isJsonSelector(value: Stringable): boolean {
-        return value.toString().includes('->');
+        return this.getValue(value).toString().includes('->');
     }
 
     /**
@@ -124,7 +124,7 @@ abstract class Grammar implements BaseGrammarI {
      * Get the appropriate query parameter place-holder for a value.
      */
     public parameter(value: Binding | Binding[]): string {
-        return this.isExpression(value) ? this.getValue(value as Expression) : '?';
+        return this.isExpression(value) ? this.getValue(value).toString() : '?';
     }
 
     /**
@@ -141,15 +141,21 @@ abstract class Grammar implements BaseGrammarI {
     /**
      * Determine if the given value is a raw expression.
      */
-    public isExpression(value: any): boolean {
-        return typeof value === 'object' && value instanceof Expression;
+    public isExpression(value: any): value is ExpressionContract {
+        return typeof value === 'object' && value instanceof ExpressionContract;
     }
 
     /**
      * Get the value of a raw expression.
      */
-    public getValue(expression: Expression): string {
-        return expression.toString();
+    public getValue(expression: ExpressionContract): string | bigint | number;
+    public getValue<T>(value: T): T;
+    public getValue<T>(expressionOrValue: T): string | bigint | number | T {
+        if (this.isExpression(expressionOrValue)) {
+            return this.getValue(expressionOrValue.getValue(this));
+        }
+
+        return expressionOrValue;
     }
 
     /**

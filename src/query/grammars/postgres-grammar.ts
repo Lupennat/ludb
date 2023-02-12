@@ -1,5 +1,5 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
-import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime, WhereFullText } from '../../types/query/registry';
+import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime, whereFulltext } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import Grammar from './grammar';
@@ -100,10 +100,10 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a "where fulltext" clause.
      */
-    public compileWhereFullText(_query: BuilderContract, where: WhereFullText): string {
+    public compilewhereFulltext(_query: BuilderContract, where: whereFulltext): string {
         let language = where.options.language ?? 'english';
 
-        if (!this.validFullTextLanguages().includes(language)) {
+        if (!this.validFulltextLanguages().includes(language)) {
             language = 'english';
         }
 
@@ -123,13 +123,13 @@ class PostgresGrammar extends Grammar {
             mode = 'websearch_to_tsquery';
         }
 
-        return `(${columns} @@ ${mode}('${language}', ${this.parameter(where.value)}))`;
+        return `(${columns}) @@ ${mode}('${language}', ${this.parameter(where.value)})`;
     }
 
     /**
      * Get an array of valid full text languages.
      */
-    protected validFullTextLanguages(): string[] {
+    protected validFulltextLanguages(): string[] {
         return [
             'simple',
             'arabic',
@@ -194,7 +194,7 @@ class PostgresGrammar extends Grammar {
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
-        const segments = column.toString().split('->');
+        const segments = this.getValue(column).toString().split('->');
 
         const lastSegment = segments.pop() as string;
 
@@ -288,7 +288,7 @@ class PostgresGrammar extends Grammar {
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
         return Object.keys(values)
             .map((key: keyof RowValues & Stringable) => {
-                const column = key.toString().split('.').pop() as string;
+                const column = this.getValue(key).toString().split('.').pop() as string;
                 if (this.isJsonSelector(key)) {
                     return this.compileJsonUpdateColumn(column, values[key]);
                 }
@@ -431,9 +431,9 @@ class PostgresGrammar extends Grammar {
         const table = this.wrapTable(query.getRegistry().from);
 
         const columns = this.compileUpdateColumns(query, values);
-        const alias = query
-            .getRegistry()
-            .from.split(new RegExp(/\s+as\s+/, 'gmi'))
+        const alias = this.getValue(query.getRegistry().from)
+            .toString()
+            .split(new RegExp(/\s+as\s+/, 'gmi'))
             .pop() as string;
 
         const selectSql = this.compileSelect(query.select(`${alias}.ctid`));
@@ -476,9 +476,9 @@ class PostgresGrammar extends Grammar {
      */
     protected compileDeleteWithJoinsOrLimit(query: BuilderContract): string {
         const table = this.wrapTable(query.getRegistry().from);
-        const alias = query
-            .getRegistry()
-            .from.split(new RegExp(/\s+as\s+/, 'gmi'))
+        const alias = this.getValue(query.getRegistry().from)
+            .toString()
+            .split(new RegExp(/\s+as\s+/, 'gmi'))
             .pop() as string;
         const selectSql = this.compileSelect(query.select(`${alias}.ctid`));
 
@@ -496,7 +496,7 @@ class PostgresGrammar extends Grammar {
      * Wrap the given JSON selector.
      */
     protected wrapJsonSelector(value: Stringable): string {
-        const path = value.toString().split('->');
+        const path = this.getValue(value).toString().split('->');
 
         const field = this.wrapSegments((path.shift() as string).split('.'));
 
@@ -526,7 +526,7 @@ class PostgresGrammar extends Grammar {
      * Wrap the given JSON boolean value.
      */
     protected wrapJsonBooleanValue(value: Stringable): string {
-        return `'${value.toString()}'::jsonb`;
+        return `'${this.getValue(value).toString()}'::jsonb`;
     }
 
     /**

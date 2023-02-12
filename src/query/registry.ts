@@ -1,4 +1,4 @@
-import { BetweenTuple } from '../types/query/builder';
+import { BetweenColumnsTuple, BetweenTuple } from '../types/query/builder';
 import JoinClauseI from '../types/query/join-clause';
 import Registry, {
     Aggregate,
@@ -9,12 +9,13 @@ import Registry, {
     Union,
     Where,
     WhereBetween,
+    WhereBetweenColumns,
     WhereContains,
-    WhereFullText,
     WhereIn,
     WhereInRaw,
     WhereMultiColumn,
-    default as registry
+    default as registry,
+    whereFulltext
 } from '../types/query/registry';
 
 export default function createRegistry(): registry {
@@ -80,7 +81,10 @@ function cloneWheres(wheres: Where[]): Where[] {
         } else if (['InRaw'].includes(where.type)) {
             const { values, ...rest } = where as WhereInRaw;
             carry.push({ ...rest, values: values.slice() });
-        } else if (['Between', 'BetweenColumns'].includes(where.type)) {
+        } else if (['BetweenColumns'].includes(where.type)) {
+            const { values, ...rest } = where as WhereBetweenColumns;
+            carry.push({ ...rest, values: values.slice() as BetweenColumnsTuple });
+        } else if (['Between'].includes(where.type)) {
             const { values, ...rest } = where as WhereBetween;
             carry.push({ ...rest, values: values.slice() as BetweenTuple });
         } else if (['JsonContains'].includes(where.type)) {
@@ -90,7 +94,7 @@ function cloneWheres(wheres: Where[]): Where[] {
             const { values, columns, ...rest } = where as WhereMultiColumn;
             carry.push({ ...rest, values: values.slice(), columns: columns.slice() });
         } else if (['Fulltext'].includes(where.type)) {
-            const { options, columns, ...rest } = where as WhereFullText;
+            const { options, columns, ...rest } = where as whereFulltext;
             carry.push({ ...rest, options: { ...options }, columns: columns.slice() });
         } else {
             carry.push({ ...where });

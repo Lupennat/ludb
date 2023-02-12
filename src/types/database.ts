@@ -1,4 +1,4 @@
-import Expression from '../query/expression';
+import ExpressionContract from '../query/expression-contract';
 import { ConnectionConfig } from './config';
 import DriverConnectionI from './connection';
 
@@ -17,7 +17,7 @@ export interface DatabaseI {
     /**
      * Get a new raw query expression.
      */
-    raw(value: string): Expression;
+    raw(value: string): ExpressionContract;
 
     /**
      * Disconnect from the given database and remove from local cache.

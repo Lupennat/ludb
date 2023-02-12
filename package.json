@@ -44,7 +44,6 @@
         "build:esm": "tsc -p ./typescript/tsconfig.esm.json",
         "build:types": "tsc -p ./typescript/tsconfig.types.json",
         "clean": "rimraf ./dist",
-        "test": "jest --config test/jest.config.js",
         "local:test": "npm run db:up && npm run test:all && npm run db:down",
         "local:coverage": "npm run db:up && npm run test:coverage && npm run db:down",
         "test:mysql8": "npm run lint && cross-env DB=mysql8 jest --config test/jest.config.js",

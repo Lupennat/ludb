@@ -1,6 +1,25 @@
-class Expression extends String {
+import ExpressionContract from './expression-contract';
+
+class Expression extends ExpressionContract {
+    /**
+     * Create a new raw query expression.
+     */
+    public constructor(protected value: string | number | bigint) {
+        super();
+    }
+
+    /**
+     * Get the value of the expression.
+     */
+    public getValue(): string | number | bigint {
+        return this.value;
+    }
+
+    /**
+     * clone Expression
+     */
     public clone(): Expression {
-        return new Expression(this.toString());
+        return new Expression(this.value);
     }
 }
 

@@ -1,5 +1,4 @@
-import Expression from '../query/expression';
-
+import ExpressionContract from '../query/expression-contract';
 import { Binding, Stringable } from './query/builder';
 
 export interface KeyValues {
@@ -45,12 +44,14 @@ export default interface BaseGrammarI {
     /**
      * Determine if the given value is a raw expression.
      */
-    isExpression(value: any): boolean;
+    isExpression(value: any): value is ExpressionContract;
 
     /**
      * Get the value of a raw expression.
      */
-    getValue(expression: Expression): string;
+    getValue(expression: ExpressionContract): string | bigint | number;
+    getValue<T>(value: T): T;
+    getValue<T>(expressionOrValue: T): string | bigint | number | T;
 
     /**
      * Get the format for database stored dates.

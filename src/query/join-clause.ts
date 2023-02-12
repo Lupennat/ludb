@@ -13,7 +13,7 @@ import JoinClauseI, { JoinClauseConstructor } from '../types/query/join-clause';
 import Registry, { BindingTypes } from '../types/query/registry';
 import BaseBuilder from './base-builder';
 import BuilderContract from './builder-contract';
-import Expression from './expression';
+import ExpressionContract from './expression-contract';
 import { cloneRegistry, cloneRegistryWithoutBindings, cloneRegistryWithoutProperties } from './registry';
 
 class JoinClause extends BaseBuilder implements JoinClauseI {
@@ -22,7 +22,7 @@ class JoinClause extends BaseBuilder implements JoinClauseI {
     protected parentConnection: ConnectionSessionI;
     protected parentClass: BuilderConstructor;
 
-    constructor(parentQuery: BuilderContract, public type: string, public table: string | Expression) {
+    constructor(parentQuery: BuilderContract, public type: string, public table: string | ExpressionContract) {
         const connection = parentQuery.getConnection();
         const grammar = parentQuery.getGrammar();
         const processor = parentQuery.getProcessor();
@@ -60,7 +60,7 @@ class JoinClause extends BaseBuilder implements JoinClauseI {
         second: Stringable | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        if (typeof first === 'function') {
+        if (this.isQueryableCallback(first)) {
             return this.whereNested(first, boolean);
         }
 

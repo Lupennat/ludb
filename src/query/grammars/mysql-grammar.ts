@@ -1,5 +1,5 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
-import { BindingTypes, WhereFullText, WhereNull } from '../../types/query/registry';
+import { BindingTypes, WhereNull, whereFulltext } from '../../types/query/registry';
 import BuilderContract from '../builder-contract';
 import Grammar from './grammar';
 
@@ -26,7 +26,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile a "where fulltext" clause.
      */
-    public compileWhereFullText(_query: BuilderContract, where: WhereFullText): string {
+    public compilewhereFulltext(_query: BuilderContract, where: whereFulltext): string {
         const columns = this.columnize(where.columns);
 
         const value = this.parameter(where.value);

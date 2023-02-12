@@ -26,7 +26,7 @@ import DriverConnectionI, {
     TransactionCallback
 } from '../types/connection';
 import ProcessorI from '../types/processor';
-import { Binding, NotExpressionBinding, Stringable, SubQuery } from '../types/query/builder';
+import { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
@@ -228,7 +228,7 @@ class ConnectionSession implements ConnectionSessionI {
     public async insertGetId<T = number | bigint | string>(
         query: string,
         bindings?: Binding[],
-        sequence?: Stringable | null
+        sequence?: string | null
     ): Promise<T | null> {
         return this.run<T | null>(query, bindings, async (query, bindings) => {
             if (this.pretending()) {
@@ -241,7 +241,7 @@ class ConnectionSession implements ConnectionSessionI {
 
             await statement.execute();
 
-            const id = (await statement.lastInsertId(sequence ? sequence.toString() : undefined)) as T;
+            const id = (await statement.lastInsertId(sequence ? sequence : undefined)) as T;
 
             if ('close' in statement && typeof statement.close === 'function') {
                 await statement.close();

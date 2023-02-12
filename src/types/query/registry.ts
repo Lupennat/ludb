@@ -1,10 +1,11 @@
 import BuilderContract from '../../query/builder-contract';
-import Expression from '../../query/expression';
+import ExpressionContract from '../../query/expression-contract';
 import {
+    BetweenColumnsTuple,
     BetweenTuple,
     Binding,
     ConditionBoolean,
-    FullTextOptions,
+    FulltextOptions,
     OrderDirection,
     QueryAbleCallback,
     Stringable
@@ -88,14 +89,14 @@ export interface WhereLength extends WhereBase {
     type: 'JsonLength';
     column: Stringable;
     operator: string;
-    value: number | Expression | null;
+    value: number | ExpressionContract | null;
 }
 
-export interface WhereFullText extends WhereBase {
+export interface whereFulltext extends WhereBase {
     type: 'Fulltext';
     columns: Stringable[];
     value: string;
-    options: FullTextOptions;
+    options: FulltextOptions;
 }
 
 export interface WhereIn extends WhereBase {
@@ -107,11 +108,16 @@ export interface WhereIn extends WhereBase {
 export interface WhereInRaw extends WhereBase {
     type: 'InRaw';
     column: Stringable;
-    values: number[];
+    values: bigint[];
 }
 
+export interface WhereBetweenColumns extends WhereBase {
+    type: 'BetweenColumns';
+    column: Stringable;
+    values: BetweenColumnsTuple;
+}
 export interface WhereBetween extends WhereBase {
-    type: 'Between' | 'BetweenColumns';
+    type: 'Between';
     column: Stringable;
     values: BetweenTuple;
 }
@@ -168,6 +174,7 @@ export type Where =
     | WhereInRaw
     | WhereNull
     | WhereBetween
+    | WhereBetweenColumns
     | WhereDateTime
     | WhereColumn
     | WhereLength
@@ -178,7 +185,7 @@ export type Where =
     | WhereBoolean
     | WhereKeyContains
     | WhereContains
-    | WhereFullText;
+    | whereFulltext;
 
 export interface BindingTypes {
     select: Binding[];

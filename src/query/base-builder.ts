@@ -6,12 +6,12 @@ import { ConnectionSessionI } from '../types/connection';
 import ProcessorI from '../types/processor';
 import {
     Arrayable,
+    BetweenColumnsTuple,
     BetweenTuple,
     Binding,
     BooleanCallback,
     ConditionBoolean,
-    FullTextOptions,
-    JoinCallback,
+    FulltextOptions,
     NotExpressionBinding,
     NotNullableBinding,
     NumericValues,
@@ -23,7 +23,7 @@ import {
     Stringable,
     SubQuery,
     WhereColumnTuple,
-    WhereMethod,
+    WhereObject,
     WhereTuple
 } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
@@ -33,7 +33,7 @@ import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import Registry, { BindingTypes, Order, Where } from '../types/query/registry';
 import { raw } from '../utils';
 import BuilderContract from './builder-contract';
-import Expression from './expression';
+import ExpressionContract from './expression-contract';
 import { default as createRegistry } from './registry';
 
 abstract class BaseBuilder extends BuilderContract {
@@ -98,16 +98,25 @@ abstract class BaseBuilder extends BuilderContract {
         this.registry = createRegistry();
     }
 
+    /**
+     * Get Query Builder Registry
+     */
     public getRegistry(): Registry {
         return this.registry;
     }
 
+    /**
+     * Set Query Builder Registry
+     */
     public setRegistry(registry: Registry): this {
         this.registry = registry;
 
         return this;
     }
 
+    /**
+     * Set the columns to be selected.
+     */
     public select(columns: SelectColumn | SelectColumn[] = ['*'], ...otherColumns: SelectColumn[]): this {
         this.registry.columns = [];
         this.registry.bindings.select = [];
@@ -115,7 +124,7 @@ abstract class BaseBuilder extends BuilderContract {
         columns = (Array.isArray(columns) ? columns : [columns]).concat(otherColumns);
 
         for (const column of columns) {
-            if (typeof column === 'string' || column instanceof Expression) {
+            if (this.isStringable(column)) {
                 if (this.registry.columns == null) {
                     this.registry.columns = [];
                 }
@@ -133,14 +142,20 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a subselect expression to the query.
+     */
     public selectSub(query: SubQuery, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         return this.selectRaw(`(${queryString}) as ${this.getGrammar().wrap(as)}`, bindings);
     }
 
+    /**
+     * Add a new "raw" select expression to the query.
+     */
     public selectRaw(expression: string, bindings: Binding[] = []): this {
-        this.addSelect(new Expression(expression));
+        this.addSelect(this.raw(expression));
 
         if (bindings) {
             this.addBinding(bindings, 'select');
@@ -149,14 +164,20 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Makes "from" fetch from a subquery.
+     */
     public fromSub(query: SubQuery, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         return this.fromRaw(`(${queryString}) as ${this.getGrammar().wrapTable(as)}`, bindings);
     }
 
+    /**
+     * Add a raw from clause to the query.
+     */
     public fromRaw(expression: string, bindings: Binding[] = []): this {
-        this.registry.from = new Expression(expression);
+        this.registry.from = this.raw(expression);
 
         this.addBinding(bindings, 'from');
 
@@ -170,7 +191,7 @@ abstract class BaseBuilder extends BuilderContract {
         // If the given query is a Closure, we will execute it while passing in a new
         // query instance to the Closure. This will give the developer a chance to
         // format and work with the query before we cast it to a raw SQL string.
-        if (typeof query === 'function') {
+        if (this.isQueryableCallback(query)) {
             const callback = query;
             query = this.forSubQuery();
             callback(query);
@@ -183,13 +204,16 @@ abstract class BaseBuilder extends BuilderContract {
      * Parse the subquery into SQL and bindings.
      */
     protected parseSub(query: QueryAble): [string, Binding[]] {
-        if (typeof query === 'string' || query instanceof Expression) {
-            return [query.toString(), []];
+        if (this.isBuilderContract(query)) {
+            query = this.prependDatabaseNameIfCrossDatabaseQuery(query);
+            return [query.toSql(), query.getBindings()];
         }
 
-        query = this.prependDatabaseNameIfCrossDatabaseQuery(query);
+        if (this.isStringable(query)) {
+            return [this.getGrammar().getValue(query).toString(), []];
+        }
 
-        return [query.toSql(), query.getBindings()];
+        throw new TypeError('A subquery must be a query builder instance, a Closure, or a string.');
     }
 
     /**
@@ -198,20 +222,23 @@ abstract class BaseBuilder extends BuilderContract {
     protected prependDatabaseNameIfCrossDatabaseQuery(query: BuilderContract): BuilderContract {
         if (query.getConnection().getDatabaseName() !== this.getConnection().getDatabaseName()) {
             const databaseName = query.getConnection().getDatabaseName();
-
-            if (query.getRegistry().from.startsWith(databaseName) && !query.getRegistry().from.includes('.')) {
-                query.getRegistry().from = `${databaseName}.${query.getRegistry().from}`;
+            const queryFrom = query.getGrammar().getValue(query.getRegistry().from).toString();
+            if (queryFrom.startsWith(databaseName) && !queryFrom.includes('.')) {
+                query.getRegistry().from = `${databaseName}.${queryFrom}`;
             }
         }
 
         return query;
     }
 
+    /**
+     * Add a new select column to the query.
+     */
     public addSelect(columns: SelectColumn | SelectColumn[], ...otherColumns: SelectColumn[]): this {
         columns = (Array.isArray(columns) ? columns : [columns]).concat(otherColumns);
 
         for (const column of columns) {
-            if (typeof column === 'string' || column instanceof Expression) {
+            if (this.isStringable(column)) {
                 if (this.registry.columns == null) {
                     this.registry.columns = [];
                 }
@@ -229,6 +256,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Force the query to only return distinct results.
+     */
     public distinct(column?: boolean | Stringable, ...columns: Stringable[]): this {
         if (column != null) {
             this.registry.distinct = typeof column === 'boolean' ? column : [column].concat(columns);
@@ -239,132 +269,73 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Set the table which the query is targeting.
+     */
     public from(table: SubQuery, as = ''): this {
         if (this.isQueryable(table)) {
             return this.fromSub(table, as);
         }
 
-        this.registry.from = (as ? `${table} as ${as}` : table) as string;
+        this.registry.from = as ? `${this.getGrammar().getValue(table).toString()} as ${as}` : table;
 
         return this;
     }
 
-    public join(table: Stringable, first: JoinCallback, operator: null, second: null, type: string, where: false): this;
+    /**
+     * Add a join clause to the query.
+     */
+    public join(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public join(table: Stringable, first: Stringable, operator: Stringable): this;
+    public join(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public join(
         table: Stringable,
-        first: WhereColumnTuple[] | QueryAbleCallback,
-        operator: null,
-        second: null,
-        type: string,
-        where: false
-    ): this;
-    public join(
-        table: Stringable,
-        first: Stringable,
-        operator: Stringable,
-        second: null,
-        type: string,
-        where: false
-    ): this;
-    public join(
-        table: Stringable,
-        first: Stringable,
-        operator: string,
-        second: Stringable,
-        type: string,
-        where: false
-    ): this;
-    public join(
-        table: Stringable,
-        first: JoinCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
-        type?: string,
-        where?: false
+        type?: string
     ): this;
     public join(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[],
-        operator: null,
-        second: null,
-        type: string,
-        where: true
-    ): this;
-    public join(table: Stringable, first: Stringable, operator: Binding, second: null, type: string, where: true): this;
-    public join(
-        table: Stringable,
-        first: Stringable,
-        operator: string,
-        second: Binding,
-        type: string,
-        where: true
-    ): this;
-    public join(
-        table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding,
-        type?: string,
-        where?: true
-    ): this;
-    public join(
-        table: Stringable,
-        first: JoinCallback | WhereColumnTuple[] | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
-        operatorOrSecond?: Stringable | Binding,
-        second?: Stringable | Binding,
-        type?: string,
-        where?: boolean
-    ): this;
-    public join(
-        table: Stringable,
-        first: JoinCallback | WhereColumnTuple[] | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
-        operatorOrSecond: Stringable | Binding = null,
-        second: Stringable | Binding = null,
-        type = 'inner',
-        where = false
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        operatorOrSecond: Stringable | null = null,
+        second: Stringable | null = null,
+        type = 'inner'
     ): this {
-        const join = this.newJoinClause(this, type, table);
+        return this.baseJoin(type, table, first, (join: JoinClauseI) => {
+            join.on(first, operatorOrSecond, second);
+        });
+    }
 
+    /**
+     * Add a join on or where clause to the query.
+     */
+    protected baseJoin<T>(type: string, table: Stringable, first: T, callback: (join: JoinClauseI) => void): this {
+        const join = this.newJoinClause(this, type, table);
         // If the first "column" of the join is really a Closure instance the developer
         // is trying to build a join with a complex "on" clause containing more than
         // one condition, so we'll add the join and call a Closure with the query.
-        if (typeof first === 'function') {
+        if (this.isQueryableCallback(first)) {
             first(join);
-
-            this.registry.joins.push(join);
-
-            this.addBinding(join.getBindings(), 'join');
         }
 
         // If the column is simply a string, we can assume the join simply has a basic
         // "on" clause with a single condition. So we will just build the join with
         // this simple join clauses attached to it. There is not a join callback.
         else {
-            const method = where ? 'where' : 'on';
-
-            if (method === 'on') {
-                join.on(
-                    first as Stringable | WhereColumnTuple[],
-                    operatorOrSecond as Stringable | null,
-                    second as Stringable | null
-                );
-            } else {
-                join.where(
-                    first as WhereColumnTuple[] | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
-                    operatorOrSecond as string | Binding,
-                    second as Binding
-                );
-            }
-
-            this.registry.joins.push(join);
-
-            this.addBinding(join.getBindings(), 'join');
+            callback(join);
         }
+
+        this.registry.joins.push(join);
+        this.addBinding(join.getBindings(), 'join');
 
         return this;
     }
 
-    public joinWhere(table: Stringable, first: JoinCallback | QueryAbleCallback | WhereTuple[]): this;
+    /**
+     * Add a "join where" clause to the query.
+     */
+    public joinWhere(table: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
     public joinWhere(table: Stringable, first: Stringable, second: Binding): this;
     public joinWhere(table: Stringable, first: QueryAbleCallback | BuilderContract, second: NotNullableBinding): this;
     public joinWhere(table: Stringable, first: Stringable, operator: string, second: Binding): this;
@@ -376,152 +347,126 @@ abstract class BaseBuilder extends BuilderContract {
     ): this;
     public joinWhere(
         table: Stringable,
-        first: JoinCallback | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding,
         second?: Binding,
         type?: string
     ): this;
     public joinWhere(
         table: Stringable,
-        first: JoinCallback | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding = null,
         second: Binding = null,
         type = 'inner'
     ): this {
-        return this.join(table, first, operatorOrSecond, second, type, true);
+        return this.baseJoin(type, table, first, (join: JoinClauseI) => {
+            join.where(first, operatorOrSecond, second);
+        });
     }
-
+    /**
+     * Add a subquery join clause to the query.
+     */
+    public joinSub(query: SubQuery, as: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public joinSub(query: SubQuery, as: Stringable, first: Stringable, operator: Stringable): this;
+    public joinSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public joinSub(
         query: SubQuery,
         as: Stringable,
-        first: JoinCallback,
-        operator: null,
-        second: null,
-        type: string,
-        where: false
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: WhereColumnTuple[] | QueryAbleCallback,
-        operator: null,
-        second: null,
-        type: string,
-        where: false
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: Stringable,
-        operator: Stringable,
-        second: null,
-        type: string,
-        where: false
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: Stringable,
-        operator: string,
-        second: Stringable,
-        type: string,
-        where: false
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: JoinCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
-        type?: string,
-        where?: false
+        type?: string
     ): this;
     public joinSub(
         query: SubQuery,
         as: Stringable,
-        first: JoinCallback | QueryAbleCallback | WhereTuple[],
-        operator: null,
-        second: null,
-        type: string,
-        where: true
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: Stringable,
-        operator: Binding,
-        second: null,
-        type: string,
-        where: true
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        operator: NotNullableBinding,
-        second: null,
-        type: string,
-        where: true
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: Stringable,
-        operator: string,
-        second: Binding,
-        type: string,
-        where: true
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        operator: string,
-        second: NotNullableBinding,
-        type: string,
-        where: true
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: JoinCallback | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding,
-        type?: string,
-        where?: true
-    ): this;
-    public joinSub(
-        query: SubQuery,
-        as: Stringable,
-        first: JoinCallback | WhereColumnTuple[] | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
-        operatorOrSecond: Stringable | Binding = null,
-        second: Stringable | Binding = null,
-        type = 'inner',
-        where = false
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        operatorOrSecond: Stringable | null = null,
+        second: Stringable | null = null,
+        type = 'inner'
     ): this {
+        return this.baseJoinSub(query, as, (expression: ExpressionContract) => {
+            return this.join(expression, first, operatorOrSecond, second, type);
+        });
+    }
+
+    /**
+     * Add a subquery join on or where clause to the query.
+     */
+    protected baseJoinSub(query: SubQuery, as: Stringable, callback: (expression: ExpressionContract) => this): this {
         const [queryString, bindings] = this.createSub(query);
 
         const expression = `(${queryString}) as ${this.getGrammar().wrapTable(as)}`;
 
         this.addBinding(bindings, 'join');
 
-        return this.join(new Expression(expression), first, operatorOrSecond, second, type, where);
+        return callback(this.raw(expression));
     }
 
-    public leftJoin(table: Stringable, first: JoinCallback): this;
+    /**
+     * Add a subquery join where clause to the query.
+     */
+    public joinWhereSub(query: SubQuery, as: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
+    public joinWhereSub(query: SubQuery, as: Stringable, first: Stringable, second: Binding): this;
+    public joinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract,
+        second: NotNullableBinding
+    ): this;
+    public joinWhereSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Binding): this;
+    public joinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract,
+        operator: string,
+        second: NotNullableBinding
+    ): this;
+    public joinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding,
+        second?: Binding,
+        type?: string
+    ): this;
+    public joinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding = null,
+        second: Binding = null,
+        type = 'inner'
+    ): this {
+        return this.baseJoinSub(query, as, (expression: ExpressionContract) => {
+            return this.joinWhere(expression, first, operatorOrSecond, second, type);
+        });
+    }
+
+    /**
+     * Add a left join to the query.
+     */
     public leftJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public leftJoin(table: Stringable, first: Stringable, second: Stringable): this;
+    public leftJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     public leftJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public leftJoin(
         table: Stringable,
-        first: JoinCallback | Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this;
+    public leftJoin(
+        table: Stringable,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
         return this.join(table, first, operatorOrSecond, second, 'left');
     }
-
-    public leftJoinWhere(table: Stringable, first: JoinCallback | QueryAbleCallback | WhereTuple[]): this;
+    /**
+     * Add a "join where" clause to the query.
+     */
+    public leftJoinWhere(table: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
     public leftJoinWhere(table: Stringable, first: Stringable, second: Binding): this;
     public leftJoinWhere(
         table: Stringable,
@@ -537,41 +482,113 @@ abstract class BaseBuilder extends BuilderContract {
     ): this;
     public leftJoinWhere(
         table: Stringable,
-        first: JoinCallback | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding,
+        second?: Binding
+    ): this;
+    public leftJoinWhere(
+        table: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding = null,
         second: Binding = null
     ): this {
         return this.joinWhere(table, first, operatorOrSecond, second, 'left');
     }
 
-    public leftJoinSub(query: SubQuery, as: Stringable, first: JoinCallback): this;
+    /**
+     * Add a subquery left join to the query.
+     */
     public leftJoinSub(query: SubQuery, as: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public leftJoinSub(query: SubQuery, as: Stringable, first: Stringable, second: Stringable): this;
+    public leftJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: Stringable): this;
     public leftJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public leftJoinSub(
         query: SubQuery,
         as: Stringable,
-        first: JoinCallback | Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this;
+    public leftJoinSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
         return this.joinSub(query, as, first, operatorOrSecond, second, 'left');
     }
 
-    public rightJoin(table: Stringable, first: JoinCallback): this;
+    /**
+     * Add a subquery left join where clause to the query.
+     */
+    public leftJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | WhereTuple[] | WhereObject
+    ): this;
+    public leftJoinWhereSub(query: SubQuery, as: Stringable, first: Stringable, second: Binding): this;
+    public leftJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract,
+        second: NotNullableBinding
+    ): this;
+    public leftJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: Stringable,
+        operator: string,
+        second: Binding
+    ): this;
+    public leftJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract,
+        operator: string,
+        second: NotNullableBinding
+    ): this;
+    public leftJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding,
+        second?: Binding
+    ): this;
+    public leftJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding = null,
+        second: Binding = null
+    ): this {
+        return this.joinWhereSub(query, as, first, operatorOrSecond, second, 'left');
+    }
+
+    /**
+     * Add a right join to the query.
+     */
     public rightJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public rightJoin(table: Stringable, first: Stringable, second: Stringable): this;
+    public rightJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     public rightJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public rightJoin(
         table: Stringable,
-        first: JoinCallback | Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this;
+    public rightJoin(
+        table: Stringable,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
         return this.join(table, first, operatorOrSecond, second, 'right');
     }
 
-    public rightJoinWhere(table: Stringable, first: JoinCallback | QueryAbleCallback | WhereTuple[]): this;
+    /**
+     * Add a "right join where" clause to the query.
+     */
+    public rightJoinWhere(table: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
     public rightJoinWhere(table: Stringable, first: Stringable, second: Binding): this;
     public rightJoinWhere(
         table: Stringable,
@@ -587,35 +604,103 @@ abstract class BaseBuilder extends BuilderContract {
     ): this;
     public rightJoinWhere(
         table: Stringable,
-        first: JoinCallback | QueryAbleCallback | BuilderContract | WhereTuple[] | Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding,
+        second?: Binding
+    ): this;
+    public rightJoinWhere(
+        table: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding = null,
         second: Binding = null
     ): this {
         return this.joinWhere(table, first, operatorOrSecond, second, 'right');
     }
 
-    public rightJoinSub(query: SubQuery, as: Stringable, first: JoinCallback): this;
+    /**
+     * Add a subquery right join to the query.
+     */
     public rightJoinSub(query: SubQuery, as: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public rightJoinSub(query: SubQuery, as: Stringable, first: Stringable, second: Stringable): this;
+    public rightJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: Stringable): this;
     public rightJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public rightJoinSub(
         query: SubQuery,
         as: Stringable,
-        first: JoinCallback | Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this;
+    public rightJoinSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
         return this.joinSub(query, as, first, operatorOrSecond, second, 'right');
     }
 
+    /**
+     * Add a subquery left join where clause to the query.
+     */
+    public rightJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | WhereTuple[] | WhereObject
+    ): this;
+    public rightJoinWhereSub(query: SubQuery, as: Stringable, first: Stringable, second: Binding): this;
+    public rightJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract,
+        second: NotNullableBinding
+    ): this;
+    public rightJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: Stringable,
+        operator: string,
+        second: Binding
+    ): this;
+    public rightJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract,
+        operator: string,
+        second: NotNullableBinding
+    ): this;
+    public rightJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding,
+        second?: Binding
+    ): this;
+    public rightJoinWhereSub(
+        query: SubQuery,
+        as: Stringable,
+        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding = null,
+        second: Binding = null
+    ): this {
+        return this.joinWhereSub(query, as, first, operatorOrSecond, second, 'right');
+    }
+    /**
+     * Add a "cross join" clause to the query.
+     */
     public crossJoin(table: Stringable): this;
-    public crossJoin(table: Stringable, first: JoinCallback): this;
     public crossJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public crossJoin(table: Stringable, first: Stringable, second: Stringable): this;
+    public crossJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     public crossJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public crossJoin(
         table: Stringable,
-        first: JoinCallback | Stringable | WhereColumnTuple[] | QueryAbleCallback | null = null,
+        first?: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this;
+    public crossJoin(
+        table: Stringable,
+        first: QueryAbleCallback | WhereColumnTuple[] | Stringable | null = null,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
@@ -628,6 +713,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a subquery cross join to the query.
+     */
     public crossJoinSub(query: SubQuery, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
@@ -635,7 +723,7 @@ abstract class BaseBuilder extends BuilderContract {
 
         this.addBinding(bindings, 'join');
 
-        this.registry.joins.push(this.newJoinClause(this, 'cross', new Expression(expression)));
+        this.registry.joins.push(this.newJoinClause(this, 'cross', this.raw(expression)));
 
         return this;
     }
@@ -645,6 +733,9 @@ abstract class BaseBuilder extends BuilderContract {
      */
     protected abstract newJoinClause(parentQuery: BuilderContract, type: string, table: Stringable): JoinClauseI;
 
+    /**
+     * Merge an array of where clauses and bindings.
+     */
     public mergeWheres(wheres: Where[], bindings: Binding[]): this {
         this.registry.wheres = this.registry.wheres.concat(wheres);
 
@@ -653,31 +744,40 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
-    public where(column: QueryAbleCallback | WhereTuple[]): this;
+    /**
+     * Add a basic where clause to the query.
+     */
+    public where(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
     public where(column: Stringable, value: Binding): this;
     public where(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
     public where(column: Stringable, operator: string, value: Binding): this;
     public where(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
     public where(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[],
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
         operatorOrValue?: string | Binding,
         value?: Binding,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
-
     public where(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[],
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
         operatorOrValue: string | Binding = null,
-        value: Binding = null,
+        value: Binding | QueryAbleCallback = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         // If the column is an array, we will assume it is an array of key-value pairs
         // and can add them each as a where clause. We will maintain the boolean we
         // received when the method was called and pass it into the nested where.
-        if (Array.isArray(column)) {
-            return this.addArrayOfWheres(column, boolean, 'where', not);
+        if (Array.isArray(column) || this.isWhereObject(column)) {
+            return this.addArrayOfWheres(
+                Array.isArray(column) ? column : Object.entries(column),
+                boolean,
+                not,
+                (query, values) => {
+                    query.where(...values);
+                }
+            );
         }
 
         // Here we will make some assumptions about the operator. If only 2 values are
@@ -688,34 +788,32 @@ abstract class BaseBuilder extends BuilderContract {
         // If the column is actually a Closure instance, we will assume the developer
         // wants to begin a nested where statement which is wrapped in parentheses.
         // We will add that Closure to the query and return back out immediately.
-        if (typeof column === 'function' && operator === null) {
+        if (this.isQueryableCallback(column) && operator === null) {
             return this.whereNested(column, boolean, not);
-        }
-
-        // If the column is a Closure instance and there is an operator value, we will
-        // assume the developer wants to run a subquery and then compare the result
-        // of that subquery with the given value that was provided to the method.
-        if (this.isQueryable(column) && operator !== null) {
-            const [sub, bindings] = this.createSub(column);
-
-            return this.addBinding(bindings, 'where').where(new Expression(`(${sub})`), operator, val, boolean);
-        }
-
-        if (typeof column !== 'string' && !(column instanceof Expression)) {
-            throw new TypeError('Value Cannot be null when column is instance of Query Builder.');
         }
 
         // If the given operator is not found in the list of valid operators we will
         // assume that the developer is just short-cutting the '=' operators and
         // we will set the operators to '=' and set the values appropriately.
-        if (this.invalidOperator(operator)) {
-            [val, operator] = [operator, '='];
+        [val, operator] = this.assignValueAndOperator(value, operatorOrValue, arguments.length === 2);
+
+        // If the column is a Closure instance and there is an operator value, we will
+        // assume the developer wants to run a subquery and then compare the result
+        // of that subquery with the given value that was provided to the method.
+        if (this.isQueryable(column)) {
+            const [sub, bindings] = this.createSub(column);
+
+            if (this.isQueryableCallback(val)) {
+                throw new TypeError('Value Cannot be a closure when column is instance of Query Builder or closure.');
+            }
+
+            return this.addBinding(bindings, 'where').where(this.raw(`(${sub})`), operator, val, boolean);
         }
 
         // If the value is a Closure, it means the developer is performing an entire
         // sub-select within the query and we will need to compile the sub-select
         // within the where clause to get the appropriate query record results.
-        if (typeof val === 'function') {
+        if (this.isQueryableCallback(val)) {
             return this.whereSub(column, operator, val, boolean, not);
         }
 
@@ -728,11 +826,13 @@ abstract class BaseBuilder extends BuilderContract {
 
         let type: 'Basic' | 'Bitwise' | 'JsonBoolean' = 'Basic';
 
+        const columnToString = this.getGrammar().getValue(column).toString();
+
         // If the column is making a JSON reference we'll check to see if the value
         // is a boolean. If it is, we'll add the raw boolean string as an actual
         // value to the query to ensure this is properly handled by the query.
-        if (typeof column === 'string' && column.toString().includes('->') && typeof val === 'boolean') {
-            val = new Expression(val ? 'true' : 'false');
+        if (columnToString.includes('->') && typeof val === 'boolean') {
+            val = this.raw(val ? 'true' : 'false');
             type = 'JsonBoolean';
         }
 
@@ -752,7 +852,7 @@ abstract class BaseBuilder extends BuilderContract {
             not: not
         });
 
-        if (!(val instanceof Expression)) {
+        if (!this.isExpression(val)) {
             this.addBinding(this.flattenValue(val), 'where');
         }
 
@@ -761,22 +861,17 @@ abstract class BaseBuilder extends BuilderContract {
 
     /**
      * Add an array of where clauses to the query.
-
      */
-    protected addArrayOfWheres(
-        column: Array<WhereTuple | WhereColumnTuple>,
+    protected addArrayOfWheres<T>(
+        column: T[],
         boolean: ConditionBoolean,
-        method: WhereMethod,
-        not: boolean
+        not: boolean,
+        callback: (query: BuilderContract, values: T) => void
     ): this {
         return this.whereNested(
             (query: BuilderContract): void => {
                 for (const values of column) {
-                    if (method === 'where') {
-                        query.where(...(values as WhereTuple));
-                    } else {
-                        query.whereColumn(...(values as WhereColumnTuple));
-                    }
+                    callback(query, values);
                 }
             },
             boolean,
@@ -784,62 +879,93 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
-    public prepareValueAndOperator<T extends Binding>(value: T, operator: string | T, useDefault = false): [T, string] {
+    /**
+     * Assign the value and operator for a where clause.
+     */
+    protected assignValueAndOperator<T>(value: T, operator: string | T, useDefault = false): [T, string] {
+        if (useDefault) {
+            return [operator as T, '='];
+        } else if (this.isValidOperatorAndValue(operator, value)) {
+            return [value, operator];
+        }
+
+        throw new TypeError('Illegal operator and value combination.');
+    }
+
+    /**
+     * Determine if the given operator and value combination is legal.
+     * Opeator should be a string and prevents using Null values with invalid operators.
+     */
+    protected isValidOperatorAndValue<T>(operator: string | T, value: T): operator is string {
+        return (
+            typeof operator === 'string' &&
+            (value !== null || (this.operators.includes(operator) && !['=', '<>', '!='].includes(operator)))
+        );
+    }
+
+    /**
+     * Prepare the value and operator to proxy call another method.
+     */
+    protected prepareValueAndOperator<T>(value: T, operator: string | T, useDefault = false): [T, T | string] {
         if (useDefault) {
             return [operator as T, '='];
         } else if (this.invalidOperatorAndValue(operator, value)) {
             throw new TypeError('Illegal operator and value combination.');
         }
 
-        return [value as T, operator as string];
+        return [value, operator];
     }
 
     /**
      * Determine if the given operator and value combination is legal.
-     *
-     * Prevents using Null values with invalid operators.
+     * Only Prevents using Null values with invalid operators.
      */
-    protected invalidOperatorAndValue(operator: string | Binding, value: Binding): boolean {
+    protected invalidOperatorAndValue<T, U>(operator: T, value: U): boolean {
         return (
-            value == null &&
+            value === null &&
             typeof operator === 'string' &&
-            this.operators.indexOf(operator) > -1 &&
-            ['=', '<>', '!='].indexOf(operator) === -1
+            this.operators.includes(operator) &&
+            !['=', '<>', '!='].includes(operator)
         );
     }
 
     /**
      * Determine if the given operator is supported.
      */
-    protected invalidOperator(operator: Stringable | Binding): boolean {
+    protected isValidOperator(operator: Binding): operator is string {
         return (
-            typeof operator !== 'string' ||
-            (this.operators.indexOf(operator.toLowerCase()) === -1 &&
-                this.getGrammar().getOperators().indexOf(operator.toLowerCase()) === -1)
+            typeof operator === 'string' &&
+            (this.operators.includes(operator.toLowerCase()) ||
+                this.getGrammar().getOperators().includes(operator.toLowerCase()))
         );
     }
 
     /**
      * Determine if the operator is a bitwise operator.
      */
-    protected isBitwiseOperator(operator: Stringable | Binding): boolean {
+    protected isBitwiseOperator(operator: Stringable | Binding): operator is string {
         return (
             typeof operator === 'string' &&
-            (this.bitwiseOperators.indexOf(operator.toLowerCase()) > -1 ||
-                this.getGrammar().getBitwiseOperators().indexOf(operator.toLowerCase()) > -1)
+            (this.bitwiseOperators.includes(operator.toLowerCase()) ||
+                this.getGrammar().getBitwiseOperators().includes(operator.toLowerCase()))
         );
     }
 
     /**
      * Add an "or where" clause to the query.
      */
-    public orWhere(column: QueryAbleCallback | WhereTuple[]): this;
+    public orWhere(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
     public orWhere(column: Stringable, value: Binding): this;
     public orWhere(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
     public orWhere(column: Stringable, operator: string, value: Binding): this;
     public orWhere(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
     public orWhere(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[],
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding,
+        value?: Binding
+    ): this;
+    public orWhere(
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
         operatorOrValue: string | Binding = null,
         value: Binding = null
     ): this {
@@ -851,19 +977,19 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a basic "where not" clause to the query.
      */
-    public whereNot(column: QueryAbleCallback | WhereTuple[]): this;
+    public whereNot(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
     public whereNot(column: Stringable, value: Binding): this;
     public whereNot(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
     public whereNot(column: Stringable, operator: string, value: Binding): this;
     public whereNot(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
     public whereNot(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[],
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
         operatorOrValue?: string | Binding,
         value?: Binding,
         boolean?: ConditionBoolean
     ): this;
     public whereNot(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[],
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
         operatorOrValue: string | Binding = null,
         value: Binding = null,
         boolean: ConditionBoolean = 'and'
@@ -875,13 +1001,18 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or where not" clause to the query.
      */
-    public orWhereNot(column: QueryAbleCallback | WhereTuple[]): this;
+    public orWhereNot(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
     public orWhereNot(column: Stringable, value: Binding): this;
     public orWhereNot(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
     public orWhereNot(column: Stringable, operator: string, value: Binding): this;
     public orWhereNot(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
     public orWhereNot(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[],
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding,
+        value?: Binding
+    ): this;
+    public orWhereNot(
+        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
         operatorOrValue: string | Binding = null,
         value: Binding = null
     ): this {
@@ -889,6 +1020,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.whereNot(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where" clause comparing two columns to the query.
+     */
     public whereColumn(first: WhereColumnTuple[]): this;
     public whereColumn(first: Stringable, second: Stringable): this;
     public whereColumn(first: Stringable, operator: string, second: Stringable): this;
@@ -910,14 +1044,20 @@ abstract class BaseBuilder extends BuilderContract {
         // and can add them each as a where clause. We will maintain the boolean we
         // received when the method was called and pass it into the nested where.
         if (Array.isArray(first)) {
-            return this.addArrayOfWheres(first, boolean, 'whereColumn', not);
+            return this.addArrayOfWheres(first, boolean, not, (query, values) => {
+                query.whereColumn(...values);
+            });
         }
 
         // If the given operator is not found in the list of valid operators we will
         // assume that the developer is just short-cutting the '=' operators and
         // we will set the operators to '=' and set the values appropriately.
-        if (this.invalidOperator(operatorOrSecond)) {
+        if (!this.isValidOperator(operatorOrSecond)) {
             [second, operatorOrSecond] = [operatorOrSecond, '='];
+        }
+
+        if (!this.isStringable(second)) {
+            throw new TypeError('Second Parameter must be string or Expression.');
         }
 
         // Finally, we will add this where clause into this array of clauses that we
@@ -928,8 +1068,8 @@ abstract class BaseBuilder extends BuilderContract {
         this.registry.wheres.push({
             type,
             first,
-            operator: operatorOrSecond as string,
-            second: second as Stringable,
+            operator: operatorOrSecond,
+            second: second,
             boolean,
             not
         });
@@ -937,9 +1077,17 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add an "or where" clause comparing two columns to the query.
+     */
     public orWhereColumn(first: WhereColumnTuple[]): this;
     public orWhereColumn(first: Stringable, second: Stringable): this;
     public orWhereColumn(first: Stringable, operator: string, second: Stringable): this;
+    public orWhereColumn(
+        first: Stringable | WhereColumnTuple[],
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this;
     public orWhereColumn(
         first: Stringable | WhereColumnTuple[],
         operatorOrSecond: Stringable | null = null,
@@ -948,6 +1096,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.whereColumn(first, operatorOrSecond, second, 'or');
     }
 
+    /**
+     * Add a "where not" clause comparing two columns to the query.
+     */
     public whereColumnNot(first: WhereColumnTuple[]): this;
     public whereColumnNot(first: Stringable, second: Stringable): this;
     public whereColumnNot(first: Stringable, operator: string, second: Stringable): this;
@@ -966,9 +1117,17 @@ abstract class BaseBuilder extends BuilderContract {
         return this.whereColumn(first, operatorOrSecond, second, boolean, true);
     }
 
+    /**
+     * Add an "or where not" clause comparing two columns to the query.
+     */
     public orWhereColumnNot(first: WhereColumnTuple[]): this;
     public orWhereColumnNot(first: Stringable, second: Stringable): this;
     public orWhereColumnNot(first: Stringable, operator: string, second: Stringable): this;
+    public orWhereColumnNot(
+        first: Stringable | WhereColumnTuple[],
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this;
     public orWhereColumnNot(
         first: Stringable | WhereColumnTuple[],
         operatorOrSecond: Stringable | null = null,
@@ -977,6 +1136,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.whereColumnNot(first, operatorOrSecond, second, 'or');
     }
 
+    /**
+     * Add a raw where clause to the query.
+     */
     public whereRaw(sql: string, bindings: Binding[] = [], boolean: ConditionBoolean = 'and'): this {
         const type = 'Raw';
 
@@ -987,13 +1149,19 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a raw or where clause to the query.
+     */
     public orWhereRaw(sql: string, bindings: Binding[] = []): this {
         return this.whereRaw(sql, bindings, 'or');
     }
 
+    /**
+     * Add a "where in" clause to the query.
+     */
     public whereIn(
         column: Stringable,
-        values: SubQuery | Arrayable | Binding[],
+        values: BuilderContract | QueryAbleCallback | Arrayable | Binding[],
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1003,9 +1171,9 @@ abstract class BaseBuilder extends BuilderContract {
         // look for any values that exist within this given query. So, we will add the
         // query accordingly so that this query is properly executed when it is run.
         if (this.isQueryable(values)) {
-            const [query, bindings] = this.createSub(values as SubQuery);
+            const [query, bindings] = this.createSub(values);
 
-            values = [new Expression(query)];
+            values = [this.raw(query)];
 
             this.addBinding(bindings, 'where');
         }
@@ -1013,39 +1181,51 @@ abstract class BaseBuilder extends BuilderContract {
         // Next, if the value is Arrayable we need to cast it to its raw array form so we
         // have the underlying array value instead of an Arrayable object which is not
         // able to be added as a binding, etc. We will then add to the wheres array.
-        if (typeof values === 'object' && 'toArray' in values && typeof values.toArray === 'function') {
-            values = values.toArray();
+        if (this.isArrayable(values)) {
+            values = values.toArray<Binding>();
         }
 
-        this.registry.wheres.push({ type, column: column as Stringable, values: values as Binding[], boolean, not });
+        this.registry.wheres.push({ type, column, values, boolean, not });
 
-        if ((values as Binding[]).length !== (values as Binding[]).flat(1).length) {
+        if (values.length !== values.flat(1).length) {
             throw new TypeError('Nested arrays may not be passed to whereIn method.');
         }
 
         // Finally, we'll add a binding for each value unless that value is an expression
         // in which case we will just skip over it since it will be the query as a raw
         // string and not as a parameterized place-holder to be replaced by the PDO.
-        this.addBinding(this.cleanBindings(values as Binding[]), 'where');
+        this.addBinding(this.cleanBindings(values), 'where');
 
         return this;
     }
-    public orWhereIn(column: Stringable, values: SubQuery | Arrayable | Binding[]): this {
+    /**
+     * Add an "or where in" clause to the query.
+     */
+    public orWhereIn(column: Stringable, values: BuilderContract | QueryAbleCallback | Binding[] | Arrayable): this {
         return this.whereIn(column, values, 'or');
     }
 
+    /**
+     * Add a "where not in" clause to the query.
+     */
     public whereNotIn(
         column: Stringable,
-        values: SubQuery | Arrayable | Binding[],
+        values: BuilderContract | QueryAbleCallback | Binding[] | Arrayable,
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.whereIn(column, values, boolean, true);
     }
 
-    public orWhereNotIn(column: Stringable, values: SubQuery | Arrayable | Binding[]): this {
+    /**
+     * Add an "or where not in" clause to the query.
+     */
+    public orWhereNotIn(column: Stringable, values: BuilderContract | QueryAbleCallback | Binding[] | Arrayable): this {
         return this.whereNotIn(column, values, 'or');
     }
 
+    /**
+     * Add a "where in raw" clause for integer values to the query.
+     */
     public whereIntegerInRaw(
         column: Stringable,
         values: Arrayable | Binding[],
@@ -1054,21 +1234,33 @@ abstract class BaseBuilder extends BuilderContract {
     ): this {
         const type = 'InRaw';
 
-        if (typeof values === 'object' && 'toArray' in values && typeof values.toArray === 'function') {
-            values = values.toArray();
-        }
-
-        values = (values as Binding[]).flat(Infinity).map((value: any) => Number(value));
-
-        this.registry.wheres.push({ type, column, values: values as number[], boolean, not });
+        this.registry.wheres.push({
+            type,
+            column,
+            values: (this.isArrayable(values) ? values.toArray<Binding>() : values).map((value: any): bigint => {
+                try {
+                    return BigInt(value);
+                } catch (error) {
+                    return BigInt('0');
+                }
+            }),
+            boolean,
+            not
+        });
 
         return this;
     }
 
+    /**
+     * Add an "or where in raw" clause for integer values to the query.
+     */
     public orWhereIntegerInRaw(column: Stringable, values: Arrayable | Binding[]): this {
         return this.whereIntegerInRaw(column, values, 'or');
     }
 
+    /**
+     * Add a "where not in raw" clause for integer values to the query.
+     */
     public whereIntegerNotInRaw(
         column: Stringable,
         values: Arrayable | Binding[],
@@ -1077,10 +1269,16 @@ abstract class BaseBuilder extends BuilderContract {
         return this.whereIntegerInRaw(column, values, boolean, true);
     }
 
+    /**
+     * Add an "or where not in raw" clause for integer values to the query.
+     */
     public orWhereIntegerNotInRaw(column: Stringable, values: Arrayable | Binding[]): this {
         return this.whereIntegerNotInRaw(column, values, 'or');
     }
 
+    /**
+     * Add a "where null" clause to the query.
+     */
     public whereNull(columns: Stringable | Stringable[], boolean: ConditionBoolean = 'and', not = false): this {
         const type = 'Null';
         columns = Array.isArray(columns) ? columns : [columns];
@@ -1091,25 +1289,41 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add an "or where null" clause to the query.
+     */
     public orWhereNull(columns: Stringable | Stringable[]): this {
         return this.whereNull(columns, 'or');
     }
 
+    /**
+     * Add a "where not null" clause to the query.
+     */
     public whereNotNull(columns: Stringable | Stringable[], boolean: ConditionBoolean = 'and'): this {
         return this.whereNull(columns, boolean, true);
     }
 
+    /**
+     * Add an "or where not null" clause to the query.
+     */
     public orWhereNotNull(columns: Stringable | Stringable[]): this {
         return this.whereNotNull(columns, 'or');
     }
 
+    /**
+     * Add a where between statement to the query.
+     */
     public whereBetween(
         column: Stringable,
-        values: BetweenTuple,
+        values: BetweenTuple | Arrayable,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         const type = 'Between';
+
+        if (this.isArrayable(values)) {
+            values = values.toArray<Stringable | number | bigint | Date>().slice(0, 2) as BetweenTuple;
+        }
 
         this.registry.wheres.push({ type, column, values, boolean, not });
 
@@ -1118,51 +1332,102 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a where between statement using columns to the query.
+     */
     public whereBetweenColumns(
         column: Stringable,
-        values: BetweenTuple,
+        values: BetweenColumnsTuple | Arrayable,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         const type = 'BetweenColumns';
+
+        if (this.isArrayable(values)) {
+            values = values.toArray<Stringable>().slice(0, 2) as BetweenColumnsTuple;
+        }
 
         this.registry.wheres.push({ type, column, values, boolean, not });
 
         return this;
     }
 
-    public orWhereBetween(column: Stringable, values: BetweenTuple): this {
+    /**
+     * Add an or where between statement to the query.
+     */
+    public orWhereBetween(column: Stringable, values: BetweenTuple | Arrayable): this {
         return this.whereBetween(column, values, 'or');
     }
 
-    public orWhereBetweenColumns(column: Stringable, values: BetweenTuple): this {
+    /**
+     * Add an or where between statement using columns to the query.
+     */
+    public orWhereBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable): this {
         return this.whereBetweenColumns(column, values, 'or');
     }
 
-    public whereNotBetween(column: Stringable, values: BetweenTuple, boolean: ConditionBoolean = 'and'): this {
+    /**
+     * Add a where not between statement to the query.
+     */
+    public whereNotBetween(
+        column: Stringable,
+        values: BetweenTuple | Arrayable,
+        boolean: ConditionBoolean = 'and'
+    ): this {
         return this.whereBetween(column, values, boolean, true);
     }
 
-    public whereNotBetweenColumns(column: Stringable, values: BetweenTuple, boolean: ConditionBoolean = 'and'): this {
+    /**
+     * Add a where not between statement using columns to the query.
+     */
+    public whereNotBetweenColumns(
+        column: Stringable,
+        values: BetweenColumnsTuple | Arrayable,
+        boolean: ConditionBoolean = 'and'
+    ): this {
         return this.whereBetweenColumns(column, values, boolean, true);
     }
 
-    public orWhereNotBetween(column: Stringable, values: BetweenTuple): this {
+    /**
+     * Add an or where not between statement to the query.
+     */
+    public orWhereNotBetween(column: Stringable, values: BetweenTuple | Arrayable): this {
         return this.whereNotBetween(column, values, 'or');
     }
 
-    public orWhereNotBetweenColumns(column: Stringable, values: BetweenTuple): this {
+    /**
+     * Add an or where not between statement using columns to the query.
+     */
+    public orWhereNotBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable): this {
         return this.whereNotBetweenColumns(column, values, 'or');
     }
 
+    /**
+     * Add a "where date" statement to the query.
+     */
+    public whereDate(column: Stringable, value: Stringable | Date | null): this;
     public whereDate(
         column: Stringable,
         operator: string,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereDate(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereDate(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
         value: Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.assignValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
         value = this.flattenValue(value);
 
@@ -1172,40 +1437,102 @@ abstract class BaseBuilder extends BuilderContract {
                 .padStart(2, '0')}-${value.getDate().toString().padStart(2, '0')}`;
         }
 
-        return this.addDateBasedWhere('Date', column, operator, value, boolean, not);
+        return this.addDateBasedWhere('Date', column, operatorOrValue, value, boolean, not);
     }
 
-    public orWhereDate(column: Stringable, operator: string, value: Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where date" statement to the query.
+     */
+    public orWhereDate(column: Stringable, value: Stringable | Date | null): this;
+    public orWhereDate(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereDate(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null
+    ): this;
+    public orWhereDate(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value: Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDate(column, operator, value, 'or');
+        return this.whereDate(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where not date" statement to the query.
+     */
+    public whereDateNot(column: Stringable, value: Stringable | Date | null): this;
     public whereDateNot(
         column: Stringable,
         operator: string,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereDateNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereDateNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
         value: Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDate(column, operator, value, boolean, true);
+        return this.whereDate(column, operatorOrValue, value, boolean, true);
     }
 
-    public orWhereDateNot(column: Stringable, operator: string, value: Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where not date" statement to the query.
+     */
+    public orWhereDateNot(column: Stringable, value: Stringable | Date | null): this;
+    public orWhereDateNot(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereDateNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null
+    ): this;
+    public orWhereDateNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value: Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDateNot(column, operator, value, 'or');
+        return this.whereDateNot(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where time" statement to the query.
+     */
+    public whereTime(column: Stringable, value: Stringable | Date | null): this;
     public whereTime(
         column: Stringable,
         operator: string,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereTime(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereTime(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
         value: Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.assignValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
         value = this.flattenValue(value);
 
@@ -1216,40 +1543,102 @@ abstract class BaseBuilder extends BuilderContract {
                 .padStart(2, '0')}-${value.getSeconds().toString().padStart(2, '0')}`;
         }
 
-        return this.addDateBasedWhere('Time', column, operator, value, boolean, not);
+        return this.addDateBasedWhere('Time', column, operatorOrValue, value, boolean, not);
     }
 
-    public orWhereTime(column: Stringable, operator: string, value: Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where time" statement to the query.
+     */
+    public orWhereTime(column: Stringable, value: Stringable | Date | null): this;
+    public orWhereTime(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereTime(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null
+    ): this;
+    public orWhereTime(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value: Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereTime(column, operator, value, 'or');
+        return this.whereTime(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where not time" statement to the query.
+     */
+    public whereTimeNot(column: Stringable, value: Stringable | Date | null): this;
     public whereTimeNot(
         column: Stringable,
         operator: string,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereTimeNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereTimeNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
         value: Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereTime(column, operator, value, boolean, true);
+        return this.whereTime(column, operatorOrValue, value, boolean, true);
     }
 
-    public orWhereTimeNot(column: Stringable, operator: string, value: Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where not time" statement to the query.
+     */
+    public orWhereTimeNot(column: Stringable, value: Stringable | Date | null): this;
+    public orWhereTimeNot(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereTimeNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null
+    ): this;
+    public orWhereTimeNot(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value: Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereTimeNot(column, operator, value, 'or');
+        return this.whereTimeNot(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where day" statement to the query.
+     */
+    public whereDay(column: Stringable, value: Stringable | number | Date | null): this;
     public whereDay(
         column: Stringable,
         operator: string,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereDay(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereDay(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
         value: number | Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.assignValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
         value = this.flattenValue(value);
 
@@ -1257,44 +1646,106 @@ abstract class BaseBuilder extends BuilderContract {
             value = value.getDate();
         }
 
-        if (!(value instanceof Expression)) {
+        if (!this.isExpression(value)) {
             value = isNaN(Number(value)) ? '00' : Number(value).toString().padStart(2, '0');
         }
 
-        return this.addDateBasedWhere('Day', column, operator, value, boolean, not);
+        return this.addDateBasedWhere('Day', column, operatorOrValue, value, boolean, not);
     }
 
-    public orWhereDay(column: Stringable, operator: string, value: number | Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where day" statement to the query.
+     */
+    public orWhereDay(column: Stringable, value: Stringable | number | Date | null): this;
+    public orWhereDay(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereDay(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this;
+    public orWhereDay(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value: number | Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDay(column, operator, value, 'or');
+        return this.whereDay(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where not day" statement to the query.
+     */
+    public whereDayNot(column: Stringable, value: Stringable | number | Date | null): this;
     public whereDayNot(
         column: Stringable,
         operator: string,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereDayNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereDayNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
         value: number | Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDay(column, operator, value, boolean, true);
+        return this.whereDay(column, operatorOrValue, value, boolean, true);
     }
 
-    public orWhereDayNot(column: Stringable, operator: string, value: number | Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where not day" statement to the query.
+     */
+    public orWhereDayNot(column: Stringable, value: Stringable | number | Date | null): this;
+    public orWhereDayNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereDayNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this;
+    public orWhereDayNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value: number | Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDayNot(column, operator, value, 'or');
+        return this.whereDayNot(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where month" statement to the query.
+     */
+    public whereMonth(column: Stringable, value: Stringable | number | Date | null): this;
     public whereMonth(
         column: Stringable,
         operator: string,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereMonth(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereMonth(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
         value: number | Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.assignValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
         value = this.flattenValue(value);
 
@@ -1302,48 +1753,106 @@ abstract class BaseBuilder extends BuilderContract {
             value = value.getMonth() + 1;
         }
 
-        if (!(value instanceof Expression)) {
+        if (!this.isExpression(value)) {
             value = isNaN(Number(value)) ? '00' : Number(value).toString().padStart(2, '0');
         }
 
-        return this.addDateBasedWhere('Month', column, operator, value, boolean, not);
+        return this.addDateBasedWhere('Month', column, operatorOrValue, value, boolean, not);
     }
 
-    public orWhereMonth(column: Stringable, operator: string, value: number | Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where month" statement to the query.
+     */
+    public orWhereMonth(column: Stringable, value: Stringable | number | Date | null): this;
+    public orWhereMonth(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereMonth(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this;
+    public orWhereMonth(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value: number | Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereMonth(column, operator, value, 'or');
+        return this.whereMonth(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where not month" statement to the query.
+     */
+    public whereMonthNot(column: Stringable, value: Stringable | number | Date | null): this;
     public whereMonthNot(
         column: Stringable,
         operator: string,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereMonthNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereMonthNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
         value: number | Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereMonth(column, operator, value, boolean, true);
+        return this.whereMonth(column, operatorOrValue, value, boolean, true);
     }
 
+    /**
+     * Add an "or where not month" statement to the query.
+     */
+    public orWhereMonthNot(column: Stringable, value: Stringable | number | Date | null): this;
+    public orWhereMonthNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
     public orWhereMonthNot(
         column: Stringable,
-        operator: string,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this;
+    public orWhereMonthNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
         value: number | Stringable | Date | null = null
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereMonthNot(column, operator, value, 'or');
+        return this.whereMonthNot(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where year" statement to the query.
+     */
+    public whereYear(column: Stringable, value: Stringable | number | Date | null): this;
     public whereYear(
         column: Stringable,
         operator: string,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereYear(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean,
+        not?: boolean
+    ): this;
+    public whereYear(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
         value: number | Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.assignValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
         value = this.flattenValue(value);
 
@@ -1351,34 +1860,78 @@ abstract class BaseBuilder extends BuilderContract {
             value = value.getFullYear();
         }
 
-        if (!(value instanceof Expression)) {
+        if (!this.isExpression(value)) {
             value = isNaN(Number(value)) ? '0000' : Number(value).toString().padStart(4, '0');
         }
 
-        return this.addDateBasedWhere('Year', column, operator, value, boolean, not);
+        return this.addDateBasedWhere('Year', column, operatorOrValue, value, boolean, not);
     }
 
-    public orWhereYear(column: Stringable, operator: string, value: number | Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where year" statement to the query.
+     */
+    public orWhereYear(column: Stringable, value: Stringable | number | Date | null): this;
+    public orWhereYear(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereYear(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this;
+    public orWhereYear(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value: number | Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereYear(column, operator, value, 'or');
+        return this.whereYear(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a "where not year" statement to the query.
+     */
+    public whereYearNot(column: Stringable, value: Stringable | number | Date | null): this;
     public whereYearNot(
         column: Stringable,
         operator: string,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereYearNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null,
+        boolean?: ConditionBoolean
+    ): this;
+    public whereYearNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
         value: number | Stringable | Date | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereYear(column, operator, value, boolean, true);
+        return this.whereYear(column, operatorOrValue, value, boolean, true);
     }
 
-    public orWhereYearNot(column: Stringable, operator: string, value: number | Stringable | Date | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where not year" statement to the query.
+     */
+    public orWhereYearNot(column: Stringable, value: Stringable | number | Date | null): this;
+    public orWhereYearNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereYearNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this;
+    public orWhereYearNot(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value: number | Stringable | Date | null = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereYearNot(column, operator, value, 'or');
+        return this.whereYearNot(column, operatorOrValue, value, 'or');
     }
 
     /**
@@ -1394,13 +1947,16 @@ abstract class BaseBuilder extends BuilderContract {
     ): this {
         this.registry.wheres.push({ type: type, column, operator, value, boolean, not });
 
-        if (!(value instanceof Expression)) {
+        if (!this.isExpression(value)) {
             this.addBinding(value, 'where');
         }
 
         return this;
     }
 
+    /**
+     * Add a nested where statement to the query.
+     */
     public whereNested(callback: QueryAbleCallback, boolean: ConditionBoolean = 'and', not = false): this {
         const query = this.forNestedWhere();
         callback(query);
@@ -1408,10 +1964,16 @@ abstract class BaseBuilder extends BuilderContract {
         return this.addNestedWhereQuery(query, boolean, not);
     }
 
+    /**
+     * Create a new query instance for nested where condition.
+     */
     public forNestedWhere(): BuilderContract {
         return this.newQuery().from(this.registry.from);
     }
 
+    /**
+     * Add another query builder as a nested where to the query builder.
+     */
     public addNestedWhereQuery(query: BuilderContract, boolean: ConditionBoolean = 'and', not = false): this {
         if (query.getRegistry().wheres.length > 0) {
             const type = 'Nested';
@@ -1460,13 +2022,16 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add an exists clause to the query.
+     */
     public whereExists(
         callback: BuilderContract | QueryAbleCallback,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         let query: BuilderContract;
-        if (typeof callback === 'function') {
+        if (this.isQueryableCallback(callback)) {
             query = this.forSubQuery();
 
             // Similar to the sub-select clause, we will create a new query instance so
@@ -1480,18 +2045,30 @@ abstract class BaseBuilder extends BuilderContract {
         return this.addWhereExistsQuery(query, boolean, not);
     }
 
+    /**
+     * Add an or exists clause to the query.
+     */
     public orWhereExists(callback: BuilderContract | QueryAbleCallback, not = false): this {
         return this.whereExists(callback, 'or', not);
     }
 
+    /**
+     * Add a where not exists clause to the query.
+     */
     public whereNotExists(callback: BuilderContract | QueryAbleCallback, boolean: ConditionBoolean = 'and'): this {
         return this.whereExists(callback, boolean, true);
     }
 
+    /**
+     * Add a where not exists clause to the query.
+     */
     public orWhereNotExists(callback: BuilderContract | QueryAbleCallback): this {
         return this.orWhereExists(callback, true);
     }
 
+    /**
+     * Add an exists clause to the query.
+     */
     public addWhereExistsQuery(query: BuilderContract, boolean: ConditionBoolean = 'and', not = false): this {
         const type = 'Exists';
 
@@ -1502,6 +2079,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Adds a where condition using row values.
+     */
     public whereRowValues(
         columns: Stringable[],
         operator: string,
@@ -1522,10 +2102,16 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Adds an or where condition using row values.
+     */
     public orWhereRowValues(columns: Stringable[], operator: string, values: Binding[]): this {
         return this.whereRowValues(columns, operator, values, 'or');
     }
 
+    /**
+     * Add a "where JSON contains" clause to the query.
+     */
     public whereJsonContains(
         column: Stringable,
         value: Binding[] | Binding,
@@ -1536,25 +2122,37 @@ abstract class BaseBuilder extends BuilderContract {
 
         this.registry.wheres.push({ type, column, value: value, boolean, not });
 
-        if (!(value instanceof Expression)) {
+        if (!this.isExpression(value)) {
             this.addBinding(this.getGrammar().prepareBindingForJsonContains(value));
         }
 
         return this;
     }
 
+    /**
+     * Add an "or where JSON contains" clause to the query.
+     */
     public orWhereJsonContains(column: Stringable, value: Binding[] | Binding): this {
         return this.whereJsonContains(column, value, 'or');
     }
 
+    /**
+     * Add a "where JSON not contains" clause to the query.
+     */
     public whereJsonDoesntContain(column: Stringable, value: Binding[] | Binding, boolean: ConditionBoolean): this {
         return this.whereJsonContains(column, value, boolean, true);
     }
 
+    /**
+     * Add an "or where JSON not contains" clause to the query.
+     */
     public orWhereJsonDoesntContain(column: Stringable, value: Binding[] | Binding): this {
         return this.whereJsonDoesntContain(column, value, 'or');
     }
 
+    /**
+     * Add a clause that determines if a JSON path exists to the query.
+     */
     public whereJsonContainsKey(column: Stringable, boolean: ConditionBoolean = 'and', not = false): this {
         const type = 'JsonContainsKey';
 
@@ -1563,61 +2161,93 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add an "or" clause that determines if a JSON path exists to the query.
+     */
     public orWhereJsonContainsKey(column: Stringable): this {
         return this.whereJsonContainsKey(column, 'or');
     }
 
+    /**
+     * Add a clause that determines if a JSON path does not exist to the query.
+     */
     public whereJsonDoesntContainKey(column: Stringable, boolean: ConditionBoolean = 'and'): this {
         return this.whereJsonContainsKey(column, boolean, true);
     }
 
+    /**
+     * Add an "or" clause that determines if a JSON path does not exist to the query.
+     */
     public orWhereJsonDoesntContainKey(column: Stringable): this {
         return this.whereJsonDoesntContainKey(column, 'or');
     }
 
+    /**
+     * Add a "where JSON length" clause to the query.
+     */
     public whereJsonLength(
         column: Stringable,
         operator: string,
-        value: number | Expression | null = null,
+        value: number | ExpressionContract | null = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         const type = 'JsonLength';
 
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operator] = this.assignValueAndOperator(value, operator, arguments.length === 2);
 
         this.registry.wheres.push({ type, column, operator, value, boolean, not });
 
-        if (!(value instanceof Expression)) {
+        if (!this.isExpression(value)) {
             this.addBinding(Number(this.flattenValue(value)));
         }
 
         return this;
     }
 
-    public orWhereJsonLength(column: Stringable, operator: string, value: number | Expression | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where JSON length" clause to the query.
+     */
+    public orWhereJsonLength(
+        column: Stringable,
+        operator: string,
+        value: number | ExpressionContract | null = null
+    ): this {
+        [value, operator] = this.assignValueAndOperator(value, operator, arguments.length === 2);
 
         return this.whereJsonLength(column, operator, value, 'or');
     }
 
+    /**
+     * Add a "where JSON length not" clause to the query.
+     */
     public whereJsonLengthNot(
         column: Stringable,
         operator: string,
-        value: number | Expression | null = null,
+        value: number | ExpressionContract | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+        [value, operator] = this.assignValueAndOperator(value, operator, arguments.length === 2);
 
         return this.whereJsonLength(column, operator, value, boolean, true);
     }
 
-    public orWhereJsonLengthNot(column: Stringable, operator: string, value: number | Expression | null = null): this {
-        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
+    /**
+     * Add an "or where JSON length not" clause to the query.
+     */
+    public orWhereJsonLengthNot(
+        column: Stringable,
+        operator: string,
+        value: number | ExpressionContract | null = null
+    ): this {
+        [value, operator] = this.assignValueAndOperator(value, operator, arguments.length === 2);
 
         return this.whereJsonLengthNot(column, operator, value, 'or');
     }
 
+    /**
+     * Handles dynamic "where" clauses to the query.
+     */
     public dynamicWhere(method: string, parameters: Binding[]): this {
         const finder = method.slice(5);
 
@@ -1664,10 +2294,13 @@ abstract class BaseBuilder extends BuilderContract {
         this.where(snakeCase(segment), '=', parameters[index], connector, not);
     }
 
-    public whereFullText(
+    /**
+     * Add a "where fulltext" clause to the query.
+     */
+    public whereFulltext(
         columns: Stringable | Stringable[],
         value: string,
-        options: FullTextOptions = {},
+        options: FulltextOptions = {},
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1682,23 +2315,35 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
-    public orWhereFullText(columns: Stringable | Stringable[], value: string, options: FullTextOptions = {}): this {
-        return this.whereFullText(columns, value, options, 'or');
+    /**
+     * Add a "or where fulltext" clause to the query.
+     */
+    public orwhereFulltext(columns: Stringable | Stringable[], value: string, options: FulltextOptions = {}): this {
+        return this.whereFulltext(columns, value, options, 'or');
     }
 
-    public whereFullTextNot(
+    /**
+     * Add a "where not fulltext" clause to the query.
+     */
+    public whereFulltextNot(
         columns: Stringable | Stringable[],
         value: string,
-        options: FullTextOptions = {},
+        options: FulltextOptions = {},
         boolean: ConditionBoolean = 'and'
     ): this {
-        return this.whereFullText(columns, value, options, boolean, true);
+        return this.whereFulltext(columns, value, options, boolean, true);
     }
 
-    public orWhereFullTextNot(columns: Stringable | Stringable[], value: string, options: FullTextOptions = {}): this {
-        return this.whereFullTextNot(columns, value, options, 'or');
+    /**
+     * Add a "or where not fulltext" clause to the query.
+     */
+    public orwhereFulltextNot(columns: Stringable | Stringable[], value: string, options: FulltextOptions = {}): this {
+        return this.whereFulltextNot(columns, value, options, 'or');
     }
 
+    /**
+     * Add a "group by" clause to the query.
+     */
     public groupBy(...groups: Stringable[][] | Stringable[]): this {
         for (const group of groups) {
             this.registry.groups.push(...(Array.isArray(group) ? group : [group]));
@@ -1707,19 +2352,25 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a raw groupBy clause to the query.
+     */
     public groupByRaw(sql: string, bindings: Binding[] = []): this {
-        this.registry.groups.push(new Expression(sql));
+        this.registry.groups.push(this.raw(sql));
 
         this.addBinding(bindings, 'groupBy');
 
         return this;
     }
 
-    public having(column: Stringable | QueryAbleCallback): this;
-    public having(column: Stringable | QueryAbleCallback, value: number | Stringable): this;
-    public having(column: Stringable | QueryAbleCallback, operator: string, value: number | Stringable): this;
+    /**
+     * Add a "having" clause to the query.
+     */
+    public having(column: QueryAbleCallback | Stringable): this;
+    public having(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
+    public having(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
     public having(
-        column: Stringable | QueryAbleCallback,
+        column: QueryAbleCallback | Stringable,
         operatorOrValue?: Stringable | number | null,
         value?: Stringable | number | null,
         boolean?: ConditionBoolean,
@@ -1739,18 +2390,18 @@ abstract class BaseBuilder extends BuilderContract {
         // and keep going. Otherwise, we'll require the operator to be passed in.
         let [val, operator] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        if (typeof column === 'function' && operator === null) {
+        if (this.isQueryableCallback(column) && operator === null) {
             return this.havingNested(column, boolean);
         }
 
-        if (typeof column === 'function') {
+        if (this.isQueryableCallback(column)) {
             throw new TypeError('Value must be null when column is a callback.');
         }
 
         // If the given operator is not found in the list of valid operators we will
         // assume that the developer is just short-cutting the '=' operators and
         // we will set the operators to '=' and set the values appropriately.
-        if (this.invalidOperator(operator)) {
+        if (!this.isValidOperator(operator)) {
             [val, operator] = [operator, '='];
         }
 
@@ -1767,16 +2418,24 @@ abstract class BaseBuilder extends BuilderContract {
             not
         });
 
-        if (!(val instanceof Expression)) {
+        if (!this.isExpression(val)) {
             this.addBinding(this.flattenValue(val), 'having');
         }
 
         return this;
     }
 
-    public orHaving(column: Stringable | QueryAbleCallback): this;
-    public orHaving(column: Stringable | QueryAbleCallback, value: number | Stringable): this;
-    public orHaving(column: Stringable | QueryAbleCallback, operator: string, value: number | Stringable): this;
+    /**
+     * Add an "or having" clause to the query.
+     */
+    public orHaving(column: QueryAbleCallback | Stringable): this;
+    public orHaving(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
+    public orHaving(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
+    public orHaving(
+        column: QueryAbleCallback | Stringable,
+        operatorOrValue?: Stringable | number | null,
+        value?: Stringable | number | null
+    ): this;
     public orHaving(
         column: Stringable | QueryAbleCallback,
         operatorOrValue: number | Stringable | null = null,
@@ -1786,11 +2445,14 @@ abstract class BaseBuilder extends BuilderContract {
         return this.having(column, operatorOrValue, value, 'or');
     }
 
-    public havingNot(column: Stringable | QueryAbleCallback): this;
-    public havingNot(column: Stringable | QueryAbleCallback, value: number | Stringable): this;
-    public havingNot(column: Stringable | QueryAbleCallback, operator: string, value: number | Stringable): this;
+    /**
+     * Add a "having not" clause to the query.
+     */
+    public havingNot(column: QueryAbleCallback | Stringable): this;
+    public havingNot(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
+    public havingNot(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
     public havingNot(
-        column: Stringable | QueryAbleCallback,
+        column: QueryAbleCallback | Stringable,
         operatorOrValue?: Stringable | number | null,
         value?: Stringable | number | null,
         boolean?: ConditionBoolean
@@ -1805,9 +2467,17 @@ abstract class BaseBuilder extends BuilderContract {
         return this.having(column, operatorOrValue, value, boolean, true);
     }
 
-    public orHavingNot(column: Stringable | QueryAbleCallback): this;
-    public orHavingNot(column: Stringable | QueryAbleCallback, value: number | Stringable): this;
-    public orHavingNot(column: Stringable | QueryAbleCallback, operator: string, value: number | Stringable): this;
+    /**
+     * Add an "or having not" clause to the query.
+     */
+    public orHavingNot(column: QueryAbleCallback | Stringable): this;
+    public orHavingNot(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
+    public orHavingNot(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
+    public orHavingNot(
+        column: QueryAbleCallback | Stringable,
+        operatorOrValue?: Stringable | number | null,
+        value?: Stringable | number | null
+    ): this;
     public orHavingNot(
         column: Stringable | QueryAbleCallback,
         operatorOrValue: number | Stringable | null = null,
@@ -1817,6 +2487,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.havingNot(column, operatorOrValue, value, 'or');
     }
 
+    /**
+     * Add a nested having statement to the query.
+     */
     public havingNested(callback: QueryAbleCallback, boolean: ConditionBoolean = 'and', not = false): this {
         const query = this.forNestedWhere();
         callback(query);
@@ -1824,6 +2497,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.addNestedHavingQuery(query, boolean, not);
     }
 
+    /**
+     * Add another query builder as a nested having to the query builder.
+     */
     public addNestedHavingQuery(query: BuilderContract, boolean: ConditionBoolean = 'and', not = false): this {
         if (query.getRegistry().havings.length > 0) {
             const type = 'Nested';
@@ -1836,6 +2512,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a "having null" clause to the query.
+     */
     public havingNull(columns: Stringable | Stringable[], boolean: ConditionBoolean = 'and', not = false): this {
         const type = 'Null';
         columns = Array.isArray(columns) ? columns : [columns];
@@ -1847,25 +2526,41 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add an "or having null" clause to the query.
+     */
     public orHavingNull(columns: Stringable | Stringable[]): this {
         return this.havingNull(columns, 'or');
     }
 
+    /**
+     * Add a "having not null" clause to the query.
+     */
     public havingNotNull(columns: Stringable | Stringable[], boolean: ConditionBoolean = 'and'): this {
         return this.havingNull(columns, boolean, true);
     }
 
+    /**
+     * Add an "or having not null" clause to the query.
+     */
     public orHavingNotNull(columns: Stringable | Stringable[]): this {
         return this.havingNotNull(columns, 'or');
     }
 
+    /**
+     * Add a "having between" clause to the query.
+     */
     public havingBetween(
         column: Stringable,
-        values: BetweenTuple,
+        values: BetweenTuple | Arrayable,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         const type = 'Between';
+
+        if (this.isArrayable(values)) {
+            values = values.toArray<Stringable | number | bigint | Date>().slice(0, 2) as BetweenTuple;
+        }
 
         this.registry.havings.push({ type, column, values, boolean, not });
 
@@ -1874,18 +2569,34 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
-    public orHavingBetween(column: Stringable, values: BetweenTuple): this {
+    /**
+     * Add a "or having between " clause to the query.
+     */
+    public orHavingBetween(column: Stringable, values: BetweenTuple | Arrayable): this {
         return this.whereBetween(column, values, 'or');
     }
 
-    public havingBetweenNot(column: Stringable, values: BetweenTuple, boolean: ConditionBoolean = 'and'): this {
+    /**
+     * Add a "having not between" clause to the query.
+     */
+    public havingBetweenNot(
+        column: Stringable,
+        values: BetweenTuple | Arrayable,
+        boolean: ConditionBoolean = 'and'
+    ): this {
         return this.whereBetween(column, values, boolean, true);
     }
 
-    public orHavingBetweenNot(column: Stringable, values: BetweenTuple): this {
+    /**
+     * Add a "or having not between " clause to the query.
+     */
+    public orHavingBetweenNot(column: Stringable, values: BetweenTuple | Arrayable): this {
         return this.havingBetweenNot(column, values, 'or');
     }
 
+    /**
+     * Add a raw having clause to the query.
+     */
     public havingRaw(sql: string, bindings: Binding[] = [], boolean: ConditionBoolean = 'and'): this {
         const type = 'Raw';
 
@@ -1896,49 +2607,70 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a raw or having clause to the query.
+     */
     public orHavingRaw(sql: string, bindings: Binding[] = []): this {
         return this.havingRaw(sql, bindings, 'or');
     }
 
+    /**
+     * Add an "order by" clause to the query.
+     */
     public orderBy(column: SubQuery, direction: OrderDirection = 'asc'): this {
         if (this.isQueryable(column)) {
             const [query, bindings] = this.createSub(column);
 
-            column = new Expression(`(${query})`);
+            column = this.raw(`(${query})`);
 
             this.addBinding(bindings, this.registry.unions.length > 0 ? 'unionOrder' : 'order');
         }
 
         direction = direction.toLowerCase() as Lowercase<OrderDirection>;
 
-        if (!['desc', 'asc'].includes(direction)) {
+        if (!['asc', 'desc'].includes(direction.toLowerCase())) {
             throw new TypeError('Order direction must be "asc" or "desc".');
         }
 
         this.registry[this.registry.unions.length > 0 ? 'unionOrders' : 'orders'].push({
-            column: column as Stringable,
+            column: column,
             direction: direction
         });
 
         return this;
     }
 
+    /**
+     * Add a descending "order by" clause to the query.
+     */
     public orderByDesc(column: SubQuery): this {
         return this.orderBy(column, 'desc');
     }
 
+    /**
+     * Add an "order by" clause for a timestamp to the query.
+     */
     public latest(column: SubQuery = 'created_at'): this {
         return this.orderBy(column, 'desc');
     }
 
+    /**
+     * Add an "order by" clause for a timestamp to the query.
+     */
     public oldest(column: SubQuery = 'created_at'): this {
         return this.orderBy(column, 'asc');
     }
 
+    /**
+     * Put the query's results in random order.
+     */
     public inRandomOrder(seed: string | number = ''): this {
         return this.orderByRaw(this.getGrammar().compileRandom(seed));
     }
 
+    /**
+     * Add a raw "order by" clause to the query.
+     */
     public orderByRaw(sql: string, bindings: Binding[] = []): this {
         const type = 'Raw';
 
@@ -1949,30 +2681,50 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
-    public skip(value: number): this {
+    /**
+     * Alias to set the "offset" value of the query.
+     */
+    public skip(value: number | null = null): this {
         return this.offset(value);
     }
 
-    public offset(value: number): this {
-        this.registry[this.registry.unions.length > 0 ? 'unionOffset' : 'offset'] = Math.max(0, value);
+    /**
+     * Set the "offset" value of the query.
+     */
+    public offset(value: number | null = null): this {
+        this.registry[this.registry.unions.length > 0 ? 'unionOffset' : 'offset'] =
+            value == null ? 0 : Math.max(0, value);
 
         return this;
     }
 
-    public take(value: number): this {
+    /**
+     * Alias to set the "limit" value of the query.
+     */
+    public take(value: number | null = null): this {
         return this.limit(value);
     }
 
-    public limit(value: number): this {
-        this.registry[this.registry.unions.length > 0 ? 'unionLimit' : 'limit'] = value;
+    /**
+     * Set the "limit" value of the query.
+     */
+    public limit(value: number | null = null): this {
+        this.registry[this.registry.unions.length > 0 ? 'unionLimit' : 'limit'] =
+            value == null || value < 0 ? null : value;
 
         return this;
     }
 
+    /**
+     * Set the limit and offset for a given page.
+     */
     public forPage(page: number, perPage = 15): this {
         return this.offset((page - 1) * perPage).limit(perPage);
     }
 
+    /**
+     * Constrain the query to the previous "page" of results before a given ID.
+     */
     public forPageBeforeId(perPage = 15, lastId: number | null = null, column: Stringable = 'id'): this {
         this.registry.orders = this.removeExistingOrdersFor(column);
 
@@ -1983,6 +2735,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.orderBy(column, 'desc').limit(perPage);
     }
 
+    /**
+     * Constrain the query to the next "page" of results after a given ID.
+     */
     public forPageAfterId(perPage = 15, lastId: number | null = null, column: Stringable = 'id'): this {
         this.registry.orders = this.removeExistingOrdersFor(column);
 
@@ -1993,6 +2748,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.orderBy(column, 'asc').limit(perPage);
     }
 
+    /**
+     * Remove all existing orders and optionally add a new order.
+     */
     public reorder(column: SubQuery | null = null, direction: OrderDirection = 'asc'): this {
         this.registry.orders = [];
         this.registry.unionOrders = [];
@@ -2012,14 +2770,20 @@ abstract class BaseBuilder extends BuilderContract {
     protected removeExistingOrdersFor(column: Stringable): Order[] {
         return this.registry.orders.filter((order: Order) => {
             if ('column' in order) {
-                return order.column.toString() !== column.toString();
+                return (
+                    this.getGrammar().getValue(order.column).toString() !==
+                    this.getGrammar().getValue(column).toString()
+                );
             }
             return true;
         });
     }
 
+    /**
+     * Add a union statement to the query.
+     */
     public union(query: BuilderContract | QueryAbleCallback, all = false): this {
-        if (typeof query === 'function') {
+        if (this.isQueryableCallback(query)) {
             const callback = query;
             query = this.newQuery();
             callback(query);
@@ -2032,10 +2796,16 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a union all statement to the query.
+     */
     public unionAll(query: BuilderContract | QueryAbleCallback): this {
         return this.union(query, true);
     }
 
+    /**
+     * Lock the selected rows in the table.
+     */
     public lock(value: string | boolean = true): this {
         this.registry.lock = value;
 
@@ -2046,20 +2816,32 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Lock the selected rows in the table for updating.
+     */
     public lockForUpdate(): this {
         return this.lock(true);
     }
 
+    /**
+     * Share lock the selected rows in the table.
+     */
     public sharedLock(): this {
         return this.lock(false);
     }
 
+    /**
+     * Register a closure to be invoked before the query is executed.
+     */
     public beforeQuery(callback: QueryAbleCallback): this {
         this.registry.beforeQueryCallbacks.push(callback);
 
         return this;
     }
 
+    /**
+     * Invoke the "before query" modification callbacks.
+     */
     public applyBeforeQueryCallbacks(): void {
         for (const callback of this.registry.beforeQueryCallbacks) {
             callback(this);
@@ -2068,12 +2850,18 @@ abstract class BaseBuilder extends BuilderContract {
         this.registry.beforeQueryCallbacks = [];
     }
 
+    /**
+     * Get the SQL representation of the query.
+     */
     public toSql(): string {
         this.applyBeforeQueryCallbacks();
 
         return this.getGrammar().compileSelect(this);
     }
 
+    /**
+     * Chunk the results of the query.
+     */
     public async chunk<T>(
         count: number,
         callback: (items: Collection<T>, page: number) => Promise<false | void> | false | void
@@ -2111,6 +2899,9 @@ abstract class BaseBuilder extends BuilderContract {
         return true;
     }
 
+    /**
+     * Run a map over each item while chunking.
+     */
     public async chunkMap<T>(callback: (item: T) => Promise<T> | T, count = 1000): Promise<Collection<T>> {
         const collection = new Collection<T>();
 
@@ -2123,6 +2914,9 @@ abstract class BaseBuilder extends BuilderContract {
         return collection;
     }
 
+    /**
+     * Execute a callback over each item while chunking.
+     */
     public async each<T>(
         callback: (item: T, index: number) => Promise<false | void> | false | void,
         count = 1000
@@ -2137,6 +2931,10 @@ abstract class BaseBuilder extends BuilderContract {
             return;
         });
     }
+
+    /**
+     * Chunk the results of a query by comparing IDs.
+     */
     public async chunkById<T>(
         count: number,
         callback: (items: Collection<T>, page: number) => Promise<false | void> | false | void,
@@ -2144,9 +2942,11 @@ abstract class BaseBuilder extends BuilderContract {
         alias: Stringable | null = null
     ): Promise<boolean> {
         column = column === null ? this.defaultKeyName() : column;
-        alias = (alias === null ? column : alias).toString();
+        alias = this.getGrammar()
+            .getValue(alias === null ? column : alias)
+            .toString();
 
-        let lastId: number | null = null;
+        let lastId: number | null | undefined;
         let page = 1;
         let countResults = 0;
 
@@ -2156,7 +2956,7 @@ abstract class BaseBuilder extends BuilderContract {
             // We'll execute the query for the given page and get the results. If there are
             // no results we can just break and return from here. When there are results
             // we will call the callback with the current chunk of these results here.
-            const results = (await clone.forPageAfterId(count, lastId, column).get()) as Collection<T>;
+            const results = await clone.forPageAfterId(count, lastId, column).get<T>();
 
             countResults = results.count();
 
@@ -2171,9 +2971,9 @@ abstract class BaseBuilder extends BuilderContract {
                 return false;
             }
 
-            lastId = (results.last() as any)[alias] as number | null;
+            lastId = results.last()[alias as keyof T] as number | null | undefined;
 
-            if (lastId === null) {
+            if (lastId == null) {
                 throw new Error(
                     `The chunkById operation was aborted because the [${alias}] column is not present in the query result.`
                 );
@@ -2187,6 +2987,10 @@ abstract class BaseBuilder extends BuilderContract {
 
         return true;
     }
+
+    /**
+     * Execute a callback over each item while chunking by ID.
+     */
     public async eachById<T>(
         callback: (item: T, index: number) => Promise<false | void> | false | void,
         count = 1000,
@@ -2209,6 +3013,9 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Query lazily, by chunks of the given size.
+     */
     public lazy<T>(chunkSize = 1000): LazyCollection<T> {
         if (chunkSize < 1) {
             throw new Error('The chunk size should be at least 1');
@@ -2235,6 +3042,9 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Query lazily, by chunking the results of a query by comparing IDs.
+     */
     public lazyById<T>(
         chunkSize = 1000,
         column: Stringable | null = null,
@@ -2243,6 +3053,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.orderedLazyById<T>(chunkSize, column, alias);
     }
 
+    /**
+     * Query lazily, by chunking the results of a query by comparing IDs in descending order.
+     */
     public lazyByIdDesc<T>(
         chunkSize = 1000,
         column: Stringable | null = null,
@@ -2265,11 +3078,13 @@ abstract class BaseBuilder extends BuilderContract {
         }
 
         column = column === null ? this.defaultKeyName() : column;
-        alias = (alias === null ? column : alias).toString();
+        alias = this.getGrammar()
+            .getValue(alias === null ? column : alias)
+            .toString();
 
         return new LazyCollection<T>(
             async function* (this: BuilderContract) {
-                let lastId: number | null = null;
+                let lastId: number | null | undefined;
 
                 while (true) {
                     const clone = this.clone();
@@ -2288,16 +3103,28 @@ abstract class BaseBuilder extends BuilderContract {
                         return;
                     }
 
-                    lastId = (results.last() as any)[alias as string] as number | null;
+                    lastId = results.last()[alias as keyof T] as number | null;
+
+                    if (lastId == null) {
+                        throw new Error(
+                            `The lazyById operation was aborted because the [${alias}] column is not present in the query result.`
+                        );
+                    }
                 }
             }.bind(this)
         );
     }
 
+    /**
+     * Execute the query and get the first result.
+     */
     public async first<T>(columns: Stringable | Stringable[] = ['*']): Promise<T | null> {
         return (await this.take(1).get<T>(columns)).first();
     }
 
+    /**
+     * Execute the query and get the first result if it's the sole matching record.
+     */
     public async sole<T>(columns: Stringable | Stringable[] = ['*']): Promise<T> {
         const result = await this.take(2).get<T>(columns);
 
@@ -2314,13 +3141,24 @@ abstract class BaseBuilder extends BuilderContract {
         return result.first();
     }
 
+    /**
+     * Execute a query for a single record by ID.
+     */
     public async find<T>(id: string | number | bigint, columns: Stringable | Stringable[] = ['*']): Promise<T | null> {
         return this.where('id', '=', id).first<T>(columns);
     }
 
-    public async findOr<T>(id: string | number | bigint): Promise<T | null>;
-    public async findOr<T, U>(id: string | number | bigint, callback: () => U): Promise<T | U>;
-    public async findOr<T, U>(id: string | number | bigint, columns: Stringable | Stringable[]): Promise<T | U>;
+    /**
+     * Execute a query for a single record by ID or call a callback.
+     */
+    public async findOr<T>(id: number | string | bigint): Promise<T | null>;
+    public async findOr<T, U>(id: number | string | bigint, callback: () => U): Promise<T | U>;
+    public async findOr<T, U>(id: number | string | bigint, columns: Stringable | Stringable[]): Promise<T | U>;
+    public async findOr<T, U>(
+        id: number | string | bigint,
+        columnsCallback?: Stringable | Stringable[] | (() => U),
+        callback?: (() => U) | null
+    ): Promise<T | U | null>;
     public async findOr<T, U>(
         id: string | number | bigint,
         columnsCallback: Stringable | Stringable[] | (() => U) = ['*'],
@@ -2340,24 +3178,36 @@ abstract class BaseBuilder extends BuilderContract {
         return typeof callback === 'function' ? callback() : null;
     }
 
+    /**
+     * Get a single column's value from the first result of a query.
+     */
     public async value<T>(column: Stringable): Promise<T | null> {
         const result = await this.first<{ [key: string]: T }>([column]);
 
         return result !== null && Object.keys(result).length > 0 ? result[Object.keys(result)[0]] : null;
     }
 
+    /**
+     * Get a single expression value from the first result of a query.
+     */
     public async rawValue<T>(expression: string, bindings: Binding[] = []): Promise<T | null> {
         const result = await this.selectRaw(expression, bindings).first<{ [key: string]: T }>();
 
         return result !== null && Object.keys(result).length > 0 ? result[Object.keys(result)[0]] : null;
     }
 
+    /**
+     * Get a single column's value from the first result of a query if it's the sole matching record.
+     */
     public async soleValue<T>(column: Stringable): Promise<T> {
         const result = await this.sole<{ [key: string]: T }>([column]);
 
         return result[Object.keys(result)[0]];
     }
 
+    /**
+     * Execute the query as a "select" statement.
+     */
     public async get<T>(columns: Stringable | Stringable[] = ['*']): Promise<Collection<T>> {
         return new Collection<T>(
             await this.onceWithColumns<T>(Array.isArray(columns) ? columns : [columns], async () => {
@@ -2373,6 +3223,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this.getConnection().select<T>(this.toSql(), this.getBindings(), !this.registry.useWritePdo);
     }
 
+    /**
+     * Get a lazy collection for the given query.
+     */
     public cursor<T>(): LazyCollection<T> {
         if (this.registry.columns === null) {
             this.registry.columns = ['*'];
@@ -2398,6 +3251,9 @@ abstract class BaseBuilder extends BuilderContract {
         }
     }
 
+    /**
+     * Get a collection instance containing the values of a given column.
+     */
     public async pluck<T>(column: Stringable, key: Stringable | null = null): Promise<Collection<T>> {
         // First, we will need to select the results of the query accounting for the
         // given columns / key. Once we have the results, we will be able to take
@@ -2436,16 +3292,23 @@ abstract class BaseBuilder extends BuilderContract {
      * Strip off the table name or alias from a column identifier.
      */
     protected stripTableForPluck(column: Stringable): string {
-        const separator = column.toString().toLowerCase().includes(' as ') ? ' as ' : '\\.';
+        column = this.getGrammar().getValue(column).toString();
+        const separator = column.toLowerCase().includes(' as ') ? ' as ' : '\\.';
         const regex = new RegExp(separator, 'gi');
 
-        return column.toString().split(regex).pop() as string;
+        return column.split(regex).pop() as string;
     }
 
+    /**
+     * Concatenate values of a given column as a string.
+     */
     public async implode<T>(column: Stringable, glue = ''): Promise<string> {
         return (await this.pluck<T>(column)).implode(glue);
     }
 
+    /**
+     * Determine if any rows exist for the current query.
+     */
     public async exists(): Promise<boolean> {
         this.applyBeforeQueryCallbacks();
 
@@ -2465,18 +3328,30 @@ abstract class BaseBuilder extends BuilderContract {
         return false;
     }
 
+    /**
+     * Determine if no rows exist for the current query.
+     */
     public async doesntExist(): Promise<boolean> {
         return !this.exists();
     }
 
+    /**
+     * Execute the given callback if no rows exist for the current query.
+     */
     public async existsOr<T>(callback: () => T): Promise<true | T> {
         return (await this.exists()) ? true : callback();
     }
 
+    /**
+     * Execute the given callback if rows exist for the current query.
+     */
     public async doesntExistOr<T>(callback: () => T): Promise<true | T> {
         return (await this.doesntExist()) ? true : callback();
     }
 
+    /**
+     * Retrieve the "count" result of the query.
+     */
     public async count(columns: Stringable | Stringable[] = '*'): Promise<number | bigint> {
         const res = await this.aggregate('count', Array.isArray(columns) ? columns : [columns]);
         return res === null
@@ -2486,27 +3361,45 @@ abstract class BaseBuilder extends BuilderContract {
             : Number(res);
     }
 
+    /**
+     * Retrieve the minimum value of a given column.
+     */
     public async min(column: Stringable): Promise<string | number | bigint | null> {
         return this.aggregate('min', [column]);
     }
 
+    /**
+     * Retrieve the maximum value of a given column.
+     */
     public async max(column: Stringable): Promise<string | number | bigint | null> {
         return this.aggregate('max', [column]);
     }
 
+    /**
+     * Retrieve the sum of the values of a given column.
+     */
     public async sum(column: Stringable): Promise<string | number | bigint> {
         const res = await this.aggregate('sum', [column]);
         return res === null ? 0 : res;
     }
 
+    /**
+     * Retrieve the average of the values of a given column.
+     */
     public async avg(column: Stringable): Promise<string | number | bigint | null> {
         return this.aggregate('avg', [column]);
     }
 
+    /**
+     * Alias for the "avg" method.
+     */
     public async average(column: Stringable): Promise<string | number | bigint | null> {
         return this.avg(column);
     }
 
+    /**
+     * Execute an aggregate function on the database.
+     */
     public async aggregate(fnName: string, columns: Stringable[] = ['*']): Promise<string | number | bigint | null> {
         const results = await this.cloneWithout(
             this.registry.unions.length > 0 || this.registry.havings.length > 0 ? [] : ['columns']
@@ -2522,6 +3415,9 @@ abstract class BaseBuilder extends BuilderContract {
         return null;
     }
 
+    /**
+     * Execute a numeric aggregate function on the database.
+     */
     public async numericAggregate(fnName: string, columns: Stringable[] = ['*']): Promise<number | bigint> {
         const result = await this.aggregate(fnName, columns);
 
@@ -2546,6 +3442,9 @@ abstract class BaseBuilder extends BuilderContract {
             : parseFloat(result);
     }
 
+    /**
+     * Set the aggregate property without running the query.
+     */
     public setAggregate(fnName: string, columns: Stringable[]): this {
         this.registry.aggregate = { fnName, columns };
 
@@ -2576,6 +3475,9 @@ abstract class BaseBuilder extends BuilderContract {
         return result;
     }
 
+    /**
+     * Insert new records into the database.
+     */
     public async insert(values: RowValues | RowValues[]): Promise<boolean> {
         // Since every insert gets treated like a batch insert, we will make sure the
         // bindings are structured in a way that is convenient when building these
@@ -2615,6 +3517,10 @@ abstract class BaseBuilder extends BuilderContract {
             this.cleanBindings(values.map(value => Object.values(value)).flat(1))
         );
     }
+
+    /**
+     * Insert new records into the database while ignoring errors.
+     */
     public async insertOrIgnore(values: RowValues | RowValues[]): Promise<number> {
         if ((Array.isArray(values) && values.length === 0) || Object.keys(values).length === 0) {
             return 0;
@@ -2644,9 +3550,12 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Insert a new record and get the value of the primary key.
+     */
     public async insertGetId<T extends number | bigint | string>(
         values: RowValues,
-        sequence: Stringable | null = null
+        sequence: string | null = null
     ): Promise<T | null> {
         this.applyBeforeQueryCallbacks();
 
@@ -2657,6 +3566,9 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Insert new records into the table using a subquery.
+     */
     public async insertUsing(columns: Stringable[], query: QueryAble): Promise<number> {
         this.applyBeforeQueryCallbacks();
 
@@ -2668,6 +3580,9 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Update records in the database.
+     */
     public async update(values: RowValues): Promise<number> {
         this.applyBeforeQueryCallbacks();
 
@@ -2679,6 +3594,9 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Update records in a PostgreSQL database using the update from syntax.
+     */
     public async updateFrom(values: RowValues): Promise<number> {
         this.applyBeforeQueryCallbacks();
 
@@ -2690,10 +3608,11 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Insert or update a record matching the attributes, and fill it with values.
+     */
     public async updateOrInsert(attributes: RowValues, values: RowValues = {}): Promise<boolean> {
-        if (
-            !this.where(Object.keys(attributes).map((key: keyof RowValues & string) => [key, attributes[key]])).exists()
-        ) {
+        if (!(await this.where(attributes).exists())) {
             return this.insert(Object.assign(attributes, values));
         }
 
@@ -2704,6 +3623,9 @@ abstract class BaseBuilder extends BuilderContract {
         return Boolean(this.limit(1).update(values));
     }
 
+    /**
+     * Insert new records or update the existing ones.
+     */
     public async upsert(
         values: RowValues[] | RowValues,
         uniqueBy: string | string[],
@@ -2753,32 +3675,63 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Increment a column's value by a given amount.
+     */
     public async increment(column: string, amount = 1, extra: RowValues = {}): Promise<number> {
-        return this.incrementEach({ [column]: amount }, extra);
+        if ((typeof amount !== 'number' || typeof amount !== 'bigint') && isNaN(Number(amount))) {
+            throw new TypeError('Non-numeric value passed to increment method.');
+        }
+
+        return this.incrementEach({ [column]: Number(amount) }, extra);
     }
 
+    /**
+     * Increment the given column's values by the given amounts.
+     */
     public async incrementEach(columns: NumericValues, extra: RowValues = {}): Promise<number> {
         const processed: { [key: string]: Stringable } = {};
         for (const column in columns) {
-            processed[column] = this.raw(`${this.getGrammar().wrap(column)} + ${columns[column].toString()}`);
+            const amount = columns[column];
+            if ((typeof amount !== 'number' || typeof amount !== 'bigint') && isNaN(Number(amount))) {
+                throw new TypeError(`Non-numeric value passed as increment amount for column: ${column}.`);
+            }
+            processed[column] = this.raw(`${this.getGrammar().wrap(column)} + ${amount.toString()}`);
         }
 
         return this.update(Object.assign(processed, extra));
     }
 
+    /**
+     * Decrement a column's value by a given amount.
+     */
     public async decrement(column: string, amount = 1, extra: RowValues = {}): Promise<number> {
+        if ((typeof amount !== 'number' || typeof amount !== 'bigint') && isNaN(Number(amount))) {
+            throw new TypeError('Non-numeric value passed to decrement method.');
+        }
+
         return this.decrementEach({ [column]: amount }, extra);
     }
 
+    /**
+     * Decrement the given column's values by the given amounts.
+     */
     public async decrementEach(columns: NumericValues, extra: RowValues = {}): Promise<number> {
         const processed: { [key: string]: Stringable } = {};
         for (const column in columns) {
-            processed[column] = this.raw(`${this.getGrammar().wrap(column)} - ${columns[column].toString()}`);
+            const amount = columns[column];
+            if ((typeof amount !== 'number' || typeof amount !== 'bigint') && isNaN(Number(amount))) {
+                throw new TypeError(`Non-numeric value passed as decrement amount for column: ${column}.`);
+            }
+            processed[column] = this.raw(`${this.getGrammar().wrap(column)} - ${amount.toString()}`);
         }
 
         return this.update(Object.assign(processed, extra));
     }
 
+    /**
+     * Delete records from the database.
+     */
     public async delete(id: string | number | bigint | null = null): Promise<number> {
         // If an ID is passed to the method, we will set the where clause to check the
         // ID to let developers to simply and quickly remove a single row from this
@@ -2795,6 +3748,9 @@ abstract class BaseBuilder extends BuilderContract {
         );
     }
 
+    /**
+     * Run a truncate statement on the table.
+     */
     public async truncate(): Promise<void> {
         this.applyBeforeQueryCallbacks();
 
@@ -2805,6 +3761,9 @@ abstract class BaseBuilder extends BuilderContract {
         }
     }
 
+    /**
+     * Explains the query.
+     */
     public async explain(): Promise<Collection<string>> {
         const sql = this.toSql();
         const bindings = this.getBindings();
@@ -2814,18 +3773,24 @@ abstract class BaseBuilder extends BuilderContract {
         return new Collection(explanation);
     }
 
+    /**
+     * Pass the query to a given callback.
+     */
     public tap(callback: QueryAbleCallback): this {
         callback(this);
 
         return this;
     }
 
+    /**
+     * Apply the callback if the given "value" is (or resolves to) truthy.
+     */
     public when<T = boolean>(
-        value: BooleanCallback | T,
-        callback: (query: BuilderContract, value: T) => void | this,
-        defaultCallback: null | ((query: BuilderContract, value: T) => void | this) = null
-    ): this {
-        value = (typeof value === 'function' ? (value as BooleanCallback)(this) : value) as T;
+        value: BooleanCallback<T> | T,
+        callback: (query: BuilderContract, value: T) => void | BuilderContract,
+        defaultCallback: null | ((query: BuilderContract, value: T) => void | BuilderContract) = null
+    ): BuilderContract {
+        value = this.isBooleanCallback(value) ? value(this) : value;
 
         if (Boolean(value)) {
             return callback(this, value) ?? this;
@@ -2836,12 +3801,15 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Apply the callback if the given "value" is (or resolves to) truthy.
+     */
     public unless<T = boolean>(
-        value: BooleanCallback | T,
-        callback: (query: BuilderContract, value: T) => void | this,
-        defaultCallback: null | ((query: BuilderContract, value: T) => void | this) = null
-    ): this {
-        value = (typeof value === 'function' ? (value as BooleanCallback)(this) : value) as T;
+        value: BooleanCallback<T> | T,
+        callback: (query: BuilderContract, value: T) => void | BuilderContract,
+        defaultCallback: null | ((query: BuilderContract, value: T) => void | BuilderContract) = null
+    ): BuilderContract {
+        value = this.isBooleanCallback(value) ? value(this) : value;
 
         if (!Boolean(value)) {
             return callback(this, value) ?? this;
@@ -2852,6 +3820,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Get a new instance of the query builder.
+     */
     public abstract newQuery(): BuilderContract;
 
     /**
@@ -2861,18 +3832,38 @@ abstract class BaseBuilder extends BuilderContract {
         return this.newQuery();
     }
 
-    public raw(value: string): Expression {
+    /**
+     * Get all of the query builder's columns in a text-only array with all expressions evaluated.
+     */
+    public getColumns(): string[] {
+        const columns = this.getRegistry().columns;
+        return columns !== null ? columns.map(column => this.getGrammar().getValue(column).toString()) : [];
+    }
+
+    /**
+     * Create a raw database expression.
+     */
+    public raw(value: string | number | bigint): ExpressionContract {
         return raw(value);
     }
 
+    /**
+     * Get the current query value bindings in a flattened array.
+     */
     public getBindings(): Binding[] {
         return Object.values(this.registry.bindings).flat(Infinity);
     }
 
+    /**
+     * Get the raw array of bindings.
+     */
     public getRawBindings(): BindingTypes {
         return this.registry.bindings;
     }
 
+    /**
+     * Set the bindings on the query builder.
+     */
     public setBindings(bindings: Binding[], type: keyof BindingTypes = 'where'): this {
         if (!(type in this.registry.bindings)) {
             throw new Error(`Invalid binding type: ${type}.`);
@@ -2883,6 +3874,9 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Add a binding to the query.
+     */
     public addBinding(value: Binding | Binding[], type: keyof BindingTypes = 'where'): this {
         if (!(type in this.registry.bindings)) {
             throw new Error(`Invalid binding type: ${type}.`);
@@ -2895,19 +3889,28 @@ abstract class BaseBuilder extends BuilderContract {
         return this;
     }
 
+    /**
+     * Cast the given binding value.
+     */
     public castBinding(value: Binding): Binding {
         return value;
     }
 
+    /**
+     * Merge an array of bindings into our bindings.
+     */
     public mergeBindings(query: BuilderContract): this {
         this.registry.bindings = deepmerge(this.registry.bindings, query.getRegistry().bindings);
 
         return this;
     }
 
+    /**
+     * Remove all of the expressions from a list of bindings.
+     */
     public cleanBindings(bindings: Binding[]): NotExpressionBinding[] {
         return bindings
-            .filter((binding: Binding) => typeof binding !== 'object' || !(binding instanceof Expression))
+            .filter((binding: Binding) => !this.isExpression(binding))
             .map((binding: Binding) => this.castBinding(binding)) as NotExpressionBinding[];
     }
 
@@ -2925,18 +3928,9 @@ abstract class BaseBuilder extends BuilderContract {
         return 'id';
     }
 
-    public getConnection(): ConnectionSessionI {
-        return this.connection;
-    }
-
-    public getProcessor(): ProcessorI {
-        return this.processor ?? this.connection.getPostProcessor();
-    }
-
-    public getGrammar(): GrammarI {
-        return this.grammar ?? this.connection.getQueryGrammar();
-    }
-
+    /**
+     * Use the "write" PDO connection when executing the query.
+     */
     public useWritePdo(): this {
         this.registry.useWritePdo = true;
 
@@ -2944,10 +3938,80 @@ abstract class BaseBuilder extends BuilderContract {
     }
 
     /**
+     * Get the database connection instance.
+     */
+    public getConnection(): ConnectionSessionI {
+        return this.connection;
+    }
+
+    /**
+     * Get the database query processor instance.
+     */
+    public getProcessor(): ProcessorI {
+        return this.processor ?? this.connection.getPostProcessor();
+    }
+
+    /**
+     * Get the query grammar instance.
+     */
+    public getGrammar(): GrammarI {
+        return this.grammar ?? this.connection.getQueryGrammar();
+    }
+
+    /**
      * Determine if the value is a query builder instance or a Closure.
      */
-    protected isQueryable(value: any): boolean {
-        return value instanceof BuilderContract || typeof value === 'function';
+    protected isQueryable(value: any): value is BuilderContract | QueryAbleCallback {
+        return this.isQueryableCallback(value) || this.isBuilderContract(value);
+    }
+
+    /**
+     * Determine if the value is a query builder instance.
+     */
+    protected isBuilderContract(value: any): value is BuilderContract {
+        return typeof value === 'object' && value instanceof BuilderContract;
+    }
+
+    /**
+     * Determine if the value is instance or a Closure.
+     */
+    protected isQueryableCallback(value: any): value is QueryAbleCallback {
+        return typeof value === 'function';
+    }
+
+    /**
+     * Determine if the value is instance or a Closure.
+     */
+    protected isBooleanCallback<T>(value: any): value is BooleanCallback<T> {
+        return typeof value === 'function';
+    }
+
+    /**
+     * Determine if the value is Arrayable.
+     */
+    protected isArrayable(value: any): value is Arrayable {
+        return typeof value === 'object' && 'toArray' in value && typeof value.toArray === 'function';
+    }
+
+    /**
+     * Determine if the value is Stringable
+     */
+    protected isStringable(parameter: any): parameter is Stringable {
+        return typeof parameter === 'string' || this.isExpression(parameter);
+    }
+
+    /**
+     * Determine if the value is Expression
+     */
+    protected isExpression(parameter: any): parameter is ExpressionContract {
+        return typeof parameter === 'object' && parameter instanceof ExpressionContract;
+    }
+
+    /**
+     * Determine if the value is a Where Object
+     */
+    protected isWhereObject(parameter: any): parameter is WhereObject {
+        return typeof parameter === 'object' && !this.isBuilderContract(parameter) && !this.isExpression(parameter);
     }
 
     public abstract clone(): BuilderContract;

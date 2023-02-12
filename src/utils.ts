@@ -1,4 +1,5 @@
 import Expression from './query/expression';
+import ExpressionContract from './query/expression-contract';
 
 export function stringifyReplacer(_key: string, value: any): any {
     return typeof value === 'bigint' ? value.toString() : value;
@@ -108,6 +109,6 @@ export function causedByConcurrencyError(error: any): boolean {
     return false;
 }
 
-export function raw(value: string): Expression {
+export function raw(value: string | bigint | number): ExpressionContract {
     return new Expression(value);
 }

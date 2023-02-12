@@ -47,7 +47,7 @@ export default interface GrammarI extends BaseGrammarI {
     /**
      * Compile an insert and get ID statement into SQL.
      */
-    compileInsertGetId(query: BuilderContract, values: RowValues, sequence?: Stringable | null): string;
+    compileInsertGetId(query: BuilderContract, values: RowValues, sequence?: string | null): string;
 
     /**
      * Compile an insert statement using a subquery into SQL.

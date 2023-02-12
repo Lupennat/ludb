@@ -1,4 +1,4 @@
-import Expression from '../../query/expression';
+import ExpressionContract from '../../query/expression-contract';
 import BuilderI, { ConditionBoolean, QueryAbleCallback, Stringable, WhereColumnTuple } from './builder';
 import Registry, { BindingTypes } from './registry';
 
@@ -6,7 +6,7 @@ export type JoinClauseConstructor = new (parentQuery: BuilderI, type: string, ta
 
 export default interface JoinClauseI extends BuilderI {
     type: string;
-    table: string | Expression;
+    table: string | ExpressionContract;
     /**
      * Add an "on" clause to the join.
      *

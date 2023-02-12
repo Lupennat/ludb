@@ -4,7 +4,6 @@ import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import QueryExecuted from '../events/query-executed';
 import BuilderContract from '../query/builder-contract';
-import Expression from '../query/expression';
 import Grammar from '../query/grammars/grammar';
 import Processor from '../query/processors/processor';
 import { DriverFLattedConfig, FlattedConnectionConfig, ReadWriteType } from '../types/config';
@@ -18,7 +17,7 @@ import DriverConnectionI, {
     TransactionCallback
 } from '../types/connection';
 import ProcessorI from '../types/processor';
-import { Binding, NotExpressionBinding, Stringable, SubQuery } from '../types/query/builder';
+import { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import ConnectionSession from './connection-session';
 
@@ -168,8 +167,8 @@ class Connection implements DriverConnectionI {
         // const grammar = this.getQueryGrammar();
 
         return bindings.map(binding => {
-            if (binding instanceof Expression) {
-                return binding.toString();
+            if (this.queryGrammar.isExpression(binding)) {
+                return this.queryGrammar.getValue(binding).toString();
             }
             return binding;
         });
@@ -499,7 +498,7 @@ class Connection implements DriverConnectionI {
     public async insertGetId<T = number | bigint | string>(
         query: string,
         bindings?: Binding[],
-        sequence?: Stringable | null
+        sequence?: string | null
     ): Promise<T | null> {
         return this.session().insertGetId(query, bindings, sequence);
     }

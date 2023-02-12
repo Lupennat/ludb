@@ -217,9 +217,9 @@ class SQLiteGrammar extends Grammar {
     protected compileUpdateWithJoinsOrLimit(query: BuilderContract, values: RowValues): string {
         const table = this.wrapTable(query.getRegistry().from);
         const columns = this.compileUpdateColumns(query, values);
-        const alias = query
-            .getRegistry()
-            .from.split(new RegExp(/\s+as\s+/, 'gmi'))
+        const alias = this.getValue(query.getRegistry().from)
+            .toString()
+            .split(new RegExp(/\s+as\s+/, 'gmi'))
             .pop() as string;
         const selectSql = this.compileSelect(query.select(`${alias}.rowid`));
 
@@ -270,9 +270,9 @@ class SQLiteGrammar extends Grammar {
      */
     protected compileDeleteWithJoinsOrLimit(query: BuilderContract): string {
         const table = this.wrapTable(query.getRegistry().from);
-        const alias = query
-            .getRegistry()
-            .from.split(new RegExp(/\s+as\s+/, 'gmi'))
+        const alias = this.getValue(query.getRegistry().from)
+            .toString()
+            .split(new RegExp(/\s+as\s+/, 'gmi'))
             .pop() as string;
         const selectSql = this.compileSelect(query.select(`${alias}.rowid`));
 
