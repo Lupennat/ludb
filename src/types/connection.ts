@@ -151,7 +151,7 @@ export interface ConnectionSessionI {
     /**
      * Begin a fluent query against a database table.
      */
-    table(table: SubQuery, as?: string): BuilderContract;
+    table(table: SubQuery<BuilderContract>, as?: string): BuilderContract;
 
     /**
      * Get a new query builder instance.

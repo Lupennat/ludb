@@ -16,7 +16,6 @@ import TransactionCommitted from '../events/transaction-committed';
 import TransactionCommitting from '../events/transaction-committing';
 import TransactionRolledBack from '../events/transaction-rolledback';
 import Builder from '../query/builder';
-import BuilderContract from '../query/builder-contract';
 import { FlattedConnectionConfig } from '../types/config';
 import DriverConnectionI, {
     BeforeExecutingCallback,
@@ -26,7 +25,7 @@ import DriverConnectionI, {
     TransactionCallback
 } from '../types/connection';
 import ProcessorI from '../types/processor';
-import { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
+import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
@@ -76,14 +75,14 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Begin a fluent query against a database table.
      */
-    public table(table: SubQuery, as?: string): BuilderContract {
+    public table(table: SubQuery<BuilderI>, as?: string): BuilderI {
         return this.query().from(table, as);
     }
 
     /**
      * Get a new query builder instance.
      */
-    public query(): BuilderContract {
+    public query(): BuilderI {
         return new Builder(this, this.getQueryGrammar(), this.getPostProcessor());
     }
 

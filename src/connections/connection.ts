@@ -3,7 +3,6 @@ import { Pdo, PdoPreparedStatementI, PdoTransactionPreparedStatementI } from 'lu
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import QueryExecuted from '../events/query-executed';
-import BuilderContract from '../query/builder-contract';
 import Grammar from '../query/grammars/grammar';
 import Processor from '../query/processors/processor';
 import { DriverFLattedConfig, FlattedConnectionConfig, ReadWriteType } from '../types/config';
@@ -17,7 +16,7 @@ import DriverConnectionI, {
     TransactionCallback
 } from '../types/connection';
 import ProcessorI from '../types/processor';
-import { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
+import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import ConnectionSession from './connection-session';
 
@@ -431,14 +430,14 @@ class Connection implements DriverConnectionI {
     /**
      * Begin a fluent query against a database table.
      */
-    public table(table: SubQuery, as?: string): BuilderContract {
+    public table(table: SubQuery<BuilderI>, as?: string): BuilderI {
         return this.session().table(table, as);
     }
 
     /**
      * Get a new query builder instance.
      */
-    public query(): BuilderContract {
+    public query(): BuilderI {
         return this.session().query();
     }
 

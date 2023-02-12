@@ -294,5 +294,5 @@ export default interface Registry {
     /**
      * The callbacks that should be invoked before the query is executed.
      */
-    beforeQueryCallbacks: QueryAbleCallback[];
+    beforeQueryCallbacks: QueryAbleCallback<BuilderContract>[];
 }

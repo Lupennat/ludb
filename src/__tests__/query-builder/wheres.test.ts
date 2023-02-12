@@ -1023,4 +1023,127 @@ describe('Query Builder Wheres', () => {
         expect('select * from "users" where "name" = ? or not ("email" = ?)').toBe(builder.toSql());
         expect(['bar', 'foo']).toEqual(builder.getBindings());
     });
+
+    it('Works Where Not With Array Or Object Conditions', () => {
+        let builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .whereNot([
+                ['foo', 1],
+                ['bar', 2]
+            ]);
+
+        console.log(builder.toSql());
+        expect('select * from "users" where not ("foo" = ? and "bar" = ?)').toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder.select('*').from('users').whereNot({ foo: 1, bar: 2 });
+        expect('select * from "users" where not ("foo" = ? and "bar" = ?)').toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .whereNot([
+                ['foo', 1],
+                ['bar', '<', 2]
+            ]);
+        expect('select * from "users" where not ("foo" = ? and "bar" < ?)').toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Exists', () => {
+        let builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .whereExists(query => {
+                query.select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'));
+            });
+        expect(
+            'select * from "orders" where exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .whereNotExists(query => {
+                query.select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'));
+            });
+        expect(
+            'select * from "orders" where not exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .where('id', '=', 1)
+            .orWhereExists(query => {
+                query.select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'));
+            });
+        expect(
+            'select * from "orders" where "id" = ? or exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .where('id', '=', 1)
+            .orWhereNotExists(query => {
+                query.select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'));
+            });
+        expect(
+            'select * from "orders" where "id" = ? or not exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .whereExists(getBuilder().select('*').from('products').where('products.id', '=', new Raw('"orders"."id"')));
+        expect(
+            'select * from "orders" where exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .whereNotExists(
+                getBuilder().select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'))
+            );
+        expect(
+            'select * from "orders" where not exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .where('id', '=', 1)
+            .orWhereExists(
+                getBuilder().select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'))
+            );
+        expect(
+            'select * from "orders" where "id" = ? or exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .where('id', '=', 1)
+            .orWhereNotExists(
+                getBuilder().select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'))
+            );
+        expect(
+            'select * from "orders" where "id" = ? or not exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+    });
 });

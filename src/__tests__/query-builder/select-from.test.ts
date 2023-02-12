@@ -1,6 +1,6 @@
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
+import Raw from '../../query/expression';
 import { getBuilder, getMySqlBuilder, getMySqlBuilderWithProcessor, getPostgresBuilder, pdo } from '../fixtures/mocked';
-
 describe('Query Builder Select-From', () => {
     afterAll(async () => {
         await pdo.disconnect();
@@ -136,5 +136,27 @@ describe('Query Builder Select-From', () => {
         const builder = getMySqlBuilder();
         builder.select('*').from('some`table');
         expect(builder.toSql()).toBe('select * from `some``table`');
+    });
+
+    it('Works Full Sub Selects', () => {
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('email', '=', 'foo')
+            .orWhere('id', '=', query => {
+                query.select(new Raw('max(id)')).from('users').where('email', '=', 'bar');
+            });
+
+        expect(
+            'select * from "users" where "email" = ? or "id" = (select max(id) from "users" where "email" = ?)'
+        ).toBe(builder.toSql());
+        expect(['foo', 'bar']).toEqual(builder.getBindings());
+    });
+
+    it('Works Raw Expressions In Select', () => {
+        const builder = getBuilder();
+        builder.select(new Raw('substr(foo, 6)')).from('users');
+        expect('select substr(foo, 6) from "users"').toBe(builder.toSql());
     });
 });

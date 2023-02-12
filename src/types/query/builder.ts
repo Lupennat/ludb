@@ -6,7 +6,6 @@ import { ConnectionSessionI } from '../connection';
 import ProcessorI from '../processor';
 
 import ExpressionContract from '../../query/expression-contract';
-import JoinClauseI from './join-clause';
 import Registry, { BindingTypes } from './registry';
 
 export type Stringable = string | ExpressionContract;
@@ -15,13 +14,14 @@ export type NotExpressionBinding = PrimitiveBinding | null;
 export type NotNullableBinding = PrimitiveBinding | ExpressionContract;
 export type Binding = NotNullableBinding | null | ExpressionContract;
 
-export type BooleanCallback<T, U extends BuilderContract = BuilderContract> = (query: U) => T;
-export type QueryAbleCallback<T extends BuilderContract = BuilderContract> = (query: T) => void;
-export type JoinCallback = (join: JoinClauseI) => void;
+export type BooleanCallback<T, U extends BuilderContract> = (query: U) => T;
+export type QueryAbleCallback<T extends BuilderContract> = (query: T) => void;
 
 export type QueryAble = BuilderContract | Stringable;
-export type SubQuery = QueryAble | QueryAbleCallback;
-export type SelectColumn = Stringable | { [key: string]: BuilderContract | QueryAbleCallback };
+export type SubQuery<T extends BuilderContract> = QueryAble | QueryAbleCallback<T>;
+export type SelectColumn<T extends BuilderContract> =
+    | Stringable
+    | { [key: string]: BuilderContract | QueryAbleCallback<T> };
 
 export type WhereTuple = [Stringable, string | Binding, Binding?];
 export type WhereObject = {

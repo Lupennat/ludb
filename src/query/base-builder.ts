@@ -117,7 +117,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Set the columns to be selected.
      */
-    public select(columns: SelectColumn | SelectColumn[] = ['*'], ...otherColumns: SelectColumn[]): this {
+    public select(
+        columns: SelectColumn<this> | SelectColumn<this>[] = ['*'],
+        ...otherColumns: SelectColumn<this>[]
+    ): this {
         this.registry.columns = [];
         this.registry.bindings.select = [];
 
@@ -145,7 +148,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a subselect expression to the query.
      */
-    public selectSub(query: SubQuery, as: Stringable): this {
+    public selectSub(query: SubQuery<this>, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         return this.selectRaw(`(${queryString}) as ${this.getGrammar().wrap(as)}`, bindings);
@@ -167,7 +170,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Makes "from" fetch from a subquery.
      */
-    public fromSub(query: SubQuery, as: Stringable): this {
+    public fromSub(query: SubQuery<this>, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         return this.fromRaw(`(${queryString}) as ${this.getGrammar().wrapTable(as)}`, bindings);
@@ -187,14 +190,14 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Creates a subquery and parse it.
      */
-    protected createSub(query: SubQuery): [string, Binding[]] {
+    protected createSub<T extends BuilderContract = this>(query: SubQuery<T>): [string, Binding[]] {
         // If the given query is a Closure, we will execute it while passing in a new
         // query instance to the Closure. This will give the developer a chance to
         // format and work with the query before we cast it to a raw SQL string.
-        if (this.isQueryableCallback(query)) {
+        if (this.isQueryableCallback<T>(query)) {
             const callback = query;
             query = this.forSubQuery();
-            callback(query);
+            callback(query as T);
         }
 
         return this.parseSub(query);
@@ -234,7 +237,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a new select column to the query.
      */
-    public addSelect(columns: SelectColumn | SelectColumn[], ...otherColumns: SelectColumn[]): this {
+    public addSelect(columns: SelectColumn<this> | SelectColumn<this>[], ...otherColumns: SelectColumn<this>[]): this {
         columns = (Array.isArray(columns) ? columns : [columns]).concat(otherColumns);
 
         for (const column of columns) {
@@ -272,7 +275,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Set the table which the query is targeting.
      */
-    public from(table: SubQuery, as = ''): this {
+    public from(table: SubQuery<this>, as = ''): this {
         if (this.isQueryable(table)) {
             return this.fromSub(table, as);
         }
@@ -285,24 +288,24 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a join clause to the query.
      */
-    public join(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public join(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     public join(table: Stringable, first: Stringable, operator: Stringable): this;
     public join(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public join(
         table: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
         type?: string
     ): this;
     public join(
         table: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null,
         type = 'inner'
     ): this {
-        return this.baseJoin(type, table, first, (join: JoinClauseI) => {
+        return this.baseJoin(type, table, first, join => {
             join.on(first, operatorOrSecond, second);
         });
     }
@@ -315,7 +318,7 @@ abstract class BaseBuilder extends BuilderContract {
         // If the first "column" of the join is really a Closure instance the developer
         // is trying to build a join with a complex "on" clause containing more than
         // one condition, so we'll add the join and call a Closure with the query.
-        if (this.isQueryableCallback(first)) {
+        if (this.isQueryableCallback<JoinClauseI>(first)) {
             first(join);
         }
 
@@ -335,52 +338,71 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "join where" clause to the query.
      */
-    public joinWhere(table: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public joinWhere(table: Stringable, first: Stringable, second: Binding): this;
-    public joinWhere(table: Stringable, first: QueryAbleCallback | BuilderContract, second: NotNullableBinding): this;
-    public joinWhere(table: Stringable, first: Stringable, operator: string, second: Binding): this;
+    public joinWhere(table: Stringable, first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject): this;
+    public joinWhere(table: Stringable, first: Stringable, second: Binding | QueryAbleCallback<JoinClauseI>): this;
     public joinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        operator: string,
-        second: NotNullableBinding
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding,
+        first: Stringable,
+        operator: string,
+        second: Binding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public joinWhere(
+        table: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        operator: string,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public joinWhere(
+        table: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
+        second?: Binding | QueryAbleCallback<JoinClauseI>,
         type?: string
     ): this;
     public joinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding = null,
-        second: Binding = null,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null,
         type = 'inner'
     ): this {
-        return this.baseJoin(type, table, first, (join: JoinClauseI) => {
+        return this.baseJoin(type, table, first, join => {
             join.where(first, operatorOrSecond, second);
         });
     }
     /**
      * Add a subquery join clause to the query.
      */
-    public joinSub(query: SubQuery, as: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public joinSub(query: SubQuery, as: Stringable, first: Stringable, operator: Stringable): this;
-    public joinSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public joinSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public joinSub(query: SubQuery<JoinClauseI>, as: Stringable, first: Stringable, operator: Stringable): this;
+    public joinSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: Stringable,
+        operator: string,
+        second: Stringable
+    ): this;
+    public joinSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
         type?: string
     ): this;
     public joinSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null,
         type = 'inner'
@@ -393,7 +415,11 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a subquery join on or where clause to the query.
      */
-    protected baseJoinSub(query: SubQuery, as: Stringable, callback: (expression: ExpressionContract) => this): this {
+    protected baseJoinSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        callback: (expression: ExpressionContract) => this
+    ): this {
         const [queryString, bindings] = this.createSub(query);
 
         const expression = `(${queryString}) as ${this.getGrammar().wrapTable(as)}`;
@@ -406,36 +432,51 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a subquery join where clause to the query.
      */
-    public joinWhereSub(query: SubQuery, as: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public joinWhereSub(query: SubQuery, as: Stringable, first: Stringable, second: Binding): this;
     public joinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        second: NotNullableBinding
+        first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject
     ): this;
-    public joinWhereSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Binding): this;
     public joinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
+        first: Stringable,
+        second: Binding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public joinWhereSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public joinWhereSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: Stringable,
         operator: string,
-        second: NotNullableBinding
+        second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        operator: string,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public joinWhereSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
+        second?: Binding | QueryAbleCallback<JoinClauseI>,
         type?: string
     ): this;
     public joinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding = null,
-        second: Binding = null,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null,
         type = 'inner'
     ): this {
         return this.baseJoinSub(query, as, (expression: ExpressionContract) => {
@@ -446,18 +487,18 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a left join to the query.
      */
-    public leftJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public leftJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     public leftJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     public leftJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public leftJoin(
         table: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;
     public leftJoin(
         table: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
@@ -466,31 +507,36 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "join where" clause to the query.
      */
-    public leftJoinWhere(table: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public leftJoinWhere(table: Stringable, first: Stringable, second: Binding): this;
+    public leftJoinWhere(table: Stringable, first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject): this;
+    public leftJoinWhere(table: Stringable, first: Stringable, second: Binding | QueryAbleCallback<JoinClauseI>): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        second: NotNullableBinding
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
     ): this;
-    public leftJoinWhere(table: Stringable, first: Stringable, operator: string, second: Binding): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract,
+        first: Stringable,
         operator: string,
-        second: NotNullableBinding
+        second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        operator: string,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding = null,
-        second: Binding = null
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
+        second?: Binding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public leftJoinWhere(
+        table: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
         return this.joinWhere(table, first, operatorOrSecond, second, 'left');
     }
@@ -498,20 +544,30 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a subquery left join to the query.
      */
-    public leftJoinSub(query: SubQuery, as: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public leftJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: Stringable): this;
-    public leftJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public leftJoinSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public leftJoinSub(query: SubQuery<JoinClauseI>, as: Stringable, first: Stringable, operator: Stringable): this;
+    public leftJoinSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: Stringable,
+        operator: string,
+        second: Stringable
+    ): this;
+    public leftJoinSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;
     public leftJoinSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
@@ -522,44 +578,49 @@ abstract class BaseBuilder extends BuilderContract {
      * Add a subquery left join where clause to the query.
      */
     public leftJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereTuple[] | WhereObject
-    ): this;
-    public leftJoinWhereSub(query: SubQuery, as: Stringable, first: Stringable, second: Binding): this;
-    public leftJoinWhereSub(
-        query: SubQuery,
-        as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        second: NotNullableBinding
+        first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject
     ): this;
     public leftJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: Stringable,
+        second: Binding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public leftJoinWhereSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public leftJoinWhereSub(
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
         first: Stringable,
         operator: string,
-        second: Binding
+        second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
+        second?: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding = null,
-        second: Binding = null
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
         return this.joinWhereSub(query, as, first, operatorOrSecond, second, 'left');
     }
@@ -567,18 +628,18 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a right join to the query.
      */
-    public rightJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public rightJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     public rightJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     public rightJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public rightJoin(
         table: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;
     public rightJoin(
         table: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
@@ -588,31 +649,36 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "right join where" clause to the query.
      */
-    public rightJoinWhere(table: Stringable, first: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public rightJoinWhere(table: Stringable, first: Stringable, second: Binding): this;
+    public rightJoinWhere(table: Stringable, first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject): this;
+    public rightJoinWhere(table: Stringable, first: Stringable, second: Binding | QueryAbleCallback<JoinClauseI>): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        second: NotNullableBinding
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
     ): this;
-    public rightJoinWhere(table: Stringable, first: Stringable, operator: string, second: Binding): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract,
+        first: Stringable,
         operator: string,
-        second: NotNullableBinding
+        second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        operator: string,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding = null,
-        second: Binding = null
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
+        second?: Binding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public rightJoinWhere(
+        table: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
         return this.joinWhere(table, first, operatorOrSecond, second, 'right');
     }
@@ -620,20 +686,30 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a subquery right join to the query.
      */
-    public rightJoinSub(query: SubQuery, as: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
-    public rightJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: Stringable): this;
-    public rightJoinSub(query: SubQuery, as: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public rightJoinSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public rightJoinSub(query: SubQuery<JoinClauseI>, as: Stringable, first: Stringable, operator: Stringable): this;
+    public rightJoinSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: Stringable,
+        operator: string,
+        second: Stringable
+    ): this;
+    public rightJoinSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;
     public rightJoinSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
@@ -644,44 +720,49 @@ abstract class BaseBuilder extends BuilderContract {
      * Add a subquery left join where clause to the query.
      */
     public rightJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | WhereTuple[] | WhereObject
-    ): this;
-    public rightJoinWhereSub(query: SubQuery, as: Stringable, first: Stringable, second: Binding): this;
-    public rightJoinWhereSub(
-        query: SubQuery,
-        as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
-        second: NotNullableBinding
+        first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject
     ): this;
     public rightJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: Stringable,
+        second: Binding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public rightJoinWhereSub(
+        query: SubQuery<JoinClauseI>,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+    ): this;
+    public rightJoinWhereSub(
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
         first: Stringable,
         operator: string,
-        second: Binding
+        second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract,
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding
+        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding,
-        second?: Binding
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
+        second?: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: SubQuery,
+        query: SubQuery<JoinClauseI>,
         as: Stringable,
-        first: QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding = null,
-        second: Binding = null
+        first: QueryAbleCallback<JoinClauseI> | BuilderContract | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
         return this.joinWhereSub(query, as, first, operatorOrSecond, second, 'right');
     }
@@ -689,18 +770,18 @@ abstract class BaseBuilder extends BuilderContract {
      * Add a "cross join" clause to the query.
      */
     public crossJoin(table: Stringable): this;
-    public crossJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public crossJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     public crossJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     public crossJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
     public crossJoin(
         table: Stringable,
-        first?: QueryAbleCallback | WhereColumnTuple[] | Stringable,
+        first?: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;
     public crossJoin(
         table: Stringable,
-        first: QueryAbleCallback | WhereColumnTuple[] | Stringable | null = null,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable | null = null,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
@@ -716,7 +797,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a subquery cross join to the query.
      */
-    public crossJoinSub(query: SubQuery, as: Stringable): this {
+    public crossJoinSub(query: SubQuery<JoinClauseI>, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         const expression = `(${queryString}) as ${this.getGrammar().wrapTable(as)}`;
@@ -747,22 +828,29 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a basic where clause to the query.
      */
-    public where(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public where(column: Stringable, value: Binding): this;
-    public where(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
-    public where(column: Stringable, operator: string, value: Binding): this;
-    public where(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
+    public where(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
+    public where(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public where(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding,
-        value?: Binding,
+        column: QueryAbleCallback<this> | BuilderContract,
+        value: NotNullableBinding | QueryAbleCallback<this>
+    ): this;
+    public where(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
+    public where(
+        column: QueryAbleCallback<this> | BuilderContract,
+        operator: string,
+        value: NotNullableBinding | QueryAbleCallback<this>
+    ): this;
+    public where(
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this>,
+        value?: Binding | QueryAbleCallback<this>,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
     public where(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding = null,
-        value: Binding | QueryAbleCallback = null,
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> = null,
+        value: Binding | QueryAbleCallback<this> = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -866,10 +954,10 @@ abstract class BaseBuilder extends BuilderContract {
         column: T[],
         boolean: ConditionBoolean,
         not: boolean,
-        callback: (query: BuilderContract, values: T) => void
+        callback: (query: this, values: T) => void
     ): this {
         return this.whereNested(
-            (query: BuilderContract): void => {
+            (query: this): void => {
                 for (const values of column) {
                     callback(query, values);
                 }
@@ -954,20 +1042,27 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or where" clause to the query.
      */
-    public orWhere(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public orWhere(column: Stringable, value: Binding): this;
-    public orWhere(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
-    public orWhere(column: Stringable, operator: string, value: Binding): this;
-    public orWhere(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
+    public orWhere(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
+    public orWhere(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public orWhere(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding,
-        value?: Binding
+        column: QueryAbleCallback<this> | BuilderContract,
+        value: NotNullableBinding | QueryAbleCallback<this>
+    ): this;
+    public orWhere(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
+    public orWhere(
+        column: QueryAbleCallback<this> | BuilderContract,
+        operator: string,
+        value: NotNullableBinding | QueryAbleCallback<this>
     ): this;
     public orWhere(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding = null,
-        value: Binding = null
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this>,
+        value?: Binding | QueryAbleCallback<this>
+    ): this;
+    public orWhere(
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> = null,
+        value: Binding | QueryAbleCallback<this> = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
@@ -977,21 +1072,28 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a basic "where not" clause to the query.
      */
-    public whereNot(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public whereNot(column: Stringable, value: Binding): this;
-    public whereNot(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
-    public whereNot(column: Stringable, operator: string, value: Binding): this;
-    public whereNot(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
+    public whereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
+    public whereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public whereNot(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding,
-        value?: Binding,
+        column: QueryAbleCallback<this> | BuilderContract,
+        value: NotNullableBinding | QueryAbleCallback<this>
+    ): this;
+    public whereNot(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
+    public whereNot(
+        column: QueryAbleCallback<this> | BuilderContract,
+        operator: string,
+        value: NotNullableBinding | QueryAbleCallback<this>
+    ): this;
+    public whereNot(
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this>,
+        value?: Binding | QueryAbleCallback<this>,
         boolean?: ConditionBoolean
     ): this;
     public whereNot(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding = null,
-        value: Binding = null,
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> = null,
+        value: Binding | QueryAbleCallback<this> = null,
         boolean: ConditionBoolean = 'and'
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
@@ -1001,20 +1103,27 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or where not" clause to the query.
      */
-    public orWhereNot(column: QueryAbleCallback | WhereTuple[] | WhereObject): this;
-    public orWhereNot(column: Stringable, value: Binding): this;
-    public orWhereNot(column: QueryAbleCallback | BuilderContract, value: NotNullableBinding): this;
-    public orWhereNot(column: Stringable, operator: string, value: Binding): this;
-    public orWhereNot(column: QueryAbleCallback | BuilderContract, operator: string, value: NotNullableBinding): this;
+    public orWhereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
+    public orWhereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public orWhereNot(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding,
-        value?: Binding
+        column: QueryAbleCallback<this> | BuilderContract,
+        value: NotNullableBinding | QueryAbleCallback<this>
+    ): this;
+    public orWhereNot(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
+    public orWhereNot(
+        column: QueryAbleCallback<this> | BuilderContract,
+        operator: string,
+        value: NotNullableBinding | QueryAbleCallback<this>
     ): this;
     public orWhereNot(
-        column: Stringable | QueryAbleCallback | BuilderContract | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding = null,
-        value: Binding = null
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this>,
+        value?: Binding | QueryAbleCallback<this>
+    ): this;
+    public orWhereNot(
+        column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> = null,
+        value: Binding | QueryAbleCallback<this> = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
         return this.whereNot(column, operatorOrValue, value, 'or');
@@ -1161,7 +1270,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback | Arrayable | Binding[],
+        values: BuilderContract | QueryAbleCallback<this> | Arrayable | Binding[],
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1201,7 +1310,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or where in" clause to the query.
      */
-    public orWhereIn(column: Stringable, values: BuilderContract | QueryAbleCallback | Binding[] | Arrayable): this {
+    public orWhereIn(
+        column: Stringable,
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable
+    ): this {
         return this.whereIn(column, values, 'or');
     }
 
@@ -1210,7 +1322,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereNotIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback | Binding[] | Arrayable,
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable,
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.whereIn(column, values, boolean, true);
@@ -1219,7 +1331,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or where not in" clause to the query.
      */
-    public orWhereNotIn(column: Stringable, values: BuilderContract | QueryAbleCallback | Binding[] | Arrayable): this {
+    public orWhereNotIn(
+        column: Stringable,
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable
+    ): this {
         return this.whereNotIn(column, values, 'or');
     }
 
@@ -1957,8 +2072,8 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a nested where statement to the query.
      */
-    public whereNested(callback: QueryAbleCallback, boolean: ConditionBoolean = 'and', not = false): this {
-        const query = this.forNestedWhere();
+    public whereNested(callback: QueryAbleCallback<this>, boolean: ConditionBoolean = 'and', not = false): this {
+        const query = this.forNestedWhere() as this;
         callback(query);
 
         return this.addNestedWhereQuery(query, boolean, not);
@@ -1996,7 +2111,7 @@ abstract class BaseBuilder extends BuilderContract {
     protected whereSub(
         column: Stringable,
         operator: string,
-        callback: QueryAbleCallback,
+        callback: QueryAbleCallback<this>,
         boolean: ConditionBoolean,
         not: boolean
     ): this {
@@ -2005,7 +2120,7 @@ abstract class BaseBuilder extends BuilderContract {
         // Once we have the query instance we can simply execute it so it can add all
         // of the sub-select's conditions to itself, and then we can cache it off
         // in the array of where clauses for the "main" parent query instance.
-        const query = this.forSubQuery();
+        const query = this.forSubQuery() as this;
         callback(query);
 
         this.registry.wheres.push({
@@ -2026,18 +2141,18 @@ abstract class BaseBuilder extends BuilderContract {
      * Add an exists clause to the query.
      */
     public whereExists(
-        callback: BuilderContract | QueryAbleCallback,
+        callback: BuilderContract | QueryAbleCallback<this>,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
-        let query: BuilderContract;
+        let query: this | BuilderContract;
         if (this.isQueryableCallback(callback)) {
             query = this.forSubQuery();
 
             // Similar to the sub-select clause, we will create a new query instance so
             // the developer may cleanly specify the entire exists query and we will
             // compile the whole thing in the grammar and insert it into the SQL.
-            callback(query);
+            callback(query as this);
         } else {
             query = callback;
         }
@@ -2048,21 +2163,24 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an or exists clause to the query.
      */
-    public orWhereExists(callback: BuilderContract | QueryAbleCallback, not = false): this {
+    public orWhereExists(callback: BuilderContract | QueryAbleCallback<this>, not = false): this {
         return this.whereExists(callback, 'or', not);
     }
 
     /**
      * Add a where not exists clause to the query.
      */
-    public whereNotExists(callback: BuilderContract | QueryAbleCallback, boolean: ConditionBoolean = 'and'): this {
+    public whereNotExists(
+        callback: BuilderContract | QueryAbleCallback<this>,
+        boolean: ConditionBoolean = 'and'
+    ): this {
         return this.whereExists(callback, boolean, true);
     }
 
     /**
      * Add a where not exists clause to the query.
      */
-    public orWhereNotExists(callback: BuilderContract | QueryAbleCallback): this {
+    public orWhereNotExists(callback: BuilderContract | QueryAbleCallback<this>): this {
         return this.orWhereExists(callback, true);
     }
 
@@ -2366,18 +2484,18 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "having" clause to the query.
      */
-    public having(column: QueryAbleCallback | Stringable): this;
-    public having(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
-    public having(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
+    public having(column: QueryAbleCallback<this> | Stringable): this;
+    public having(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
+    public having(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
     public having(
-        column: QueryAbleCallback | Stringable,
+        column: QueryAbleCallback<this> | Stringable,
         operatorOrValue?: Stringable | number | null,
         value?: Stringable | number | null,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
     public having(
-        column: Stringable | QueryAbleCallback,
+        column: Stringable | QueryAbleCallback<this>,
         operatorOrValue: Stringable | number | null = null,
         value: Stringable | number | null = null,
         boolean: ConditionBoolean = 'and',
@@ -2428,16 +2546,16 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or having" clause to the query.
      */
-    public orHaving(column: QueryAbleCallback | Stringable): this;
-    public orHaving(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
-    public orHaving(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
+    public orHaving(column: QueryAbleCallback<this> | Stringable): this;
+    public orHaving(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
+    public orHaving(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
     public orHaving(
-        column: QueryAbleCallback | Stringable,
+        column: QueryAbleCallback<this> | Stringable,
         operatorOrValue?: Stringable | number | null,
         value?: Stringable | number | null
     ): this;
     public orHaving(
-        column: Stringable | QueryAbleCallback,
+        column: Stringable | QueryAbleCallback<this>,
         operatorOrValue: number | Stringable | null = null,
         value: number | Stringable | null = null
     ): this {
@@ -2448,17 +2566,17 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "having not" clause to the query.
      */
-    public havingNot(column: QueryAbleCallback | Stringable): this;
-    public havingNot(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
-    public havingNot(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
+    public havingNot(column: QueryAbleCallback<this> | Stringable): this;
+    public havingNot(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
+    public havingNot(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
     public havingNot(
-        column: QueryAbleCallback | Stringable,
+        column: QueryAbleCallback<this> | Stringable,
         operatorOrValue?: Stringable | number | null,
         value?: Stringable | number | null,
         boolean?: ConditionBoolean
     ): this;
     public havingNot(
-        column: Stringable | QueryAbleCallback,
+        column: Stringable | QueryAbleCallback<this>,
         operatorOrValue: Stringable | number | null = null,
         value: Stringable | number | null = null,
         boolean: ConditionBoolean = 'and'
@@ -2470,16 +2588,20 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or having not" clause to the query.
      */
-    public orHavingNot(column: QueryAbleCallback | Stringable): this;
-    public orHavingNot(column: QueryAbleCallback | Stringable, value: Stringable | number): this;
-    public orHavingNot(column: QueryAbleCallback | Stringable, operator: string, value: Stringable | number): this;
+    public orHavingNot(column: QueryAbleCallback<this> | Stringable): this;
+    public orHavingNot(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
     public orHavingNot(
-        column: QueryAbleCallback | Stringable,
+        column: QueryAbleCallback<this> | Stringable,
+        operator: string,
+        value: Stringable | number
+    ): this;
+    public orHavingNot(
+        column: QueryAbleCallback<this> | Stringable,
         operatorOrValue?: Stringable | number | null,
         value?: Stringable | number | null
     ): this;
     public orHavingNot(
-        column: Stringable | QueryAbleCallback,
+        column: Stringable | QueryAbleCallback<this>,
         operatorOrValue: number | Stringable | null = null,
         value: number | Stringable | null = null
     ): this {
@@ -2490,8 +2612,8 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a nested having statement to the query.
      */
-    public havingNested(callback: QueryAbleCallback, boolean: ConditionBoolean = 'and', not = false): this {
-        const query = this.forNestedWhere();
+    public havingNested(callback: QueryAbleCallback<this>, boolean: ConditionBoolean = 'and', not = false): this {
+        const query = this.forNestedWhere() as this;
         callback(query);
 
         return this.addNestedHavingQuery(query, boolean, not);
@@ -2617,7 +2739,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "order by" clause to the query.
      */
-    public orderBy(column: SubQuery, direction: OrderDirection = 'asc'): this {
+    public orderBy(column: SubQuery<this>, direction: OrderDirection = 'asc'): this {
         if (this.isQueryable(column)) {
             const [query, bindings] = this.createSub(column);
 
@@ -2643,21 +2765,21 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a descending "order by" clause to the query.
      */
-    public orderByDesc(column: SubQuery): this {
+    public orderByDesc(column: SubQuery<this>): this {
         return this.orderBy(column, 'desc');
     }
 
     /**
      * Add an "order by" clause for a timestamp to the query.
      */
-    public latest(column: SubQuery = 'created_at'): this {
+    public latest(column: SubQuery<this> = 'created_at'): this {
         return this.orderBy(column, 'desc');
     }
 
     /**
      * Add an "order by" clause for a timestamp to the query.
      */
-    public oldest(column: SubQuery = 'created_at'): this {
+    public oldest(column: SubQuery<this> = 'created_at'): this {
         return this.orderBy(column, 'asc');
     }
 
@@ -2751,7 +2873,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Remove all existing orders and optionally add a new order.
      */
-    public reorder(column: SubQuery | null = null, direction: OrderDirection = 'asc'): this {
+    public reorder(column: SubQuery<this> | null = null, direction: OrderDirection = 'asc'): this {
         this.registry.orders = [];
         this.registry.unionOrders = [];
         this.registry.bindings.order = [];
@@ -2782,11 +2904,11 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a union statement to the query.
      */
-    public union(query: BuilderContract | QueryAbleCallback, all = false): this {
+    public union(query: BuilderContract | QueryAbleCallback<this>, all = false): this {
         if (this.isQueryableCallback(query)) {
             const callback = query;
             query = this.newQuery();
-            callback(query);
+            callback(query as this);
         }
 
         this.registry.unions.push({ query, all });
@@ -2799,7 +2921,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a union all statement to the query.
      */
-    public unionAll(query: BuilderContract | QueryAbleCallback): this {
+    public unionAll(query: BuilderContract | QueryAbleCallback<this>): this {
         return this.union(query, true);
     }
 
@@ -2833,7 +2955,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Register a closure to be invoked before the query is executed.
      */
-    public beforeQuery(callback: QueryAbleCallback): this {
+    public beforeQuery(callback: QueryAbleCallback<BuilderContract>): this {
         this.registry.beforeQueryCallbacks.push(callback);
 
         return this;
@@ -3694,8 +3816,9 @@ abstract class BaseBuilder extends BuilderContract {
         for (const column in columns) {
             const amount = columns[column];
             if ((typeof amount !== 'number' || typeof amount !== 'bigint') && isNaN(Number(amount))) {
-                throw new TypeError(`Non-numeric value passed as increment amount for column: ${column}.`);
+                throw new TypeError(`Non-numeric value passed as increment amount for column: '${column}'.`);
             }
+
             processed[column] = this.raw(`${this.getGrammar().wrap(column)} + ${amount.toString()}`);
         }
 
@@ -3721,8 +3844,9 @@ abstract class BaseBuilder extends BuilderContract {
         for (const column in columns) {
             const amount = columns[column];
             if ((typeof amount !== 'number' || typeof amount !== 'bigint') && isNaN(Number(amount))) {
-                throw new TypeError(`Non-numeric value passed as decrement amount for column: ${column}.`);
+                throw new TypeError(`Non-numeric value passed as decrement amount for column: '${column}'.`);
             }
+
             processed[column] = this.raw(`${this.getGrammar().wrap(column)} - ${amount.toString()}`);
         }
 
@@ -3776,7 +3900,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Pass the query to a given callback.
      */
-    public tap(callback: QueryAbleCallback): this {
+    public tap(callback: QueryAbleCallback<this>): this {
         callback(this);
 
         return this;
@@ -3786,10 +3910,10 @@ abstract class BaseBuilder extends BuilderContract {
      * Apply the callback if the given "value" is (or resolves to) truthy.
      */
     public when<T = boolean>(
-        value: BooleanCallback<T> | T,
-        callback: (query: BuilderContract, value: T) => void | BuilderContract,
-        defaultCallback: null | ((query: BuilderContract, value: T) => void | BuilderContract) = null
-    ): BuilderContract {
+        value: BooleanCallback<T, this> | T,
+        callback: (query: this, value: T) => void | this,
+        defaultCallback: null | ((query: this, value: T) => void | this) = null
+    ): this {
         value = this.isBooleanCallback(value) ? value(this) : value;
 
         if (Boolean(value)) {
@@ -3805,10 +3929,10 @@ abstract class BaseBuilder extends BuilderContract {
      * Apply the callback if the given "value" is (or resolves to) truthy.
      */
     public unless<T = boolean>(
-        value: BooleanCallback<T> | T,
-        callback: (query: BuilderContract, value: T) => void | BuilderContract,
-        defaultCallback: null | ((query: BuilderContract, value: T) => void | BuilderContract) = null
-    ): BuilderContract {
+        value: BooleanCallback<T, this> | T,
+        callback: (query: this, value: T) => void | this,
+        defaultCallback: null | ((query: this, value: T) => void | this) = null
+    ): this {
         value = this.isBooleanCallback(value) ? value(this) : value;
 
         if (!Boolean(value)) {
@@ -3961,8 +4085,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Determine if the value is a query builder instance or a Closure.
      */
-    protected isQueryable(value: any): value is BuilderContract | QueryAbleCallback {
-        return this.isQueryableCallback(value) || this.isBuilderContract(value);
+    protected isQueryable<T extends BuilderContract = this>(
+        value: any
+    ): value is BuilderContract | QueryAbleCallback<T> {
+        return this.isQueryableCallback<T>(value) || this.isBuilderContract(value);
     }
 
     /**
@@ -3975,14 +4101,14 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Determine if the value is instance or a Closure.
      */
-    protected isQueryableCallback(value: any): value is QueryAbleCallback {
+    protected isQueryableCallback<T extends BuilderContract = this>(value: any): value is QueryAbleCallback<T> {
         return typeof value === 'function';
     }
 
     /**
      * Determine if the value is instance or a Closure.
      */
-    protected isBooleanCallback<T>(value: any): value is BooleanCallback<T> {
+    protected isBooleanCallback<T, U extends BuilderContract = this>(value: any): value is BooleanCallback<T, U> {
         return typeof value === 'function';
     }
 

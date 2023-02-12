@@ -7,6 +7,7 @@ export type JoinClauseConstructor = new (parentQuery: BuilderI, type: string, ta
 export default interface JoinClauseI extends BuilderI {
     type: string;
     table: string | ExpressionContract;
+
     /**
      * Add an "on" clause to the join.
      *
@@ -19,11 +20,11 @@ export default interface JoinClauseI extends BuilderI {
      *
      * on `contacts`.`user_id` = `users`.`id` and `contacts`.`info_id` = `info`.`id`
      */
-    on(first: WhereColumnTuple[] | QueryAbleCallback): this;
+    on(first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     on(first: Stringable, second: Stringable): this;
     on(first: Stringable, operator: string, second: Stringable): this;
     on(
-        first: Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
         boolean?: ConditionBoolean
@@ -32,11 +33,11 @@ export default interface JoinClauseI extends BuilderI {
     /**
      * Add an "or on" clause to the join.
      */
-    orOn(first: WhereColumnTuple[] | QueryAbleCallback): this;
+    orOn(first: WhereColumnTuple[] | QueryAbleCallback<this>): this;
     orOn(first: Stringable, second: Stringable): this;
     orOn(first: Stringable, operator: string, second: Stringable): this;
     orOn(
-        irst: Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<this>,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;

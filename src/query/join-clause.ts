@@ -45,17 +45,17 @@ class JoinClause extends BaseBuilder implements JoinClauseI {
      *
      * on `contacts`.`user_id` = `users`.`id` and `contacts`.`info_id` = `info`.`id`
      */
-    public on(first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public on(first: WhereColumnTuple[] | QueryAbleCallback<this>): this;
     public on(first: Stringable, second: Stringable): this;
     public on(first: Stringable, operator: string, second: Stringable): this;
     public on(
-        first: Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<this>,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
         boolean?: ConditionBoolean
     ): this;
     public on(
-        first: Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<this>,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null,
         boolean: ConditionBoolean = 'and'
@@ -70,11 +70,11 @@ class JoinClause extends BaseBuilder implements JoinClauseI {
     /**
      * Add an "or on" clause to the join.
      */
-    public orOn(first: WhereColumnTuple[] | QueryAbleCallback): this;
+    public orOn(first: WhereColumnTuple[] | QueryAbleCallback<this>): this;
     public orOn(first: Stringable, second: Stringable): this;
     public orOn(first: Stringable, operator: string, second: Stringable): this;
     public orOn(
-        first: Stringable | WhereColumnTuple[] | QueryAbleCallback,
+        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<this>,
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null
     ): this {
