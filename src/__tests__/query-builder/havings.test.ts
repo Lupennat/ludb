@@ -1,5 +1,4 @@
 import Raw from '../../query/expression';
-import BuilderI from '../../types/query/builder';
 import { getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
 describe('Query Builder Havings', () => {
@@ -12,11 +11,9 @@ describe('Query Builder Havings', () => {
             'select count(*) as aggregate from (select (select `count(*)` from `videos` where `posts`.`id` = `videos`.`post_id`) as `videos_count` from `posts` having `videos_count` > ?) as `temp_table`';
         const builder = getMySqlBuilder();
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementationOnce(
-            (_query: BuilderI, results: any[]): any[] => {
-                return results;
-            }
-        );
+        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
+            return results;
+        });
 
         const spyConnection = jest.spyOn(builder.getConnection(), 'select');
         const spyConnectionDatabase = jest.spyOn(builder.getConnection(), 'getDatabaseName');
@@ -206,14 +203,12 @@ describe('Query Builder Havings', () => {
         let executedQuery =
             'select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > ?';
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation(
-            (_query: BuilderI, results: any[]): any[] => {
-                return results;
-            }
-        );
+        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
+            return results;
+        });
 
-        let spyedConnection = jest.spyOn(builder.getConnection(), 'select');
-        spyedConnection.mockImplementationOnce(async () => {
+        let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
             return [
                 {
                     category: 'rock',
@@ -231,7 +226,7 @@ describe('Query Builder Havings', () => {
             .having('total', '>', 3)
             .get();
 
-        expect(spyedConnection).toBeCalledWith(executedQuery, ['popular', 3], true);
+        expect(spiedConnection).toBeCalledWith(executedQuery, ['popular', 3], true);
         expect([{ category: 'rock', total: 5 }]).toEqual(result.all());
 
         // Using \Raw value
@@ -239,14 +234,12 @@ describe('Query Builder Havings', () => {
         executedQuery =
             'select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > 3';
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation(
-            (_query: BuilderI, results: any[]): any[] => {
-                return results;
-            }
-        );
+        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
+            return results;
+        });
 
-        spyedConnection = jest.spyOn(builder.getConnection(), 'select');
-        spyedConnection.mockImplementationOnce(async () => {
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
             return [
                 {
                     category: 'rock',
@@ -262,7 +255,7 @@ describe('Query Builder Havings', () => {
             .groupBy('category')
             .having('total', '>', new Raw('3'))
             .get();
-        expect(spyedConnection).toBeCalledWith(executedQuery, ['popular'], true);
+        expect(spiedConnection).toBeCalledWith(executedQuery, ['popular'], true);
         expect([{ category: 'rock', total: 5 }]).toEqual(result.all());
     });
 

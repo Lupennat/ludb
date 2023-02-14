@@ -159,13 +159,6 @@ abstract class Grammar implements BaseGrammarI {
     }
 
     /**
-     * Get the format for database stored dates.
-     */
-    public getDateFormat(): string {
-        return 'Y-m-d H:i:s';
-    }
-
-    /**
      * Get the grammar's table prefix.
      */
     public getTablePrefix(): string {

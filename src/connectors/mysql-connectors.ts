@@ -1,3 +1,4 @@
+import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import 'lupdo-mysql';
 import { MysqlOptions } from 'lupdo-mysql';
@@ -23,7 +24,7 @@ class MySqlConnector extends Connector implements ConnectorI {
             await this.setModes(connection, config);
         };
 
-        const options: MysqlOptions = Object.assign(
+        const options: MysqlOptions = deepmerge(
             {
                 user: config.username,
                 password: config.password,

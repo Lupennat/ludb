@@ -1,3 +1,4 @@
+import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import 'lupdo-sqlite';
 import { SqliteOptions } from 'lupdo-sqlite';
@@ -18,7 +19,7 @@ class SQLiteConnector extends Connector implements ConnectorI {
             await this.configureForeignKeyConstraints(connection, config);
         };
 
-        const options = Object.assign({ path: config.database }, config.lupdo_options ?? {});
+        const options = deepmerge({ path: config.database }, config.lupdo_options ?? {});
 
         if (!options.path) {
             throw new Error(`"Database file path is required.`);

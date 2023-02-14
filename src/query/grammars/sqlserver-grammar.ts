@@ -2,6 +2,7 @@ import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
+import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
 class SqlServerGrammar extends Grammar {
@@ -36,6 +37,7 @@ class SqlServerGrammar extends Grammar {
         'aggregate',
         'columns',
         'from',
+        'indexHint',
         'joins',
         'wheres',
         'groups',
@@ -100,6 +102,13 @@ class SqlServerGrammar extends Grammar {
     }
 
     /**
+     * Compile the index hints for the query.
+     */
+    protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
+        return indexHint.type === 'force' ? `with (index(${indexHint.index}))` : '';
+    }
+
+    /**
      * Compile a bitwise operator where clause.
      */
     protected compileWhereBitwise(_query: BuilderContract, where: WhereBasic): string {
@@ -138,7 +147,7 @@ class SqlServerGrammar extends Grammar {
      * Prepare the binding for a "JSON contains" statement.
      */
     public prepareBindingForJsonContains(binding: Binding | Binding[]): Binding | Binding[] {
-        return typeof binding === 'boolean' ? JSON.stringify(binding, stringifyReplacer) : binding;
+        return typeof binding === 'boolean' ? JSON.stringify(binding, stringifyReplacer(this)) : binding;
     }
 
     /**
@@ -278,7 +287,7 @@ class SqlServerGrammar extends Grammar {
         uniqueBy: string[],
         update: string[] | RowValues
     ): string {
-        const columns = Object.keys(Array.isArray(values) ? values[0] : values);
+        const columns = this.columnize(Object.keys(Array.isArray(values) ? values[0] : values));
 
         let sql = `merge ${this.wrapTable(query.getRegistry().from)} `;
 
@@ -340,13 +349,6 @@ class SqlServerGrammar extends Grammar {
      */
     public compileSavepointRollBack(name: string): string {
         return `ROLLBACK TRANSACTION ${name}`;
-    }
-
-    /**
-     * Get the format for database stored dates.
-     */
-    public getDateFormat(): string {
-        return 'Y-m-d H:i:s.v';
     }
 
     /**

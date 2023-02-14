@@ -1,6 +1,8 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereNull, whereFulltext } from '../../types/query/registry';
+import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
+import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
 class MySqlGrammar extends Grammar {
@@ -36,6 +38,20 @@ class MySqlGrammar extends Grammar {
         const expanded = where.options.expanded && where.options.mode !== 'boolean' ? ' with query expansion' : '';
 
         return `match (${columns}) against (${value}${mode}${expanded})`;
+    }
+
+    /**
+     * Compile the index hints for the query.
+     */
+    protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
+        switch (indexHint.type) {
+            case 'hint':
+                return `use index (${indexHint.index}`;
+            case 'force':
+                return `force index (${indexHint.index})`;
+            default:
+                return `ignore index (${indexHint.index})`;
+        }
     }
 
     /**
@@ -146,7 +162,7 @@ class MySqlGrammar extends Grammar {
                 ? update.map(item => {
                       return useUpsertAlias
                           ? `${this.wrap(item)} = ${this.wrap('laravel_upsert_alias')}.${this.wrap(item)}`
-                          : ``;
+                          : `${this.wrap(item)} = values(${this.wrap(item)})`;
                   })
                 : Object.keys(update).map(key => {
                       return `${this.wrap(key)} = ${this.parameter(update[key])}`;
@@ -160,7 +176,13 @@ class MySqlGrammar extends Grammar {
      * Prepare a JSON column being updated using the JSON_SET function.
      */
     protected compileJsonUpdateColumn(key: Stringable, value: Binding): string {
-        value = typeof value === 'boolean' ? (value ? 'true' : 'false') : this.parameter(value);
+        if (typeof value === 'boolean') {
+            value = value ? 'true' : 'false';
+        } else if (this.mustBeJsonStringified(value)) {
+            value = 'cast(? as json)';
+        } else {
+            value = this.parameter(value);
+        }
 
         const [field, path] = this.wrapJsonFieldAndPath(key);
 
@@ -195,7 +217,9 @@ class MySqlGrammar extends Grammar {
             .reduce(
                 (acc: RowValues, key) => ({
                     ...acc,
-                    [key]: values[key]
+                    [key]: this.mustBeJsonStringified(values[key])
+                        ? JSON.stringify(values[key], stringifyReplacer(this))
+                        : values[key]
                 }),
                 {}
             );

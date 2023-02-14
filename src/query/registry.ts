@@ -36,6 +36,7 @@ export default function createRegistry(): registry {
         columns: null,
         distinct: false,
         from: '',
+        indexHint: null,
         joins: [],
         wheres: [],
         groups: [],
@@ -177,6 +178,10 @@ function cloneBase(
 
     if (!propertiesToExclude.includes('from')) {
         cloned.from = registry.from;
+    }
+
+    if (!propertiesToExclude.includes('indexHint')) {
+        cloned.indexHint = registry.indexHint;
     }
 
     if (!propertiesToExclude.includes('joins')) {

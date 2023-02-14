@@ -1034,7 +1034,6 @@ describe('Query Builder Wheres', () => {
                 ['bar', 2]
             ]);
 
-        console.log(builder.toSql());
         expect('select * from "users" where not ("foo" = ? and "bar" = ?)').toBe(builder.toSql());
         expect([1, 2]).toEqual(builder.getBindings());
 

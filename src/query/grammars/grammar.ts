@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import { TypedBinding } from 'lupdo';
 import BaseGrammar from '../../grammar';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import GrammarI from '../../types/query/grammar';
@@ -37,6 +38,8 @@ import {
 } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
+import ExpressionContract from '../expression-contract';
+import IndexHint from '../index-hint';
 import JoinClause from '../join-clause';
 
 class Grammar extends BaseGrammar implements GrammarI {
@@ -57,6 +60,7 @@ class Grammar extends BaseGrammar implements GrammarI {
         'aggregate',
         'columns',
         'from',
+        'indexHint',
         'joins',
         'wheres',
         'groups',
@@ -124,6 +128,11 @@ class Grammar extends BaseGrammar implements GrammarI {
                 case 'from':
                     if (registry.from !== '') {
                         sqls.push(this.compileFrom(query, registry.from));
+                    }
+                    break;
+                case 'indexHint':
+                    if (registry.indexHint !== null) {
+                        sqls.push(this.compileIndexHint(query, registry.indexHint));
                     }
                     break;
                 case 'joins':
@@ -212,6 +221,13 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected compileFrom(_query: BuilderContract, table: Stringable): string {
         return `from ${this.wrapTable(table)}`;
+    }
+
+    /**
+     * Compile the index hints for the query.
+     */
+    protected compileIndexHint(_query: BuilderContract, _indexHint: IndexHint): string {
+        throw new Error('This database engine does not support index hints.');
     }
 
     /**
@@ -532,7 +548,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Prepare the binding for a "JSON contains" statement.
      */
     public prepareBindingForJsonContains(binding: Binding | Binding[]): Binding | Binding[] {
-        return JSON.stringify(binding, stringifyReplacer);
+        return JSON.stringify(binding, stringifyReplacer(this));
     }
 
     /**
@@ -804,16 +820,14 @@ class Grammar extends BaseGrammar implements GrammarI {
             return `insert into ${table} default values`;
         }
 
-        if (!Array.isArray(values)) {
-            values = [values];
-        }
+        const processed = !Array.isArray(values) ? [values] : values;
 
-        const columns = this.columnize(Object.keys(values[0]));
+        const columns = this.columnize(Object.keys(processed[0]));
 
         // We need to build a list of parameter place-holders of values that are bound
         // to the query. Each insert should have the exact same number of parameter
         // bindings so we will loop through the record and parameterize them all.
-        const parameters = values
+        const parameters = processed
             .map(value => {
                 return `(${this.parameterize(Object.values(value))})`;
             })
@@ -981,21 +995,21 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Determine if the grammar supports savepoints.
      */
-    supportsSavepoints(): boolean {
+    public supportsSavepoints(): boolean {
         return true;
     }
 
     /**
      * Compile the SQL statement to define a savepoint.
      */
-    compileSavepoint(name: string): string {
+    public compileSavepoint(name: string): string {
         return `SAVEPOINT ${name}`;
     }
 
     /**
      * Compile the SQL statement to execute a savepoint rollback.
      */
-    compileSavepointRollBack(name: string): string {
+    public compileSavepointRollBack(name: string): string {
         return `ROLLBACK TO SAVEPOINT ${name}`;
     }
 
@@ -1042,7 +1056,6 @@ class Grammar extends BaseGrammar implements GrammarI {
             .split(delimiter)
             .map(segment => this.wrapJsonPathSegment(segment))
             .join('.');
-
         return `'$${jsonPath.startsWith('[') ? '' : '.'}${jsonPath}'`;
     }
 
@@ -1085,6 +1098,35 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     public getBitwiseOperators(): string[] {
         return this.bitwiseOperators;
+    }
+
+    /**
+     * Parameter must be converted to String with JSON.stringify
+     */
+    protected mustBeJsonStringified(value: any): boolean {
+        return Array.isArray(value) || !this.isPrimitiveBinding(value);
+    }
+
+    /**
+     * Parameter is a Primitive Binding
+     */
+    protected isPrimitiveBinding(value: any): boolean {
+        return (
+            value === null ||
+            Buffer.isBuffer(value) ||
+            ['number', 'boolean', 'bigint', 'string'].includes(typeof value) ||
+            this.isPrimitiveObject(value)
+        );
+    }
+
+    /**
+     * Parameter is a Primitive Object
+     */
+    protected isPrimitiveObject(value: any): boolean {
+        return (
+            typeof value === 'object' &&
+            (value instanceof TypedBinding || value instanceof ExpressionContract || value instanceof Date)
+        );
     }
 }
 

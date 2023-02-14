@@ -300,7 +300,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile an "upsert" statement into SQL.
      */
-    public compileUpsertcompileUpsert(
+    public compileUpsert(
         query: BuilderContract,
         values: RowValues[] | RowValues,
         uniqueBy: string[],
@@ -329,7 +329,7 @@ class PostgresGrammar extends Grammar {
     protected compileJsonUpdateColumn(key: string, value: Binding): string {
         const segments = key.split('->');
         const field = this.wrap(segments.shift() as string);
-        const path = `{${this.wrapJsonPathAttributes(segments, '"').join(',')}}`;
+        const path = `'{${this.wrapJsonPathAttributes(segments, '"').join(',')}}'`;
 
         return `${field} = jsonb_set(${field}::jsonb, ${path}, ${this.parameter(value)})`;
     }
@@ -413,7 +413,7 @@ class PostgresGrammar extends Grammar {
     public prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): Binding[] {
         const valuesOfValues = Object.keys(values).map(key => {
             return this.isJsonSelector(key) && !this.isExpression(values[key])
-                ? JSON.stringify(values[key], stringifyReplacer)
+                ? JSON.stringify(values[key], stringifyReplacer(this))
                 : values[key];
         });
 
@@ -446,8 +446,9 @@ class PostgresGrammar extends Grammar {
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
         const valuesOfValues = Object.keys(values).map(key => {
-            return this.isJsonSelector(key) && !this.isExpression(values[key])
-                ? JSON.stringify(values[key], stringifyReplacer)
+            return this.mustBeJsonStringified(values[key]) ||
+                (this.isJsonSelector(key) && !this.isExpression(values[key]))
+                ? JSON.stringify(values[key], stringifyReplacer(this))
                 : values[key];
         });
 
@@ -512,14 +513,11 @@ class PostgresGrammar extends Grammar {
 
     /**
      * Wrap the given JSON selector for boolean values.
-     *
-     * @param  string  $value
-     * @return string
      */
     protected wrapJsonBooleanSelector(value: Stringable): string {
-        const selector = this.wrapJsonSelector(value).replace(/'->>'/g, '->');
+        const selector = this.wrapJsonSelector(value).replace(/->>/g, '->');
 
-        return `(${selector}::jsonb)`;
+        return `(${selector})::jsonb`;
     }
 
     /**

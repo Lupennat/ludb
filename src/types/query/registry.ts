@@ -1,5 +1,6 @@
 import BuilderContract from '../../query/builder-contract';
 import ExpressionContract from '../../query/expression-contract';
+import IndexHint from '../../query/index-hint';
 import {
     BetweenColumnsTuple,
     BetweenTuple,
@@ -230,6 +231,11 @@ export default interface Registry {
      * The table which the query is targeting.
      */
     from: Stringable;
+
+    /**
+     * The index hint for the query.
+     */
+    indexHint: IndexHint | null;
 
     /**
      * The table joins for the query.

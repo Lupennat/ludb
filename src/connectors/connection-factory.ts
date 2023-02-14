@@ -1,3 +1,4 @@
+import deepmerge from 'deepmerge';
 import { Pdo } from 'lupdo';
 import Connection from '../connections/connection';
 import MySqlConnection from '../connections/mysql-connection';
@@ -99,7 +100,7 @@ class ConnectionFactory {
         config: PreparedConnectionConfig,
         merge?: DriverConnectionOptions
     ): DriverFLattedConfig {
-        const merged = Object.assign(config, merge ?? {});
+        const merged = deepmerge<PreparedConnectionConfig>(config, merge ?? {});
         delete merged.read;
         delete merged.write;
 

@@ -54,11 +54,6 @@ export default interface BaseGrammarI {
     getValue<T>(expressionOrValue: T): string | bigint | number | T;
 
     /**
-     * Get the format for database stored dates.
-     */
-    getDateFormat(): string;
-
-    /**
      * Get the grammar's table prefix.
      */
     getTablePrefix(): string;

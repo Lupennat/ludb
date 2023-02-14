@@ -1,3 +1,4 @@
+import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import 'lupdo-postgres';
 import { PostgresOptions } from 'lupdo-postgres';
@@ -38,7 +39,7 @@ class PostgresConnector extends Connector implements ConnectorI {
             ssl = undefined;
         }
 
-        const options: PostgresOptions = Object.assign(
+        const options: PostgresOptions = deepmerge(
             {
                 user: config.username,
                 database: config.database,

@@ -1,8 +1,17 @@
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
+import GrammarI from './types/query/grammar';
 
-export function stringifyReplacer(_key: string, value: any): any {
-    return typeof value === 'bigint' ? value.toString() : value;
+export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) => any {
+    return (_key: string, value: any): any => {
+        if (typeof value === 'bigint') {
+            return value.toString();
+        }
+        if (typeof value === 'object' && value instanceof ExpressionContract) {
+            return value.getValue(grammar);
+        }
+        return value;
+    };
 }
 
 function getMessagesFromError(error: any): string[] {

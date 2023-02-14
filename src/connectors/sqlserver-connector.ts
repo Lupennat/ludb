@@ -1,3 +1,4 @@
+import deepmerge from 'deepmerge';
 import { Pdo } from 'lupdo';
 import { MssqlOptions } from 'lupdo-mssql';
 import { SqlServerFlattedConfig } from '../types/config';
@@ -40,7 +41,7 @@ class SqlServerConnector extends Connector implements ConnectorI {
 
         return this.createConnection<MssqlOptions>(
             'mssql',
-            Object.assign(options, config.lupdo_options ?? {}),
+            deepmerge(options, config.lupdo_options ?? {}),
             poolOptions,
             attributes
         );

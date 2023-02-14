@@ -33,7 +33,7 @@ export type BetweenTuple = [Stringable | number | bigint | Date, Stringable | nu
 export type BetweenColumnsTuple = [Stringable, Stringable];
 
 export interface RowValues {
-    [key: string]: Binding;
+    [key: string]: any;
 }
 
 export interface NumericValues {

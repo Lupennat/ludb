@@ -169,6 +169,7 @@ class Connection implements DriverConnectionI {
             if (this.queryGrammar.isExpression(binding)) {
                 return this.queryGrammar.getValue(binding).toString();
             }
+
             return binding;
         });
     }

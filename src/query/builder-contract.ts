@@ -1,3 +1,4 @@
+import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import Collection from '../collections/collection';
 import LazyCollection from '../collections/lazy-collection';
 import { ConnectionSessionI } from '../types/connection';
@@ -14,7 +15,6 @@ import {
     NotNullableBinding,
     NumericValues,
     OrderDirection,
-    QueryAble,
     QueryAbleCallback,
     RowValues,
     SelectColumn,
@@ -86,6 +86,21 @@ abstract class BuilderContract {
      * Set the table which the query is targeting.
      */
     public abstract from(table: SubQuery<this>, as?: string): this;
+
+    /**
+     * Add an index hint to suggest a query index.
+     */
+    public abstract useIndex(index: string): this;
+
+    /**
+     * Add an index hint to force a query index.
+     */
+    public abstract forceIndex(index: string): this;
+
+    /**
+     * Add an index hint to ignore a query index.
+     */
+    public abstract ignoreIndex(index: string): this;
 
     /**
      * Add a join clause to the query.
@@ -1431,7 +1446,7 @@ abstract class BuilderContract {
     /**
      * Add a raw "order by" clause to the query.
      */
-    public abstract orderByRaw(sql: string, bindings?: Binding[]): this;
+    public abstract orderByRaw(sql: string, bindings?: Binding[] | Binding): this;
 
     /**
      * Alias to set the "offset" value of the query.
@@ -1576,7 +1591,7 @@ abstract class BuilderContract {
     /**
      * Execute the query and get the first result.
      */
-    public abstract first<T>(columns?: Stringable | Stringable[]): Promise<T | null>;
+    public abstract first<T = Dictionary>(columns?: Stringable | Stringable[]): Promise<T | null>;
 
     /**
      * Execute the query and get the first result if it's the sole matching record.
@@ -1586,15 +1601,24 @@ abstract class BuilderContract {
     /**
      * Execute a query for a single record by ID.
      */
-    public abstract find<T>(id: number | string | bigint, columns?: Stringable | Stringable[]): Promise<T | null>;
+    public abstract find<T = Dictionary>(
+        id: number | string | bigint,
+        columns?: Stringable | Stringable[]
+    ): Promise<T | null>;
 
     /**
      * Execute a query for a single record by ID or call a callback.
      */
-    public abstract findOr<T>(id: number | string | bigint): Promise<T | null>;
-    public abstract findOr<T, U>(id: number | string | bigint, callback: () => U): Promise<T | U>;
-    public abstract findOr<T, U>(id: number | string | bigint, columns: Stringable | Stringable[]): Promise<T | U>;
-    public abstract findOr<T, U>(
+    public abstract findOr<T = Dictionary>(id: number | string | bigint): Promise<T | null>;
+    public abstract findOr<T = Dictionary, U = unknown>(
+        id: number | string | bigint,
+        callback: () => U
+    ): Promise<T | U>;
+    public abstract findOr<T = Dictionary, U = unknown>(
+        id: number | string | bigint,
+        columns: Stringable | Stringable[]
+    ): Promise<T | U>;
+    public abstract findOr<T = Dictionary, U = unknown>(
         id: number | string | bigint,
         columnsCallback?: Stringable | Stringable[] | (() => U),
         callback?: (() => U) | null
@@ -1618,7 +1642,7 @@ abstract class BuilderContract {
     /**
      * Execute the query as a "select" statement.
      */
-    public abstract get<T>(columns?: Stringable | Stringable[]): Promise<Collection<T>>;
+    public abstract get<T = Dictionary>(columns?: Stringable | Stringable[]): Promise<Collection<T>>;
 
     /**
      * Get a lazy collection for the given query.
@@ -1721,7 +1745,7 @@ abstract class BuilderContract {
     /**
      * Insert new records into the table using a subquery.
      */
-    public abstract insertUsing(columns: Stringable[], query: QueryAble): Promise<number>;
+    public abstract insertUsing(columns: Stringable[], query: SubQuery<this>): Promise<number>;
 
     /**
      * Update records in the database.

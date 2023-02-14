@@ -1,3 +1,4 @@
+import deepmerge from 'deepmerge';
 import { ATTR_CASE, ATTR_DEBUG, ATTR_NULLS, CASE_NATURAL, DEBUG_DISABLED, NULL_NATURAL, Pdo } from 'lupdo';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
@@ -45,7 +46,7 @@ class Connector {
     protected getAttributes<T extends DriverFLattedConfig>(config: T): PdoAttributes {
         const attributes = config.attributes ?? {};
 
-        return Object.assign({}, this.attributes, attributes);
+        return deepmerge(this.attributes, attributes);
     }
 
     /**
@@ -54,7 +55,7 @@ class Connector {
     protected getPoolOptions<T extends DriverFLattedConfig>(config: T): PoolOptions {
         const poolOptions = config.pool ?? {};
 
-        return Object.assign({}, this.poolOptions, poolOptions);
+        return deepmerge(this.poolOptions, poolOptions);
     }
 
     /**

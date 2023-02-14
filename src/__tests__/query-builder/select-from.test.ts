@@ -1,6 +1,5 @@
-import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import Raw from '../../query/expression';
-import { getBuilder, getMySqlBuilder, getMySqlBuilderWithProcessor, getPostgresBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getMySqlBuilderWithProcessor, getPostgresBuilder, pdo } from '../fixtures/mocked';
 describe('Query Builder Select-From', () => {
     afterAll(async () => {
         await pdo.disconnect();
@@ -16,15 +15,15 @@ describe('Query Builder Select-From', () => {
         const builder = getBuilder();
         const spyProcess = jest.spyOn(builder.getProcessor(), 'processSelect');
         jest.spyOn(builder.getConnection(), 'select')
-            .mockImplementationOnce(async <T = Dictionary>(sql: string): Promise<T[]> => {
+            .mockImplementationOnce(async sql => {
                 expect('select * from "users"').toBe(sql);
                 return [];
             })
-            .mockImplementationOnce(async <T = Dictionary>(sql: string): Promise<T[]> => {
+            .mockImplementationOnce(async sql => {
                 expect('select "foo", "bar" from "users"').toBe(sql);
                 return [];
             })
-            .mockImplementationOnce(async <T = Dictionary>(sql: string): Promise<T[]> => {
+            .mockImplementationOnce(async sql => {
                 expect('select "baz" from "users"').toBe(sql);
                 return [];
             });
@@ -58,27 +57,9 @@ describe('Query Builder Select-From', () => {
         expect(spyConnection).toBeCalledWith('select * from `users`', [], true);
     });
 
-    it('Works Basic Table Wrapping Protects Quotation Marks', () => {
-        const builder = getBuilder();
-        builder.select('*').from('some"table');
-        expect(builder.toSql()).toBe('select * from "some""table"');
-    });
-
-    it('Works Alias Wrapping As Whole Constant', () => {
-        const builder = getBuilder();
-        builder.select('x.y as foo.bar').from('baz');
-        expect(builder.toSql()).toBe('select "x"."y" as "foo.bar" from "baz"');
-    });
-
-    it('Works Alias Wrapping With Spaces In Database Name', () => {
-        const builder = getBuilder();
-        builder.select('w x.y.z as foo.bar').from('baz');
-        expect(builder.toSql()).toBe('select "w x"."y"."z" as "foo.bar" from "baz"');
-    });
-
     it('Works Adding Selects', () => {
         const builder = getBuilder();
-        builder.select('foo').addSelect('bar').addSelect(['baz', 'boom']).from('users');
+        builder.select('foo').addSelect('bar').addSelect(['baz', 'boom']).addSelect('bar').from('users');
         expect(builder.toSql()).toBe('select "foo", "bar", "baz", "boom" from "users"');
     });
 
@@ -124,18 +105,6 @@ describe('Query Builder Select-From', () => {
         expect(builder.toSql()).toBe(
             'select * from "prefix_services" inner join "prefix_translations" as "prefix_t" on "prefix_t"."item_id" = "prefix_services"."id"'
         );
-    });
-
-    it('Works Basic Table Wrapping', () => {
-        const builder = getBuilder();
-        builder.select('*').from('public.users');
-        expect(builder.toSql()).toBe('select * from "public"."users"');
-    });
-
-    it('Works Mysql Wrapping Protectets Quotation Marks', () => {
-        const builder = getMySqlBuilder();
-        builder.select('*').from('some`table');
-        expect(builder.toSql()).toBe('select * from `some``table`');
     });
 
     it('Works Full Sub Selects', () => {

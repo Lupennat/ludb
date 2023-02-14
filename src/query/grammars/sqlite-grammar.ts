@@ -1,8 +1,10 @@
+import deepmerge from 'deepmerge';
 import set from 'set-value';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereDateTime } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
+import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
 class SQLiteGrammar extends Grammar {
@@ -85,6 +87,13 @@ class SQLiteGrammar extends Grammar {
     }
 
     /**
+     * Compile the index hints for the query.
+     */
+    protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
+        return indexHint.type === 'force' ? `indexed by ${indexHint.index}` : '';
+    }
+
+    /**
      * Compile a "JSON length" statement into SQL.
      */
     protected compileJsonLength(column: Stringable, operator: string, value: string): string {
@@ -126,26 +135,14 @@ class SQLiteGrammar extends Grammar {
      * Compile the columns for an update statement.
      */
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
-        const jsonGroups = this.groupJsonColumnsForUpdate(values);
+        const [groupKeys, patchedValues] = this.groupJsonColumnsForUpdate(values);
 
-        values = Object.assign(
-            Object.keys(values)
-                .filter(key => !this.isJsonSelector(key))
-                .reduce(
-                    (acc: RowValues, key) => ({
-                        ...acc,
-                        [key]: values[key]
-                    }),
-                    {}
-                ),
-            jsonGroups
-        );
-
-        return Object.keys(values)
+        return Object.keys(patchedValues)
             .map(key => {
                 const column = key.split('.').pop() as string;
-                const value =
-                    key in jsonGroups ? this.compileJsonPatch(column, values[key]) : this.parameter(values[key]);
+                const value = groupKeys.includes(key)
+                    ? this.compileJsonPatch(column, patchedValues[key])
+                    : this.parameter(patchedValues[key]);
 
                 return `${this.wrap(column)} = ${value}`;
             })
@@ -181,34 +178,43 @@ class SQLiteGrammar extends Grammar {
     /**
      * Group the nested JSON columns.
      */
-    protected groupJsonColumnsForUpdate(values: RowValues): RowValues {
+    protected groupJsonColumnsForUpdate(values: RowValues): [string[], RowValues] {
         const groups: RowValues = {};
+        const groupKeys: RowValues = {};
 
         for (const key in values) {
-            const exploded = key.split('.');
-            exploded.shift();
-            const newKey = exploded.join('.').replace(/->/g, '.');
-            let value: Binding | Binding[] = values[key];
-            if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
-                try {
-                    value = JSON.parse(value);
-                } catch (e) {}
+            let newKey = key;
+            if (this.isJsonSelector(key)) {
+                const exploded = key.split('.');
+                if (exploded.length > 1) {
+                    exploded.shift();
+                }
+                newKey = exploded.join('.').replace(/->/g, '.');
+                set(groupKeys, newKey, values[key]);
+                continue;
             }
-            set(groups, newKey, value);
+
+            set(groups, newKey, values[key]);
         }
 
-        return Object.keys(groups).reduce((carry, key) => {
-            const value = groups[key];
-            carry[key] = typeof value === 'object' ? JSON.stringify(value, stringifyReplacer) : value;
-            return carry;
-        }, {} as RowValues);
+        for (const key in groupKeys) {
+            let value = groupKeys[key];
+            if (key in groups) {
+                value = deepmerge(value, groups[key]);
+                delete groups[key];
+            }
+
+            set(groups, key, value);
+        }
+
+        return [Object.keys(groupKeys), groups];
     }
 
     /**
      * Compile a "JSON" patch statement into SQL.
      */
     protected compileJsonPatch(column: string, value: Binding | Binding[]): string {
-        return `json_patch(ifnull(${this.wrap(column)}), json('{}')), json(${this.parameter(value)})`;
+        return `json_patch(ifnull(${this.wrap(column)}, json('{}')), json(${this.parameter(value)}))`;
     }
 
     /**
@@ -230,26 +236,18 @@ class SQLiteGrammar extends Grammar {
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
-        const jsonGroups = this.groupJsonColumnsForUpdate(values);
-
-        values = Object.assign(
-            Object.keys(values)
-                .filter(key => !this.isJsonSelector(key))
-                .reduce(
-                    (acc: RowValues, key) => ({
-                        ...acc,
-                        [key]: values[key]
-                    }),
-                    {}
-                ),
-            jsonGroups
-        );
+        const [, patchedValues] = this.groupJsonColumnsForUpdate(values);
+        const valuesOfValues = Object.keys(patchedValues).map(key => {
+            return this.mustBeJsonStringified(patchedValues[key])
+                ? JSON.stringify(patchedValues[key], stringifyReplacer(this))
+                : patchedValues[key];
+        });
 
         const cleanBindings = Object.keys(bindings)
             .filter(key => !['select'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
 
-        return Object.values(values).concat(cleanBindings.flat(Infinity) as Binding[]);
+        return Object.values(valuesOfValues).concat(cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**

@@ -1,5 +1,6 @@
+import Raw from '../../query/expression';
 import BuilderI from '../../types/query/builder';
-import { getBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
 describe('Query Builder Utilities', () => {
     afterAll(async () => {
@@ -97,11 +98,169 @@ describe('Query Builder Utilities', () => {
     });
 
     it('Works Tap Callback', () => {
-        const callback = (query: BuilderI): void => {
-            query.where('id', '=', 1);
-        };
         const builder = getBuilder();
-        builder.select('*').from('users').tap(callback).where('email', 'foo');
+        builder
+            .select('*')
+            .from('users')
+            .tap((query): void => {
+                query.where('id', '=', 1);
+            })
+            .where('email', 'foo');
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? and "email" = ?');
+    });
+
+    it('Works Subqueries Bindings', () => {
+        let builder = getBuilder();
+        const second = getBuilder().select('*').from('users').orderByRaw('id = ?', 2);
+        const third = getBuilder().select('*').from('users').where('id', 3).groupBy('id').having('id', '!=', 4);
+        builder.groupBy('a').having('a', '=', 1).union(second).union(third);
+        expect([1, 2, 3, 4]).toEqual(builder.getBindings());
+
+        builder = getBuilder()
+            .select('*')
+            .from('users')
+            .where('email', '=', query => {
+                query
+                    .select(new Raw('max(id)'))
+                    .from('users')
+                    .where('email', '=', 'bar')
+                    .orderByRaw('email like ?', '%.com')
+                    .groupBy('id')
+                    .having('id', '=', 4);
+            })
+            .orWhere('id', '=', 'foo')
+            .groupBy('id')
+            .having('id', '=', 5);
+        expect(['bar', 4, '%.com', 'foo', 5]).toEqual(builder.getBindings());
+    });
+
+    it('Works Preserve Adds Closure To Array', () => {
+        const builder = getBuilder();
+        const callback = function (): void {};
+        builder.beforeQuery(callback);
+        expect(builder.getRegistry().beforeQueryCallbacks.length).toBe(1);
+        expect(builder.getRegistry().beforeQueryCallbacks[0]).toEqual(callback);
+    });
+
+    it('Works Apply Preserve Cleans Array', () => {
+        const builder = getBuilder();
+        builder.beforeQuery(function () {});
+        expect(builder.getRegistry().beforeQueryCallbacks.length).toBe(1);
+        builder.applyBeforeQueryCallbacks();
+        expect(builder.getRegistry().beforeQueryCallbacks.length).toBe(0);
+    });
+
+    it('Works Preserved Are Applied By To Sql', () => {
+        const builder = getBuilder();
+        builder.beforeQuery(builder => {
+            builder.where('foo', 'bar');
+        });
+        expect('select * where "foo" = ?').toBe(builder.toSql());
+        expect(['bar']).toEqual(builder.getBindings());
+    });
+
+    it('Works Preserved Are Applied By Insert', async () => {
+        const builder = getBuilder();
+        const spiedInsert = jest.spyOn(builder.getConnection(), 'insert');
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        await builder.insert({ email: 'foo' });
+        expect(spiedInsert).toBeCalledTimes(1);
+        expect(spiedInsert).toBeCalledWith('insert into "users" ("email") values (?)', ['foo']);
+    });
+
+    it('Works Preserved Are Applied By Insert Get Id', async () => {
+        const builder = getBuilder();
+        const spiedInsert = jest.spyOn(builder.getConnection(), 'insertGetId');
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        await builder.insertGetId({ email: 'foo' }, 'id');
+        expect(spiedInsert).toBeCalledTimes(1);
+        expect(spiedInsert).toBeCalledWith('insert into "users" ("email") values (?)', ['foo'], 'id');
+    });
+
+    it('Works Preserved Are Applied By Insert Using', async () => {
+        const builder = getBuilder();
+        const spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        builder.insertUsing([], getBuilder());
+        expect(spiedAffecting).toBeCalledTimes(1);
+        expect(spiedAffecting).toBeCalledWith('insert into "users" () select *', []);
+    });
+
+    it('Works Preserved Are Applied By Upsert', async () => {
+        let builder = getMySqlBuilder();
+        let spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
+        jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(() => false);
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        await builder.upsert({ email: 'foo' }, 'id');
+        expect(spiedAffecting).toBeCalledTimes(1);
+        expect(spiedAffecting).toBeCalledWith(
+            'insert into `users` (`email`) values (?) on duplicate key update `email` = values(`email`)',
+            ['foo']
+        );
+
+        builder = getMySqlBuilder();
+        spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
+        jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(() => true);
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        await builder.upsert({ email: 'foo' }, 'id');
+        expect(spiedAffecting).toBeCalledTimes(1);
+        expect(spiedAffecting).toBeCalledWith(
+            'insert into `users` (`email`) values (?) as laravel_upsert_alias on duplicate key update `email` = `laravel_upsert_alias`.`email`',
+            ['foo']
+        );
+    });
+
+    it('Works Preserved Are Applied By Update', async () => {
+        const builder = getBuilder();
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        builder.from('users').beforeQuery(function (builder) {
+            builder.where('id', 1);
+        });
+        await builder.update({ email: 'foo' });
+        expect(spiedUpdate).toBeCalledTimes(1);
+        expect(spiedUpdate).toBeCalledWith('update "users" set "email" = ? where "id" = ?', ['foo', 1]);
+    });
+
+    it('Works Preserved Are Applied By Delete', async () => {
+        const builder = getBuilder();
+        const spiedDelete = jest.spyOn(builder.getConnection(), 'delete');
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        await builder.delete();
+        expect(spiedDelete).toBeCalledTimes(1);
+        expect(spiedDelete).toBeCalledWith('delete from "users"', []);
+    });
+
+    it('Works Preserved Are Applied By Truncate', async () => {
+        const builder = getBuilder();
+        const spiedStatement = jest.spyOn(builder.getConnection(), 'statement');
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        await builder.truncate();
+        expect(spiedStatement).toBeCalledTimes(1);
+        expect(spiedStatement).toBeCalledWith('truncate table "users"', []);
+    });
+
+    it('Works Preserved Are Applied By Exists', async () => {
+        const builder = getBuilder();
+        const spiedSelect = jest.spyOn(builder.getConnection(), 'select');
+        builder.beforeQuery(function (builder) {
+            builder.from('users');
+        });
+        await builder.exists();
+        expect(spiedSelect).toBeCalledTimes(1);
+        expect(spiedSelect).toBeCalledWith('select exists(select * from "users") as "exists"', [], true);
     });
 });

@@ -34,6 +34,7 @@ import Registry, { BindingTypes, Order, Where } from '../types/query/registry';
 import { raw } from '../utils';
 import BuilderContract from './builder-contract';
 import ExpressionContract from './expression-contract';
+import IndexHint from './index-hint';
 import { default as createRegistry } from './registry';
 
 abstract class BaseBuilder extends BuilderContract {
@@ -246,6 +247,10 @@ abstract class BaseBuilder extends BuilderContract {
                     this.registry.columns = [];
                 }
 
+                if (this.registry.columns.includes(column)) {
+                    continue;
+                }
+
                 this.registry.columns.push(column);
             } else {
                 for (const key in column) {
@@ -281,6 +286,33 @@ abstract class BaseBuilder extends BuilderContract {
         }
 
         this.registry.from = as ? `${this.getGrammar().getValue(table).toString()} as ${as}` : table;
+
+        return this;
+    }
+
+    /**
+     * Add an index hint to suggest a query index.
+     */
+    public useIndex(index: string): this {
+        this.registry.indexHint = new IndexHint('hint', index);
+
+        return this;
+    }
+
+    /**
+     * Add an index hint to force a query index.
+     */
+    public forceIndex(index: string): this {
+        this.registry.indexHint = new IndexHint('force', index);
+
+        return this;
+    }
+
+    /**
+     * Add an index hint to ignore a query index.
+     */
+    public ignoreIndex(index: string): this {
+        this.registry.indexHint = new IndexHint('ignore', index);
 
         return this;
     }
@@ -921,7 +953,9 @@ abstract class BaseBuilder extends BuilderContract {
         // value to the query to ensure this is properly handled by the query.
         if (columnToString.includes('->') && typeof val === 'boolean') {
             val = this.raw(val ? 'true' : 'false');
-            type = 'JsonBoolean';
+            if (typeof column === 'string') {
+                type = 'JsonBoolean';
+            }
         }
 
         if (this.isBitwiseOperator(operator)) {
@@ -2793,7 +2827,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a raw "order by" clause to the query.
      */
-    public orderByRaw(sql: string, bindings: Binding[] = []): this {
+    public orderByRaw(sql: string, bindings: Binding[] | Binding = []): this {
         const type = 'Raw';
 
         this.registry[this.registry.unions.length > 0 ? 'unionOrders' : 'orders'].push({ type, sql });
@@ -3240,15 +3274,15 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Execute the query and get the first result.
      */
-    public async first<T>(columns: Stringable | Stringable[] = ['*']): Promise<T | null> {
-        return (await this.take(1).get<T>(columns)).first();
+    public async first<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<T | null> {
+        return (await this.limit(1).get<T>(columns)).first();
     }
 
     /**
      * Execute the query and get the first result if it's the sole matching record.
      */
     public async sole<T>(columns: Stringable | Stringable[] = ['*']): Promise<T> {
-        const result = await this.take(2).get<T>(columns);
+        const result = await this.limit(2).get<T>(columns);
 
         const count = result.count();
 
@@ -3266,22 +3300,28 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Execute a query for a single record by ID.
      */
-    public async find<T>(id: string | number | bigint, columns: Stringable | Stringable[] = ['*']): Promise<T | null> {
+    public async find<T = Dictionary>(
+        id: string | number | bigint,
+        columns: Stringable | Stringable[] = ['*']
+    ): Promise<T | null> {
         return this.where('id', '=', id).first<T>(columns);
     }
 
     /**
      * Execute a query for a single record by ID or call a callback.
      */
-    public async findOr<T>(id: number | string | bigint): Promise<T | null>;
-    public async findOr<T, U>(id: number | string | bigint, callback: () => U): Promise<T | U>;
-    public async findOr<T, U>(id: number | string | bigint, columns: Stringable | Stringable[]): Promise<T | U>;
-    public async findOr<T, U>(
+    public async findOr<T = Dictionary>(id: number | string | bigint): Promise<T | null>;
+    public async findOr<T = Dictionary, U = unknown>(id: number | string | bigint, callback: () => U): Promise<T | U>;
+    public async findOr<T = Dictionary, U = unknown>(
+        id: number | string | bigint,
+        columns: Stringable | Stringable[]
+    ): Promise<T | U>;
+    public async findOr<T = Dictionary, U = unknown>(
         id: number | string | bigint,
         columnsCallback?: Stringable | Stringable[] | (() => U),
         callback?: (() => U) | null
     ): Promise<T | U | null>;
-    public async findOr<T, U>(
+    public async findOr<T = Dictionary, U = unknown>(
         id: string | number | bigint,
         columnsCallback: Stringable | Stringable[] | (() => U) = ['*'],
         callback: (() => U) | null = null
@@ -3330,7 +3370,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Execute the query as a "select" statement.
      */
-    public async get<T>(columns: Stringable | Stringable[] = ['*']): Promise<Collection<T>> {
+    public async get<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<Collection<T>> {
         return new Collection<T>(
             await this.onceWithColumns<T>(Array.isArray(columns) ? columns : [columns], async () => {
                 return this.getProcessor().processSelect<T>(this, await this.runSelect<T>());
@@ -3454,7 +3494,7 @@ abstract class BaseBuilder extends BuilderContract {
      * Determine if no rows exist for the current query.
      */
     public async doesntExist(): Promise<boolean> {
-        return !this.exists();
+        return !(await this.exists());
     }
 
     /**
@@ -3608,26 +3648,22 @@ abstract class BaseBuilder extends BuilderContract {
             return true;
         }
 
-        if (!Array.isArray(values)) {
-            values = [values];
-        }
-
-        // Here, we will sort the insert keys for every record so that each insert is
-        // in the same order for the record. We need to make sure this is the case
-        // so there are not any errors or problems when inserting these records.
-        else {
-            values = values.map(value => {
-                return Object.keys(value)
-                    .sort()
-                    .reduce(
-                        (acc: RowValues, key) => ({
-                            ...acc,
-                            [key]: value[key]
-                        }),
-                        {}
-                    );
-            });
-        }
+        const processed = !Array.isArray(values)
+            ? [values]
+            : // Here, we will sort the insert keys for every record so that each insert is
+              // in the same order for the record. We need to make sure this is the case
+              // so there are not any errors or problems when inserting these records.
+              values.map(value => {
+                  return Object.keys(value)
+                      .sort()
+                      .reduce(
+                          (acc: RowValues, key) => ({
+                              ...acc,
+                              [key]: value[key]
+                          }),
+                          {}
+                      );
+              });
 
         this.applyBeforeQueryCallbacks();
 
@@ -3635,8 +3671,8 @@ abstract class BaseBuilder extends BuilderContract {
         // the results. We will need to also flatten these bindings before running
         // the query so they are all in one huge, flattened array for execution.
         return this.getConnection().insert(
-            this.getGrammar().compileInsert(this, values as RowValues[]),
-            this.cleanBindings(values.map(value => Object.values(value)).flat(1))
+            this.getGrammar().compileInsert(this, processed),
+            this.cleanBindings(processed.map(value => Object.values(value)).flat(1))
         );
     }
 
@@ -3648,27 +3684,25 @@ abstract class BaseBuilder extends BuilderContract {
             return 0;
         }
 
-        if (!Array.isArray(values)) {
-            values = [values];
-        } else {
-            values = values.map(value => {
-                return Object.keys(value)
-                    .sort()
-                    .reduce(
-                        (acc: RowValues, key) => ({
-                            ...acc,
-                            [key]: value[key]
-                        }),
-                        {}
-                    );
-            });
-        }
+        const processed = !Array.isArray(values)
+            ? [values]
+            : values.map(value => {
+                  return Object.keys(value)
+                      .sort()
+                      .reduce(
+                          (acc: RowValues, key) => ({
+                              ...acc,
+                              [key]: value[key]
+                          }),
+                          {}
+                      );
+              });
 
         this.applyBeforeQueryCallbacks();
 
         return await this.getConnection().affectingStatement(
-            this.getGrammar().compileInsertOrIgnore(this, values as RowValues[]),
-            this.cleanBindings(values.map(value => Object.values(value)).flat(1))
+            this.getGrammar().compileInsertOrIgnore(this, processed),
+            this.cleanBindings(processed.map(value => Object.values(value)).flat(1))
         );
     }
 
@@ -3691,7 +3725,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Insert new records into the table using a subquery.
      */
-    public async insertUsing(columns: Stringable[], query: QueryAble): Promise<number> {
+    public async insertUsing(columns: Stringable[], query: SubQuery<this>): Promise<number> {
         this.applyBeforeQueryCallbacks();
 
         const [sql, bindings] = this.createSub(query);
@@ -3735,14 +3769,14 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public async updateOrInsert(attributes: RowValues, values: RowValues = {}): Promise<boolean> {
         if (!(await this.where(attributes).exists())) {
-            return this.insert(Object.assign(attributes, values));
+            return this.insert(deepmerge(attributes, values));
         }
 
-        if (values.length === 0) {
+        if (Object.keys(values).length === 0) {
             return true;
         }
 
-        return Boolean(this.limit(1).update(values));
+        return Boolean(await this.limit(1).update(values));
     }
 
     /**
@@ -3762,37 +3796,35 @@ abstract class BaseBuilder extends BuilderContract {
             return Number(this.insert(values));
         }
 
-        if (!Array.isArray(values)) {
-            values = [values];
-        } else {
-            values = values.map(value => {
-                return Object.keys(value)
-                    .sort()
-                    .reduce(
-                        (acc: RowValues, key) => ({
-                            ...acc,
-                            [key]: value[key]
-                        }),
-                        {}
-                    );
-            });
-        }
+        const processed = !Array.isArray(values)
+            ? [values]
+            : values.map(value => {
+                  return Object.keys(value)
+                      .sort()
+                      .reduce(
+                          (acc: RowValues, key) => ({
+                              ...acc,
+                              [key]: value[key]
+                          }),
+                          {}
+                      );
+              });
 
         if (update === null) {
-            update = Object.keys(values[0]);
+            update = Object.keys(processed[0]);
         }
 
         this.applyBeforeQueryCallbacks();
 
         const bindings = this.cleanBindings(
-            values
+            processed
                 .map(value => Object.values(value))
                 .flat(1)
                 .concat(Array.isArray(update) ? [] : Object.values(update))
         );
 
         return this.getConnection().affectingStatement(
-            this.getGrammar().compileUpsert(this, values, Array.isArray(uniqueBy) ? uniqueBy : [uniqueBy], update),
+            this.getGrammar().compileUpsert(this, processed, Array.isArray(uniqueBy) ? uniqueBy : [uniqueBy], update),
             bindings
         );
     }
@@ -3822,7 +3854,7 @@ abstract class BaseBuilder extends BuilderContract {
             processed[column] = this.raw(`${this.getGrammar().wrap(column)} + ${amount.toString()}`);
         }
 
-        return this.update(Object.assign(processed, extra));
+        return this.update(deepmerge(processed, extra));
     }
 
     /**
@@ -3850,7 +3882,7 @@ abstract class BaseBuilder extends BuilderContract {
             processed[column] = this.raw(`${this.getGrammar().wrap(column)} - ${amount.toString()}`);
         }
 
-        return this.update(Object.assign(processed, extra));
+        return this.update(deepmerge(processed, extra));
     }
 
     /**
@@ -4138,6 +4170,10 @@ abstract class BaseBuilder extends BuilderContract {
      */
     protected isWhereObject(parameter: any): parameter is WhereObject {
         return typeof parameter === 'object' && !this.isBuilderContract(parameter) && !this.isExpression(parameter);
+    }
+
+    protected isRowValuesArray(parameter: any): parameter is RowValues[] {
+        return Array.isArray(parameter);
     }
 
     public abstract clone(): BuilderContract;
