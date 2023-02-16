@@ -54,7 +54,7 @@ class SqlServerGrammar extends Grammar {
     public compileSelect(query: BuilderContract): string {
         const registry = query.getRegistry();
         // An order by clause is required for SQL Server offset to function...
-        if (registry.offset !== null && registry.orders.length === 0) {
+        if (registry.offset && registry.orders.length === 0) {
             registry.orders.push({ type: 'Raw', sql: '(SELECT 0)' });
         }
 
@@ -91,11 +91,11 @@ class SqlServerGrammar extends Grammar {
         const lock = query.getRegistry().lock;
 
         if (typeof lock === 'string') {
-            return `${from} ${query.lock}`;
+            return `${from} ${lock}`;
         }
 
         if (lock !== null) {
-            return `${from} with(rowlock, ${lock ? 'updlock,' : ''}holdlock)`;
+            return `${from} with(rowlock,${lock ? 'updlock,' : ''}holdlock)`;
         }
 
         return from;
@@ -113,7 +113,8 @@ class SqlServerGrammar extends Grammar {
      */
     protected compileWhereBitwise(_query: BuilderContract, where: WhereBasic): string {
         const value = this.parameter(where.value);
-        const operator = where.operator.replace(/?/g, '??');
+        const operator = where.operator.replace(/\?/g, '??');
+
         return `(${this.wrap(where.column)} ${operator} ${value}) != 0`;
     }
 
@@ -140,7 +141,7 @@ class SqlServerGrammar extends Grammar {
     protected compileJsonContains(column: Stringable, value: string): string {
         const [field, path] = this.wrapJsonFieldAndPath(column);
 
-        return `${value} in (select [value] from openjson(${field}, ${value}${path}))`;
+        return `${value} in (select [value] from openjson(${field}${path}))`;
     }
 
     /**

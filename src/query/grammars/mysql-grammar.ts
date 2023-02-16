@@ -46,7 +46,7 @@ class MySqlGrammar extends Grammar {
     protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
         switch (indexHint.type) {
             case 'hint':
-                return `use index (${indexHint.index}`;
+                return `use index (${indexHint.index})`;
             case 'force':
                 return `force index (${indexHint.index})`;
             default:

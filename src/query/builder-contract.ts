@@ -67,7 +67,7 @@ abstract class BuilderContract {
     /**
      * Add a raw from clause to the query.
      */
-    public abstract fromRaw(expression: string, bindings?: Binding[]): this;
+    public abstract fromRaw(expression: string | Stringable, bindings?: Binding[]): this;
 
     /**
      * Add a new select column to the query.
@@ -1198,7 +1198,7 @@ abstract class BuilderContract {
      */
     public abstract whereJsonLength(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value?: number | ExpressionContract | null,
         boolean?: ConditionBoolean,
         not?: boolean
@@ -1209,7 +1209,7 @@ abstract class BuilderContract {
      */
     public abstract orWhereJsonLength(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value?: number | ExpressionContract | null
     ): this;
 
@@ -1218,7 +1218,7 @@ abstract class BuilderContract {
      */
     public abstract whereJsonLengthNot(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value?: number | ExpressionContract | null,
         boolean?: ConditionBoolean
     ): this;
@@ -1228,7 +1228,7 @@ abstract class BuilderContract {
      */
     public abstract orWhereJsonLengthNot(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value?: number | ExpressionContract | null
     ): this;
 
@@ -1476,12 +1476,12 @@ abstract class BuilderContract {
     /**
      * Constrain the query to the previous "page" of results before a given ID.
      */
-    public abstract forPageBeforeId(perPage?: number, lastId?: number | null, column?: Stringable): this;
+    public abstract forPageBeforeId(perPage?: number, lastId?: number | bigint | null, column?: Stringable): this;
 
     /**
      * Constrain the query to the next "page" of results after a given ID.
      */
-    public abstract forPageAfterId(perPage?: number, lastId?: number | null, column?: Stringable): this;
+    public abstract forPageAfterId(perPage?: number, lastId?: number | bigint | null, column?: Stringable): this;
 
     /**
      * Remove all existing orders and optionally add a new order.

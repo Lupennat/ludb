@@ -65,7 +65,7 @@ class PostgresGrammar extends Grammar {
      */
     protected compileWhereBitwise(_query: BuilderContract, where: WhereBasic): string {
         const value = this.parameter(where.value);
-        const operator = where.operator.replace(/?/g, '??');
+        const operator = where.operator.replace(/\?/g, '??');
 
         return `(${this.wrap(where.column)} ${operator} ${value})::bool`;
     }
@@ -222,7 +222,7 @@ class PostgresGrammar extends Grammar {
 
         const key = `'${lastSegment.replace(/'/g, "''")}'`;
 
-        return `coalesce((${column})::jsonb) ?? ${key}, false)`;
+        return `coalesce((${column})::jsonb ?? ${key}, false)`;
     }
 
     /**

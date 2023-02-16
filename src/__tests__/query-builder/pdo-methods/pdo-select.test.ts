@@ -1,3 +1,4 @@
+import Collection from '../../../collections/collection';
 import { getBuilder, getSqlServerBuilder, pdo } from '../../fixtures/mocked';
 
 describe('Query Builder Pdo Methods Select', () => {
@@ -503,5 +504,351 @@ describe('Query Builder Pdo Methods Select', () => {
             builder.getGrammar().getValue(builder.getRegistry().columns![0])
         );
         expect(['foo']).toEqual(builder.getBindings());
+    });
+
+    it('Works Chunk With Last Chunk Complete', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
+        const chunk2 = new Collection(['foo3', 'foo4']) as Collection<unknown>;
+        const chunk3 = new Collection() as Collection<unknown>;
+        const spiedGet = jest
+            .spyOn(builder, 'get')
+            .mockImplementationOnce(async () => {
+                return chunk1;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk2;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk3;
+            });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        await builder.chunk(2, results => {
+            callback(results);
+        });
+        expect(spiedGet).toHaveBeenCalledTimes(3);
+        expect(spiedForPage).toHaveBeenCalledTimes(3);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(3, 3, 2);
+        expect(callback).toHaveBeenCalledTimes(2);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+        expect(callback).toHaveBeenNthCalledWith(2, chunk2);
+    });
+
+    it('Works Chunk With Last Chunk Partial', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
+        const chunk2 = new Collection(['foo3']) as Collection<unknown>;
+        const spiedGet = jest
+            .spyOn(builder, 'get')
+            .mockImplementationOnce(async () => {
+                return chunk1;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk2;
+            });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        await builder.chunk(2, results => {
+            callback(results);
+        });
+        expect(spiedGet).toHaveBeenCalledTimes(2);
+        expect(spiedForPage).toHaveBeenCalledTimes(2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
+        expect(callback).toHaveBeenCalledTimes(2);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+        expect(callback).toHaveBeenNthCalledWith(2, chunk2);
+    });
+
+    it('Works Chunk Can Be Stopped By Returning False', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
+        const chunk2 = new Collection(['foo3']) as Collection<unknown>;
+        const spiedGet = jest
+            .spyOn(builder, 'get')
+            .mockImplementationOnce(async () => {
+                return chunk1;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk2;
+            });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        await builder.chunk(2, results => {
+            callback(results);
+            return false;
+        });
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk With Count Zero', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
+
+        const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+            return chunk1;
+        });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        await builder.chunk(0, results => {
+            callback(results);
+        });
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 0);
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk Without Results', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection() as Collection<unknown>;
+
+        const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+            return chunk1;
+        });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        await builder.chunk(0, results => {
+            callback(results);
+        });
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 0);
+        expect(callback).toHaveBeenCalledTimes(0);
+    });
+
+    it('Works Chunk Paginates Using Id With Last Chunk Complete', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection([{ someIdField: 1 }, { someIdField: 2 }]) as Collection<unknown>;
+        const chunk2 = new Collection([{ someIdField: 10 }, { someIdField: 11 }]) as Collection<unknown>;
+        const chunk3 = new Collection() as Collection<unknown>;
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk3;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.chunkById(
+            2,
+            results => {
+                callback(results);
+            },
+            'someIdField'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(3);
+        expect(spiedForPage.length).toBe(3);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
+        expect(spiedForPage[2]).toHaveBeenCalledWith(2, 11, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(2);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+        expect(callback).toHaveBeenNthCalledWith(2, chunk2);
+    });
+
+    it('Works Chunk Paginates Using Id With Last Chunk Partial', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection([{ someIdField: 1 }, { someIdField: 2 }]) as Collection<unknown>;
+        const chunk2 = new Collection([{ someIdField: 10 }]) as Collection<unknown>;
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.chunkById(
+            2,
+            results => {
+                callback(results);
+            },
+            'someIdField'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(2);
+        expect(spiedForPage.length).toBe(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(2);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+        expect(callback).toHaveBeenNthCalledWith(2, chunk2);
+    });
+
+    it('Works Chunk Paginates Using Id With Count Zero', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection([{ someIdField: 1 }, { someIdField: 2 }]) as Collection<unknown>;
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+            return builder;
+        });
+
+        const callback = jest.fn();
+
+        await builder.chunkById(
+            0,
+            results => {
+                callback(results);
+            },
+            'someIdField'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk Paginates Using Id Without Results', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection() as Collection<unknown>;
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+            return builder;
+        });
+
+        const callback = jest.fn();
+
+        await builder.chunkById(
+            0,
+            results => {
+                callback(results);
+            },
+            'someIdField'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(0);
+    });
+
+    it('Works Chunk Paginates Using Id With Alias', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection([{ table_id: 1 }, { table_id: 2 }]) as Collection<unknown>;
+        const chunk2 = new Collection() as Collection<unknown>;
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.chunkById(
+            2,
+            results => {
+                callback(results);
+            },
+            'table.id',
+            'table_id'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(2);
+        expect(spiedForPage.length).toBe(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'table.id');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'table.id');
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 });

@@ -180,8 +180,8 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a raw from clause to the query.
      */
-    public fromRaw(expression: string, bindings: Binding[] = []): this {
-        this.registry.from = this.raw(expression);
+    public fromRaw(expression: string | Stringable, bindings: Binding[] = []): this {
+        this.registry.from = this.isExpression(expression) ? expression : this.raw(expression);
 
         this.addBinding(bindings, 'from');
 
@@ -267,7 +267,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Force the query to only return distinct results.
      */
-    public distinct(column?: boolean | Stringable, ...columns: Stringable[]): this {
+    public distinct(column: boolean | Stringable, ...columns: Stringable[]): this {
         if (column != null) {
             this.registry.distinct = typeof column === 'boolean' ? column : [column].concat(columns);
         } else {
@@ -1019,16 +1019,13 @@ abstract class BaseBuilder extends BuilderContract {
      * Opeator should be a string and prevents using Null values with invalid operators.
      */
     protected isValidOperatorAndValue<T>(operator: string | T, value: T): operator is string {
-        return (
-            typeof operator === 'string' &&
-            (value !== null || (this.operators.includes(operator) && !['=', '<>', '!='].includes(operator)))
-        );
+        return typeof operator === 'string' && (value !== null || ['=', '<>', '!='].includes(operator));
     }
 
     /**
      * Prepare the value and operator to proxy call another method.
      */
-    protected prepareValueAndOperator<T>(value: T, operator: string | T, useDefault = false): [T, T | string] {
+    protected prepareValueAndOperator<T, U>(value: T, operator: string | U, useDefault = false): [T, U | string] {
         if (useDefault) {
             return [operator as T, '='];
         } else if (this.invalidOperatorAndValue(operator, value)) {
@@ -2339,7 +2336,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereJsonLength(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value: number | ExpressionContract | null = null,
         boolean: ConditionBoolean = 'and',
         not = false
@@ -2362,10 +2359,10 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public orWhereJsonLength(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value: number | ExpressionContract | null = null
     ): this {
-        [value, operator] = this.assignValueAndOperator(value, operator, arguments.length === 2);
+        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
 
         return this.whereJsonLength(column, operator, value, 'or');
     }
@@ -2375,11 +2372,11 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereJsonLengthNot(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value: number | ExpressionContract | null = null,
         boolean: ConditionBoolean = 'and'
     ): this {
-        [value, operator] = this.assignValueAndOperator(value, operator, arguments.length === 2);
+        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
 
         return this.whereJsonLength(column, operator, value, boolean, true);
     }
@@ -2389,10 +2386,10 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public orWhereJsonLengthNot(
         column: Stringable,
-        operator: string,
+        operator: string | number | ExpressionContract,
         value: number | ExpressionContract | null = null
     ): this {
-        [value, operator] = this.assignValueAndOperator(value, operator, arguments.length === 2);
+        [value, operator] = this.prepareValueAndOperator(value, operator, arguments.length === 2);
 
         return this.whereJsonLengthNot(column, operator, value, 'or');
     }
@@ -2849,7 +2846,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public offset(value: number | null = null): this {
         this.registry[this.registry.unions.length > 0 ? 'unionOffset' : 'offset'] =
-            value == null ? 0 : Math.max(0, value);
+            value == null || isNaN(value) ? 0 : Math.max(0, value);
 
         return this;
     }
@@ -2881,7 +2878,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Constrain the query to the previous "page" of results before a given ID.
      */
-    public forPageBeforeId(perPage = 15, lastId: number | null = null, column: Stringable = 'id'): this {
+    public forPageBeforeId(perPage = 15, lastId: number | bigint | null = 0, column: Stringable = 'id'): this {
         this.registry.orders = this.removeExistingOrdersFor(column);
 
         if (lastId !== null) {
@@ -2894,7 +2891,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Constrain the query to the next "page" of results after a given ID.
      */
-    public forPageAfterId(perPage = 15, lastId: number | null = null, column: Stringable = 'id'): this {
+    public forPageAfterId(perPage = 15, lastId: number | bigint | null = 0, column: Stringable = 'id'): this {
         this.registry.orders = this.removeExistingOrdersFor(column);
 
         if (lastId !== null) {
@@ -3031,7 +3028,7 @@ abstract class BaseBuilder extends BuilderContract {
             // We'll execute the query for the given page and get the results. If there are
             // no results we can just break and return from here. When there are results
             // we will call the callback with the current chunk of these results here.
-            const results = await this.forPage(page, count).get<T>();
+            let results = await this.forPage(page, count).get<T>();
 
             countResults = results.count();
 
@@ -3102,7 +3099,7 @@ abstract class BaseBuilder extends BuilderContract {
             .getValue(alias === null ? column : alias)
             .toString();
 
-        let lastId: number | null | undefined;
+        let lastId: number | bigint | null | undefined = null;
         let page = 1;
         let countResults = 0;
 
@@ -3112,7 +3109,7 @@ abstract class BaseBuilder extends BuilderContract {
             // We'll execute the query for the given page and get the results. If there are
             // no results we can just break and return from here. When there are results
             // we will call the callback with the current chunk of these results here.
-            const results = await clone.forPageAfterId(count, lastId, column).get<T>();
+            let results = await clone.forPageAfterId(count, lastId, column).get<T>();
 
             countResults = results.count();
 
@@ -3127,7 +3124,7 @@ abstract class BaseBuilder extends BuilderContract {
                 return false;
             }
 
-            lastId = results.last()[alias as keyof T] as number | null | undefined;
+            lastId = results.last()[alias as keyof T] as number | bigint | null | undefined;
 
             if (lastId == null) {
                 throw new Error(
@@ -3240,7 +3237,7 @@ abstract class BaseBuilder extends BuilderContract {
 
         return new LazyCollection<T>(
             async function* (this: BuilderContract) {
-                let lastId: number | null | undefined;
+                let lastId: number | bigint | null | undefined = null;
 
                 while (true) {
                     const clone = this.clone();
@@ -3259,7 +3256,7 @@ abstract class BaseBuilder extends BuilderContract {
                         return;
                     }
 
-                    lastId = results.last()[alias as keyof T] as number | null;
+                    lastId = results.last()[alias as keyof T] as number | bigint | null | undefined;
 
                     if (lastId == null) {
                         throw new Error(
@@ -4172,6 +4169,9 @@ abstract class BaseBuilder extends BuilderContract {
         return typeof parameter === 'object' && !this.isBuilderContract(parameter) && !this.isExpression(parameter);
     }
 
+    /**
+     * Determine if the value is a RowValues Array
+     */
     protected isRowValuesArray(parameter: any): parameter is RowValues[] {
         return Array.isArray(parameter);
     }

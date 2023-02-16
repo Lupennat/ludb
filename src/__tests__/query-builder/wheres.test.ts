@@ -1,6 +1,7 @@
 import Collection from '../../collections/collection';
 import Raw from '../../query/expression';
 import BuilderI from '../../types/query/builder';
+import { WhereBasic } from '../../types/query/registry';
 import {
     getBuilder,
     getMySqlBuilder,
@@ -1144,5 +1145,575 @@ describe('Query Builder Wheres', () => {
         expect(
             'select * from "orders" where "id" = ? or not exists (select * from "products" where "products"."id" = "orders"."id")'
         ).toBe(builder.toSql());
+    });
+
+    it('Works Prepare Value And Operator', () => {
+        let builder = getBuilder();
+        builder.where('foo', '>', '20');
+        let where = builder.getRegistry().wheres[0] as WhereBasic;
+        expect(where.operator).toBe('>');
+        expect(where.value).toBe('20');
+
+        builder = getBuilder();
+        builder.where('>', '20');
+        where = builder.getRegistry().wheres[0] as WhereBasic;
+        expect(where.operator).toBe('=');
+        expect(where.value).toBe('20');
+    });
+
+    it('Works Prepare Value And Operator Error', () => {
+        const builder = getBuilder();
+        expect(() => {
+            builder.where('foo');
+        }).toThrowError('Illegal operator and value combination.');
+
+        expect(() => {
+            builder.where('foo', null, '20');
+        }).toThrowError('Illegal operator and value combination.');
+    });
+
+    it('Works Providing Null With Operators Builds Correctly', () => {
+        let builder = getBuilder();
+        builder.select('*').from('users').where('foo', null);
+        expect('select * from "users" where "foo" is null').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').where('foo', '=', null);
+        expect('select * from "users" where "foo" is null').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').where('foo', '!=', null);
+        expect('select * from "users" where "foo" is not null').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').where('foo', '<>', null);
+        expect('select * from "users" where "foo" is not null').toBe(builder.toSql());
+    });
+
+    it('Works Dynamic Where', () => {
+        const method = 'whereNotFooBarAndNotBazOrNotQux';
+        const parameters = ['corge', 'waldo', 'fred'];
+        const builder = getBuilder();
+        const spiedWhere = jest.spyOn(builder, 'where');
+
+        expect(builder).toEqual(builder.dynamicWhere(method, parameters));
+        expect(spiedWhere).toHaveBeenNthCalledWith(1, 'foo_bar', '=', parameters[0], 'and', true);
+        expect(spiedWhere).toHaveBeenNthCalledWith(2, 'baz', '=', parameters[1], 'and', true);
+        expect(spiedWhere).toHaveBeenNthCalledWith(3, 'qux', '=', parameters[2], 'or', true);
+        expect('select * where not "foo_bar" = ? and not "baz" = ? or not "qux" = ?').toBe(builder.toSql());
+    });
+
+    it('Works Dynamic Where Is Not Greedy', () => {
+        const method = 'whereIosVersionAndNotAndroidVersionOrOrientation';
+        const parameters = ['6.1', '4.2', 'Vertical'];
+        const builder = getBuilder();
+        const spiedWhere = jest.spyOn(builder, 'where');
+
+        builder.dynamicWhere(method, parameters);
+        expect(spiedWhere).toHaveBeenNthCalledWith(1, 'ios_version', '=', parameters[0], 'and', false);
+        expect(spiedWhere).toHaveBeenNthCalledWith(2, 'android_version', '=', parameters[1], 'and', true);
+        expect(spiedWhere).toHaveBeenNthCalledWith(3, 'orientation', '=', parameters[2], 'or', false);
+        expect('select * where "ios_version" = ? and not "android_version" = ? or "orientation" = ?').toBe(
+            builder.toSql()
+        );
+    });
+
+    it('Works Where Row Values', () => {
+        let builder = getBuilder();
+        builder.select('*').from('orders').whereRowValues(['last_update', 'order_number'], '<', [1, 2]);
+        expect('select * from "orders" where ("last_update", "order_number") < (?, ?)').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .where('company_id', 1)
+            .orWhereRowValues(['last_update', 'order_number'], '<', [1, 2]);
+        expect('select * from "orders" where "company_id" = ? or ("last_update", "order_number") < (?, ?)').toBe(
+            builder.toSql()
+        );
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .whereRowValues(['last_update', 'order_number'], '<', [1, new Raw('2')]);
+        expect('select * from "orders" where ("last_update", "order_number") < (?, 2)').toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Row Values Varity Mismatch', () => {
+        const builder = getBuilder();
+        expect(() => {
+            builder.select('*').from('orders').whereRowValues(['last_update'], '<', [1, 2]);
+        }).toThrowError('The number of columns must match the number of values');
+    });
+
+    it('Works Where Json Contains MySql', () => {
+        let builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonContains('options', ['en']);
+        expect('select * from `users` where json_contains(`options`, ?)').toBe(builder.toSql());
+        expect(['["en"]']).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonContains('users.options->languages', ['en']);
+        expect('select * from `users` where json_contains(`users`.`options`, ?, \'$."languages"\')').toBe(
+            builder.toSql()
+        );
+        expect(['["en"]']).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonContains('options->languages', new Raw('\'["en"]\''));
+        expect('select * from `users` where `id` = ? or json_contains(`options`, \'["en"]\', \'$."languages"\')').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Contains Postgres', () => {
+        let builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonContains('options', ['en']);
+        expect('select * from "users" where ("options")::jsonb @> ?').toBe(builder.toSql());
+        expect(['["en"]']).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonContains('users.options->languages', ['en']);
+        expect('select * from "users" where ("users"."options"->\'languages\')::jsonb @> ?').toBe(builder.toSql());
+        expect(['["en"]']).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonContains('options->languages', new Raw('\'["en"]\''));
+        expect('select * from "users" where "id" = ? or ("options"->\'languages\')::jsonb @> \'["en"]\'').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Contains Sqlite', () => {
+        const builder = getSQLiteBuilder();
+        expect(() => {
+            builder.select('*').from('users').whereJsonContains('options->languages', ['en']).toSql();
+        }).toThrowError('This database engine does not support JSON contains operations.');
+    });
+
+    it('Works Where Json Contains SqlServer', () => {
+        let builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonContains('options', true);
+
+        expect('select * from [users] where ? in (select [value] from openjson([options]))').toBe(builder.toSql());
+        expect(['true']).toEqual(builder.getBindings());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonContains('users.options->languages', 'en');
+        expect(
+            'select * from [users] where ? in (select [value] from openjson([users].[options], \'$."languages"\'))'
+        ).toBe(builder.toSql());
+        expect(['en']).toEqual(builder.getBindings());
+
+        builder = getSqlServerBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonContains('options->languages', new Raw("'en'"));
+        expect(
+            "select * from [users] where [id] = ? or 'en' in (select [value] from openjson([options], '$.\"languages\"'))"
+        ).toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Doesnt Contain MySql', () => {
+        let builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonDoesntContain('options->languages', ['en']);
+        expect('select * from `users` where not json_contains(`options`, ?, \'$."languages"\')').toBe(builder.toSql());
+        expect(['["en"]']).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonDoesntContain('options->languages', new Raw('\'["en"]\''));
+        expect(
+            'select * from `users` where `id` = ? or not json_contains(`options`, \'["en"]\', \'$."languages"\')'
+        ).toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Doesnt Contain Postgres', () => {
+        let builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonDoesntContain('options->languages', ['en']);
+        expect('select * from "users" where not ("options"->\'languages\')::jsonb @> ?').toBe(builder.toSql());
+        expect(['["en"]']).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonDoesntContain('options->languages', new Raw('\'["en"]\''));
+        expect('select * from "users" where "id" = ? or not ("options"->\'languages\')::jsonb @> \'["en"]\'').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Doesnt Contain Sqlite', () => {
+        const builder = getSQLiteBuilder();
+        expect(() => {
+            builder.select('*').from('users').whereJsonDoesntContain('options->languages', ['en']).toSql();
+        }).toThrowError('This database engine does not support JSON contains operations.');
+    });
+
+    it('Works Where Json Doesnt Contain SqlServer', () => {
+        let builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonDoesntContain('options->languages', 'en');
+        expect(
+            'select * from [users] where not ? in (select [value] from openjson([options], \'$."languages"\'))'
+        ).toBe(builder.toSql());
+        expect(['en']).toEqual(builder.getBindings());
+
+        builder = getSqlServerBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonDoesntContain('options->languages', new Raw("'en'"));
+        expect(
+            "select * from [users] where [id] = ? or not 'en' in (select [value] from openjson([options], '$.\"languages\"'))"
+        ).toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Contains Key MySql', () => {
+        let builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
+        expect(
+            "select * from `users` where ifnull(json_contains_path(`users`.`options`, 'one', '$.\"languages\"'), 0)"
+        ).toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->language->primary');
+        expect(
+            'select * from `users` where ifnull(json_contains_path(`options`, \'one\', \'$."language"."primary"\'), 0)'
+        ).toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
+        expect(
+            "select * from `users` where `id` = ? or ifnull(json_contains_path(`options`, 'one', '$.\"languages\"'), 0)"
+        ).toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
+        expect(
+            "select * from `users` where ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
+        ).toBe(builder.toSql());
+    });
+
+    it('Works Where Json Contains Key Postgres', () => {
+        let builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
+        expect('select * from "users" where coalesce(("users"."options")::jsonb ?? \'languages\', false)').toBe(
+            builder.toSql()
+        );
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->language->primary');
+        expect('select * from "users" where coalesce(("options"->\'language\')::jsonb ?? \'primary\', false)').toBe(
+            builder.toSql()
+        );
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
+        expect('select * from "users" where "id" = ? or coalesce(("options")::jsonb ?? \'languages\', false)').toBe(
+            builder.toSql()
+        );
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
+        expect(
+            'select * from "users" where case when jsonb_typeof(("options"->\'languages\'->0)::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\'->0)::jsonb) >= 2 else false end'
+        ).toBe(builder.toSql());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages[-1]');
+        expect(
+            'select * from "users" where case when jsonb_typeof(("options"->\'languages\')::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\')::jsonb) >= 1 else false end'
+        ).toBe(builder.toSql());
+    });
+
+    it('Works Where Json Contains Key Sqlite', () => {
+        let builder = getSQLiteBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
+        expect('select * from "users" where json_type("users"."options", \'$."languages"\') is not null').toBe(
+            builder.toSql()
+        );
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->language->primary');
+        expect('select * from "users" where json_type("options", \'$."language"."primary"\') is not null').toBe(
+            builder.toSql()
+        );
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
+        expect('select * from "users" where "id" = ? or json_type("options", \'$."languages"\') is not null').toBe(
+            builder.toSql()
+        );
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
+        expect('select * from "users" where json_type("options", \'$."languages"[0][1]\') is not null').toBe(
+            builder.toSql()
+        );
+    });
+
+    it('Works Where Json Contains Key SqlServer', () => {
+        let builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
+        expect("select * from [users] where 'languages' in (select [key] from openjson([users].[options]))").toBe(
+            builder.toSql()
+        );
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->language->primary');
+        expect(
+            "select * from [users] where 'primary' in (select [key] from openjson([options], '$.\"language\"'))"
+        ).toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
+        expect("select * from [users] where [id] = ? or 'languages' in (select [key] from openjson([options]))").toBe(
+            builder.toSql()
+        );
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
+        expect('select * from [users] where 1 in (select [key] from openjson([options], \'$."languages"[0]\'))').toBe(
+            builder.toSql()
+        );
+    });
+
+    it('Works Where Json Doesnt Contain Key MySql', () => {
+        let builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonDoesntContainKey('options->languages');
+        expect(
+            "select * from `users` where not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"'), 0)"
+        ).toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages');
+        expect(
+            "select * from `users` where `id` = ? or not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"'), 0)"
+        ).toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonDoesntContainKey('options->languages[0][1]');
+        expect(
+            "select * from `users` where not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
+        ).toBe(builder.toSql());
+    });
+
+    it('Works Where Json Doesnt Contain Key Postgres', () => {
+        let builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonDoesntContainKey('options->languages');
+        expect('select * from "users" where not coalesce(("options")::jsonb ?? \'languages\', false)').toBe(
+            builder.toSql()
+        );
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages');
+        expect('select * from "users" where "id" = ? or not coalesce(("options")::jsonb ?? \'languages\', false)').toBe(
+            builder.toSql()
+        );
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonDoesntContainKey('options->languages[0][1]');
+        expect(
+            'select * from "users" where not case when jsonb_typeof(("options"->\'languages\'->0)::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\'->0)::jsonb) >= 2 else false end'
+        ).toBe(builder.toSql());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonDoesntContainKey('options->languages[-1]');
+        expect(
+            'select * from "users" where not case when jsonb_typeof(("options"->\'languages\')::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\')::jsonb) >= 1 else false end'
+        ).toBe(builder.toSql());
+    });
+
+    it('Works Where Json Doesnt Contain Key Sqlite', () => {
+        let builder = getSQLiteBuilder();
+        builder.select('*').from('users').whereJsonDoesntContainKey('options->languages');
+        expect('select * from "users" where not json_type("options", \'$."languages"\') is not null').toBe(
+            builder.toSql()
+        );
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages');
+        expect('select * from "users" where "id" = ? or not json_type("options", \'$."languages"\') is not null').toBe(
+            builder.toSql()
+        );
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages[0][1]');
+        expect(
+            'select * from "users" where "id" = ? or not json_type("options", \'$."languages"[0][1]\') is not null'
+        ).toBe(builder.toSql());
+    });
+
+    it('Works Where Json Doesnt Contain Key SqlServer', () => {
+        let builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonDoesntContainKey('options->languages');
+        expect("select * from [users] where not 'languages' in (select [key] from openjson([options]))").toBe(
+            builder.toSql()
+        );
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages');
+        expect(
+            "select * from [users] where [id] = ? or not 'languages' in (select [key] from openjson([options]))"
+        ).toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages[0][1]');
+        expect(
+            'select * from [users] where [id] = ? or not 1 in (select [key] from openjson([options], \'$."languages"[0]\'))'
+        ).toBe(builder.toSql());
+    });
+
+    it('Works Where Json Length MySql', () => {
+        let builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonLength('options', 0);
+        expect('select * from `users` where json_length(`options`) = ?').toBe(builder.toSql());
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
+        expect('select * from `users` where json_length(`users`.`options`, \'$."languages"\') > ?').toBe(
+            builder.toSql()
+        );
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonLength('options->languages', new Raw('0'));
+        expect('select * from `users` where `id` = ? or json_length(`options`, \'$."languages"\') = 0').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonLength('options->languages', '>', new Raw('0'));
+        expect('select * from `users` where `id` = ? or json_length(`options`, \'$."languages"\') > 0').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Length Postgres', () => {
+        let builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonLength('options', 0);
+        expect('select * from "users" where jsonb_array_length(("options")::jsonb) = ?').toBe(builder.toSql());
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
+        expect('select * from "users" where jsonb_array_length(("users"."options"->\'languages\')::jsonb) > ?').toBe(
+            builder.toSql()
+        );
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonLength('options->languages', new Raw('0'));
+        expect(
+            'select * from "users" where "id" = ? or jsonb_array_length(("options"->\'languages\')::jsonb) = 0'
+        ).toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonLength('options->languages', '>', new Raw('0'));
+        expect(
+            'select * from "users" where "id" = ? or jsonb_array_length(("options"->\'languages\')::jsonb) > 0'
+        ).toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Length Sqlite', () => {
+        let builder = getSQLiteBuilder();
+        builder.select('*').from('users').whereJsonLength('options', 0);
+        expect('select * from "users" where json_array_length("options") = ?').toBe(builder.toSql());
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
+        expect('select * from "users" where json_array_length("users"."options", \'$."languages"\') > ?').toBe(
+            builder.toSql()
+        );
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonLength('options->languages', new Raw('0'));
+        expect('select * from "users" where "id" = ? or json_array_length("options", \'$."languages"\') = 0').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+
+        builder = getSQLiteBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonLength('options->languages', '>', new Raw('0'));
+        expect('select * from "users" where "id" = ? or json_array_length("options", \'$."languages"\') > 0').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Length SqlServer', () => {
+        let builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonLength('options', 0);
+        expect('select * from [users] where (select count(*) from openjson([options])) = ?').toBe(builder.toSql());
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
+        expect(
+            'select * from [users] where (select count(*) from openjson([users].[options], \'$."languages"\')) > ?'
+        ).toBe(builder.toSql());
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonLength('options->languages', new Raw('0'));
+        expect(
+            'select * from [users] where [id] = ? or (select count(*) from openjson([options], \'$."languages"\')) = 0'
+        ).toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
+
+        builder = getSqlServerBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonLength('options->languages', '>', new Raw('0'));
+        expect(
+            'select * from [users] where [id] = ? or (select count(*) from openjson([options], \'$."languages"\')) > 0'
+        ).toBe(builder.toSql());
+        expect([1]).toEqual(builder.getBindings());
     });
 });

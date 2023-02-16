@@ -474,4 +474,72 @@ describe('Query Builder Select-From', () => {
         builder.select('*').from('users').where('items->available', '=', true);
         expect('select * from "users" where json_extract("items", \'$."available"\') = true').toBe(builder.toSql());
     });
+
+    it('Works MySql Sounds Like Operator', () => {
+        const builder = getMySqlBuilder();
+        builder.select('*').from('users').where('name', 'sounds like', 'John Doe');
+        expect('select * from `users` where `name` sounds like ?').toBe(builder.toSql());
+        expect(['John Doe']).toEqual(builder.getBindings());
+    });
+
+    it('Works Bitwise Operators', () => {
+        let builder = getBuilder();
+        builder.select('*').from('users').where('bar', '&', 1);
+        expect('select * from "users" where "bar" & ?').toBe(builder.toSql());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').where('bar', '#', 1);
+        expect('select * from "users" where ("bar" # ?)::bool').toBe(builder.toSql());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').where('range', '>>', '[2022-01-08 00:00:00,2022-01-09 00:00:00)');
+        expect('select * from "users" where ("range" >> ?)::bool').toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').where('bar', '&', 1);
+        expect('select * from [users] where ([bar] & ?) != 0').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').having('bar', '&', 1);
+        expect('select * from "users" having "bar" & ?').toBe(builder.toSql());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').having('bar', '#', 1);
+        expect('select * from "users" having ("bar" # ?)::bool').toBe(builder.toSql());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').having('range', '>>', '[2022-01-08 00:00:00,2022-01-09 00:00:00)');
+        expect('select * from "users" having ("range" >> ?)::bool').toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').having('bar', '&', 1);
+        expect('select * from [users] having ([bar] & ?) != 0').toBe(builder.toSql());
+    });
+
+    it('Works Uppercase Leading Booleans Are Removed', () => {
+        let builder = getBuilder();
+        builder.select('*').from('users').where('name', '=', 'Taylor', 'AND');
+        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
+        builder = getBuilder();
+        builder.select('*').from('users').where('name', '=', 'Taylor', 'OR');
+        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
+    });
+
+    it('Works Lowercase Leading Booleans Are Removed', () => {
+        let builder = getBuilder();
+        builder.select('*').from('users').where('name', '=', 'Taylor', 'and');
+        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
+        builder = getBuilder();
+        builder.select('*').from('users').where('name', '=', 'Taylor', 'or');
+        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
+    });
+
+    it('Works Case Insensitive Leading Booleans Are Removed', () => {
+        let builder = getBuilder();
+        builder.select('*').from('users').where('name', '=', 'Taylor', 'And');
+        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
+        builder = getBuilder();
+        builder.select('*').from('users').where('name', '=', 'Taylor', 'Or');
+        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
+    });
 });

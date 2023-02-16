@@ -1,6 +1,6 @@
 import Raw from '../../query/expression';
 import BuilderI from '../../types/query/builder';
-import { getBuilder, getPostgresBuilder, getSqlServerBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getPostgresBuilder, getSQLiteBuilder, getSqlServerBuilder, pdo } from '../fixtures/mocked';
 
 describe('Query Builder Order-Group', () => {
     afterAll(async () => {
@@ -208,5 +208,63 @@ describe('Query Builder Order-Group', () => {
             // @ts-expect-error error on wrong direction
             builder.select('*').from('users').orderBy('age', 'asec');
         }).toThrowError('Order direction must be "asc" or "desc".');
+    });
+
+    it('Works SQLite Order By', () => {
+        const builder = getSQLiteBuilder();
+        builder.select('*').from('users').orderBy('email', 'desc');
+        expect('select * from "users" order by "email" desc').toBe(builder.toSql());
+    });
+
+    it('Works SqlServer Limits And Offsets', () => {
+        let builder = getSqlServerBuilder();
+        builder.select('*').from('users').take(10);
+        expect('select top 10 * from [users]').toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').skip(10).orderBy('email', 'desc');
+        expect('select * from [users] order by [email] desc offset 10 rows').toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').skip(10).take(10);
+        expect('select * from [users] order by (SELECT 0) offset 10 rows fetch next 10 rows only').toBe(
+            builder.toSql()
+        );
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').skip(11).take(10).orderBy('email', 'desc');
+        expect('select * from [users] order by [email] desc offset 11 rows fetch next 10 rows only').toBe(
+            builder.toSql()
+        );
+
+        builder = getSqlServerBuilder();
+        const subQuery = (query: BuilderI): void => {
+            query
+                .select('created_at')
+                .from('logins')
+                .where('users.name', 'nameBinding')
+                .whereColumn('user_id', 'users.id')
+                .limit(1);
+        };
+        builder.select('*').from('users').where('email', 'emailBinding').orderBy(subQuery).skip(10).take(10);
+        expect(
+            'select * from [users] where [email] = ? order by (select top 1 [created_at] from [logins] where [users].[name] = ? and [user_id] = [users].[id]) asc offset 10 rows fetch next 10 rows only'
+        ).toBe(builder.toSql());
+        expect(['emailBinding', 'nameBinding']).toEqual(builder.getBindings());
+
+        builder = getSqlServerBuilder();
+        // @ts-expect-error text wrong parameter
+        builder.select('*').from('users').take('foo');
+        expect('select * from [users]').toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        // @ts-expect-error text wrong parameter
+        builder.select('*').from('users').take('foo').offset('bar');
+        expect('select * from [users]').toBe(builder.toSql());
+
+        builder = getSqlServerBuilder();
+        // @ts-expect-error text wrong parameter
+        builder.select('*').from('users').offset('bar');
+        expect('select * from [users]').toBe(builder.toSql());
     });
 });

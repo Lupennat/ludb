@@ -263,11 +263,7 @@ class Grammar extends BaseGrammar implements GrammarI {
         // avoid checking for the first clauses in each of the compilers methods.
         const sqls = this.compileWheresToArray(query);
 
-        if (sqls.length > 0) {
-            return this.concatenateWhereClauses(query, sqls);
-        }
-
-        return '';
+        return this.concatenateWhereClauses(query, sqls);
     }
 
     /**

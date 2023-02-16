@@ -1,5 +1,6 @@
 import Raw from '../../query/expression';
 import BuilderI from '../../types/query/builder';
+import { WhereBasic } from '../../types/query/registry';
 import { getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
 describe('Query Builder Utilities', () => {
@@ -262,5 +263,113 @@ describe('Query Builder Utilities', () => {
         await builder.exists();
         expect(spiedSelect).toBeCalledTimes(1);
         expect(spiedSelect).toBeCalledWith('select exists(select * from "users") as "exists"', [], true);
+    });
+
+    it('Works Merge Wheres Can Merge Wheres And Bindings', () => {
+        const builder = getBuilder();
+        const toMerge = getBuilder().where('bar', 'baz');
+        builder.where('foo', 'bar');
+        builder.mergeWheres(toMerge.getRegistry().wheres, toMerge.getRawBindings().where);
+        expect(['foo', 'bar']).toEqual(builder.getRegistry().wheres.map(where => (where as WhereBasic).column));
+        expect(['bar', 'baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Binding Order', () => {
+        const expectedSql =
+            'select * from "users" inner join "othertable" on "bar" = ? where "registered" = ? group by "city" having "population" > ? order by match ("foo") against(?)';
+        const expectedBindings = ['foo', 1, 3, 'bar'];
+
+        let builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .join('othertable', join => {
+                join.where('bar', '=', 'foo');
+            })
+            .where('registered', 1)
+            .groupBy('city')
+            .having('population', '>', 3)
+            .orderByRaw('match ("foo") against(?)', ['bar']);
+        expect(expectedSql).toBe(builder.toSql());
+        expect(expectedBindings).toEqual(builder.getBindings());
+
+        // order of statements reversed
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .orderByRaw('match ("foo") against(?)', ['bar'])
+            .having('population', '>', 3)
+            .groupBy('city')
+            .where('registered', 1)
+            .join('othertable', join => {
+                join.where('bar', '=', 'foo');
+            });
+        expect(expectedSql).toBe(builder.toSql());
+        expect(expectedBindings).toEqual(builder.getBindings());
+    });
+
+    it('Works Add Binding With Array Merges Bindings', () => {
+        const builder = getBuilder();
+        builder.addBinding(['foo', 'bar']);
+        builder.addBinding(['baz']);
+        expect(['foo', 'bar', 'baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Add Binding With Array Merges Bindings In Correct Order', () => {
+        const builder = getBuilder();
+        builder.addBinding(['bar', 'baz'], 'having');
+        builder.addBinding(['foo'], 'where');
+        expect(['foo', 'bar', 'baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Merge Builders', () => {
+        const builder = getBuilder();
+        builder.addBinding(['foo', 'bar']);
+        const otherBuilder = getBuilder();
+        otherBuilder.addBinding(['baz']);
+        builder.mergeBindings(otherBuilder);
+        expect(['foo', 'bar', 'baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Merge Builders Binding Order', () => {
+        const builder = getBuilder();
+        builder.addBinding('foo', 'where');
+        builder.addBinding('baz', 'having');
+        const otherBuilder = getBuilder();
+        otherBuilder.addBinding('bar', 'where');
+        builder.mergeBindings(otherBuilder);
+        expect(['foo', 'bar', 'baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Clone', () => {
+        const builder = getBuilder();
+        builder.select('*').from('users');
+        const clone = builder.clone().where('email', 'foo');
+
+        expect(builder).not.toEqual(clone);
+        expect('select * from "users"').toBe(builder.toSql());
+        expect('select * from "users" where "email" = ?').toBe(clone.toSql());
+    });
+
+    it('Works Clone Without', () => {
+        const builder = getBuilder();
+        builder.select('*').from('users').where('email', 'foo').orderBy('email');
+        const clone = builder.cloneWithout(['orders']);
+
+        expect('select * from "users" where "email" = ? order by "email" asc').toBe(builder.toSql());
+        expect('select * from "users" where "email" = ?').toBe(clone.toSql());
+    });
+
+    it('Works Clone Without Bindings', () => {
+        const builder = getBuilder();
+        builder.select('*').from('users').where('email', 'foo').orderBy('email');
+        const clone = builder.cloneWithout(['wheres']).cloneWithoutBindings(['where']);
+
+        expect('select * from "users" where "email" = ? order by "email" asc').toBe(builder.toSql());
+        expect(['foo']).toEqual(builder.getBindings());
+
+        expect('select * from "users" order by "email" asc').toBe(clone.toSql());
+        expect([]).toEqual(clone.getBindings());
     });
 });

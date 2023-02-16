@@ -76,7 +76,7 @@ function cloneWheres(wheres: Where[]): Where[] {
         if ('query' in where) {
             const { query, ...rest } = where;
             carry.push({ ...rest, query: query.clone() });
-        } else if (['In'].indexOf(where.type)) {
+        } else if (['In'].includes(where.type)) {
             const { values, ...rest } = where as WhereIn;
             carry.push({ ...rest, values: values.slice() });
         } else if (['InRaw'].includes(where.type)) {

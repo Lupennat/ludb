@@ -40,8 +40,10 @@ export interface NumericValues {
     [key: string]: number | bigint;
 }
 
-export type ConditionBoolean = 'and' | 'or';
-export type OrderDirection = 'asc' | 'desc' | 'ASC' | 'DESC';
+export type ConditionBoolean = `${'A' | 'a'}${'N' | 'n'}${'D' | 'd'}` | `${'O' | 'o'}${'R' | 'r'}`;
+export type OrderDirection =
+    | `${'A' | 'a'}${'S' | 's'}${'C' | 'c'}`
+    | `${'D' | 'd'}${'E' | 'e'}${'S' | 's'}${'C' | 'c'}`;
 export type WhereMethod = 'where' | 'whereColumn';
 
 export interface FulltextOptions {
