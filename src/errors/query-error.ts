@@ -1,11 +1,16 @@
 import { PdoError } from 'lupdo';
-import { Binding } from '../types/query/builder';
+import { Binding, NotExpressionBinding } from '../types/query/builder';
 
 class QueryError extends PdoError {
     /**
      * Create a new query exception instance.
      */
-    constructor(protected connectionName: string, protected sql: string, protected bindings: Binding[], error: Error) {
+    constructor(
+        protected connectionName: string,
+        protected sql: string,
+        protected bindings: NotExpressionBinding[],
+        error: Error
+    ) {
         super(error);
         this.message = this.formatMessage();
     }

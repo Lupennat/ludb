@@ -1,5 +1,5 @@
 import ExpressionContract from '../query/expression-contract';
-import { ConnectionConfig } from './config';
+import { ConnectionConfig, DriverConfig } from './config';
 import DriverConnectionI from './connection';
 
 export type Extension = (config: ConnectionConfig, name: string) => DriverConnectionI;
@@ -13,6 +13,11 @@ export interface DatabaseI {
      * Get a database connection instance.
      */
     connection(name?: string): DriverConnectionI;
+
+    /**
+     * Register a connection with the manager.
+     */
+    addConnection(config: DriverConfig, name?: string): this;
 
     /**
      * Get a new raw query expression.

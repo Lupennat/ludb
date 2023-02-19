@@ -1,7 +1,7 @@
 import { Pdo } from 'lupdo';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
-import { FlattedConnectionConfig } from './config';
+import { ConnectionConfig } from './config';
 
 export type ConnectorResolver = () => ConnectorI;
 
@@ -10,7 +10,7 @@ export interface ConnectorI {
      * Establish a database connection.
      *
      */
-    connect(config: FlattedConnectionConfig): Pdo;
+    connect(config: ConnectionConfig): Pdo;
     /**
      * Get the default PDO attributes.
      */

@@ -531,12 +531,12 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(2, results => {
             callback(results);
         });
-        expect(spiedGet).toHaveBeenCalledTimes(3);
-        expect(spiedForPage).toHaveBeenCalledTimes(3);
+        expect(spiedGet).toBeCalledTimes(3);
+        expect(spiedForPage).toBeCalledTimes(3);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(3, 3, 2);
-        expect(callback).toHaveBeenCalledTimes(2);
+        expect(callback).toBeCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -562,11 +562,11 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(2, results => {
             callback(results);
         });
-        expect(spiedGet).toHaveBeenCalledTimes(2);
-        expect(spiedForPage).toHaveBeenCalledTimes(2);
+        expect(spiedGet).toBeCalledTimes(2);
+        expect(spiedForPage).toBeCalledTimes(2);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
-        expect(callback).toHaveBeenCalledTimes(2);
+        expect(callback).toBeCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -593,10 +593,10 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(results);
             return false;
         });
-        expect(spiedGet).toHaveBeenCalledTimes(1);
-        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toBeCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
-        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toBeCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -616,10 +616,10 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(0, results => {
             callback(results);
         });
-        expect(spiedGet).toHaveBeenCalledTimes(1);
-        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toBeCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 0);
-        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toBeCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -639,10 +639,10 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(0, results => {
             callback(results);
         });
-        expect(spiedGet).toHaveBeenCalledTimes(1);
-        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toBeCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 0);
-        expect(callback).toHaveBeenCalledTimes(0);
+        expect(callback).toBeCalledTimes(0);
     });
 
     it('Works Chunk Paginates Using Id With Last Chunk Complete', async () => {
@@ -689,12 +689,12 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toHaveBeenCalledTimes(3);
+        expect(spiedClone).toBeCalledTimes(3);
         expect(spiedForPage.length).toBe(3);
-        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
-        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
-        expect(spiedForPage[2]).toHaveBeenCalledWith(2, 11, 'someIdField');
-        expect(callback).toHaveBeenCalledTimes(2);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
+        expect(spiedForPage[2]).toBeCalledWith(2, 11, 'someIdField');
+        expect(callback).toBeCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -734,11 +734,11 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toHaveBeenCalledTimes(2);
+        expect(spiedClone).toBeCalledTimes(2);
         expect(spiedForPage.length).toBe(2);
-        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
-        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
-        expect(callback).toHaveBeenCalledTimes(2);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
+        expect(callback).toBeCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -769,10 +769,10 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedClone).toBeCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
-        expect(callback).toHaveBeenCalledTimes(1);
+        expect(spiedForPage[0]).toBeCalledWith(0, null, 'someIdField');
+        expect(callback).toBeCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -802,10 +802,10 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedClone).toBeCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
-        expect(callback).toHaveBeenCalledTimes(0);
+        expect(spiedForPage[0]).toBeCalledWith(0, null, 'someIdField');
+        expect(callback).toBeCalledTimes(0);
     });
 
     it('Works Chunk Paginates Using Id With Alias', async () => {
@@ -844,11 +844,11 @@ describe('Query Builder Pdo Methods Select', () => {
             'table.id',
             'table_id'
         );
-        expect(spiedClone).toHaveBeenCalledTimes(2);
+        expect(spiedClone).toBeCalledTimes(2);
         expect(spiedForPage.length).toBe(2);
-        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'table.id');
-        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'table.id');
-        expect(callback).toHaveBeenCalledTimes(1);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'table.id');
+        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'table.id');
+        expect(callback).toBeCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 });

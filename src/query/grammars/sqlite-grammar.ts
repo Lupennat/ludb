@@ -103,6 +103,13 @@ class SQLiteGrammar extends Grammar {
     }
 
     /**
+     * Compile a "JSON value cast" statement into SQL.
+     */
+    public compileJsonValueCast(value: string): string {
+        return `json(${super.compileJsonValueCast(value)})`;
+    }
+
+    /**
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {

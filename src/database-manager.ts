@@ -2,12 +2,17 @@ import { Pdo } from 'lupdo';
 import EventEmitter from 'node:events';
 import ConnectionFactory from './connectors/connection-factory';
 import ExpressionContract from './query/expression-contract';
-import { ConnectionConfig, DatabaseConfig, ReadWriteType } from './types/config';
+import { ConnectionConfig, DatabaseConfig, DriverConfig, ReadWriteType } from './types/config';
 import DriverConnectionI from './types/connection';
 import { DatabaseI, Extension } from './types/database';
 import { raw } from './utils';
 
 class DatabaseManager implements DatabaseI {
+    /**
+     * The database config.
+     */
+    protected config: DatabaseConfig;
+
     /**
      * The database connection factory instance.
      */
@@ -31,7 +36,8 @@ class DatabaseManager implements DatabaseI {
     /**
      * Create a new database manager instance.
      */
-    constructor(protected config: DatabaseConfig, factory?: ConnectionFactory, dispatcher?: EventEmitter) {
+    constructor(config?: DatabaseConfig, factory?: ConnectionFactory, dispatcher?: EventEmitter) {
+        this.config = config || { default: 'default', connections: {} };
         this.factory = factory || new ConnectionFactory();
         this.dispatcher = dispatcher || new EventEmitter();
     }
@@ -52,6 +58,15 @@ class DatabaseManager implements DatabaseI {
         }
 
         return this.connections[name];
+    }
+
+    /**
+     * Register a connection with the manager.
+     */
+    public addConnection(config: DriverConfig, name = 'default'): this {
+        this.config.connections[name] = config;
+
+        return this;
     }
 
     /**

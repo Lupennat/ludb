@@ -834,6 +834,6 @@ describe('Query Builder Pdo Methods Modify', () => {
 
         expect(await builder.updateOrInsert({ email: 'foo' })).toBeTruthy();
         expect(spiedWhere).toBeCalledWith({ email: 'foo' });
-        expect(spiedUpdate).not.toHaveBeenCalled();
+        expect(spiedUpdate).not.toBeCalled();
     });
 });

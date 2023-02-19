@@ -2,7 +2,7 @@ import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import 'lupdo-mysql';
 import { MysqlOptions } from 'lupdo-mysql';
-import { MysqlFlattedConfig } from '../types/config';
+import { MySqlConfig, MySqlStrict } from '../types/config';
 import { ConnectorI } from '../types/connector';
 import Connector from './connector';
 
@@ -10,9 +10,9 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Establish a database connection.
      */
-    public connect(config: MysqlFlattedConfig): Pdo {
-        const attributes = this.getAttributes<MysqlFlattedConfig>(config);
-        const poolOptions = this.getPoolOptions<MysqlFlattedConfig>(config);
+    public connect(config: MySqlConfig): Pdo {
+        const attributes = this.getAttributes<MySqlConfig>(config);
+        const poolOptions = this.getPoolOptions<MySqlConfig>(config);
 
         poolOptions.created = async (_uuid: string, connection: PdoConnectionI) => {
             await this.configureIsolationLevel(connection, config);
@@ -40,13 +40,18 @@ class MySqlConnector extends Connector implements ConnectorI {
         // We need to grab the PDO options that should be used while making the brand
         // new connection instance. The PDO options control various aspects of the
         // connection's behavior, and some might be specified by the developers.
-        return this.createConnection<MysqlOptions>('mysql', options, poolOptions, attributes);
+        return this.createConnection<MysqlOptions>(
+            config.driver === 'mysql' ? 'mysql' : 'mariadb',
+            options,
+            poolOptions,
+            attributes
+        );
     }
 
     /**
      * Set the connection transaction isolation level.
      */
-    protected async configureIsolationLevel(connection: PdoConnectionI, config: MysqlFlattedConfig): Promise<void> {
+    public async configureIsolationLevel(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
         if (config.isolation_level) {
             await connection.query(`set session transaction isolation level ${config.isolation_level}`);
         }
@@ -55,7 +60,7 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Set the connection character set and collation.
      */
-    protected async configureEncoding(connection: PdoConnectionI, config: MysqlFlattedConfig): Promise<void> {
+    public async configureEncoding(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
         if (config.charset) {
             await connection.query(`set names '${config.charset}'${this.getCollation(config)}`);
         }
@@ -64,14 +69,14 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Get the collation for the configuration.
      */
-    protected getCollation(config: MysqlFlattedConfig): string {
+    protected getCollation(config: MySqlConfig): string {
         return config.collation ? ` collate '${config.collation}'` : '';
     }
 
     /**
      * Set the timezone on the connection.
      */
-    protected async configureTimezone(connection: PdoConnectionI, config: MysqlFlattedConfig): Promise<void> {
+    public async configureTimezone(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
         if (config.timezone) {
             await connection.query(`set time_zone="${config.timezone}"`);
         }
@@ -80,7 +85,7 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Set the modes for the connection.
      */
-    protected async setModes(connection: PdoConnectionI, config: MysqlFlattedConfig): Promise<void> {
+    public async setModes(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
         if (config.modes && config.modes.length > 0) {
             await connection.query(`set session sql_mode='${config.modes.join(',')}'`);
         } else if (config.strict !== undefined) {
@@ -95,8 +100,8 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Get the query to enable strict mode.
      */
-    protected strictMode(strict: 'new' | 'old'): string {
-        if (strict === 'new') {
+    protected strictMode(strict: MySqlStrict): string {
+        if (strict.toLowerCase() === 'new') {
             return "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'";
         }
 

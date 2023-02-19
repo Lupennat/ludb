@@ -48,6 +48,10 @@ export interface FlattedConnectionConfig extends ConnectionOptions {
      */
     prefix: string;
     /**
+     * database
+     */
+    database: string;
+    /**
      * pdo attributes
      */
     attributes?: PdoAttributes;
@@ -67,6 +71,10 @@ export interface PreparedConnectionConfig extends FlattedConnectionConfig {
      */
     prefix: string;
     /**
+     * table prefix
+     */
+    database: string;
+    /**
      * write connection
      */
     write?: ConnectionOptions | ConnectionOptions[];
@@ -74,9 +82,17 @@ export interface PreparedConnectionConfig extends FlattedConnectionConfig {
      * read connection
      */
     read?: ConnectionOptions | ConnectionOptions[];
+    /**
+     * pdo attributes
+     */
+    attributes?: PdoAttributes;
+    /**
+     * pool options
+     */
+    pool?: PoolOptions;
 }
 
-export interface ConnectionConfig extends Omit<PreparedConnectionConfig, 'name' | 'prefix'> {
+export interface ConnectionConfig extends Omit<PreparedConnectionConfig, 'name' | 'prefix' | 'database'> {
     /**
      * connection name
      */
@@ -85,9 +101,23 @@ export interface ConnectionConfig extends Omit<PreparedConnectionConfig, 'name' 
      * table prefix
      */
     prefix?: string;
+    /**
+     * table prefix
+     */
+    database?: string;
 }
 
-export interface MysqlConnectionOptions extends Omit<ConnectionOptions, 'prefix'> {
+export type MySqlStrict = `${'N' | 'n'}${'E' | 'e'}${'W' | 'w'}` | `${'O' | 'o'}${'L' | 'l'}${'D' | 'd'}`;
+
+export interface MySqlConnectionOptions extends ConnectionOptions {
+    /**
+     * database
+     */
+    database?: string;
+    /**
+     * table prefix
+     */
+    prefix?: string;
     /**
      * use prefix for schema builder
      */
@@ -103,7 +133,7 @@ export interface MysqlConnectionOptions extends Omit<ConnectionOptions, 'prefix'
     /**
      * strict mode must be old if mysql < 8.0.11
      */
-    strict?: 'new' | 'old' | false;
+    strict?: MySqlStrict | false;
     /**
      * mysql table engine for schema builder
      */
@@ -130,9 +160,11 @@ export interface MysqlConnectionOptions extends Omit<ConnectionOptions, 'prefix'
     lupdo_options?: MysqlOptions;
 }
 
-export interface MysqlFlattedConfig extends FlattedConnectionConfig, MysqlConnectionOptions {}
+export interface MySqlFlattedConfig
+    extends FlattedConnectionConfig,
+        Omit<MySqlConnectionOptions, 'prefix' | 'database'> {}
 
-export interface MysqlConfig extends MysqlFlattedConfig {
+export interface MySqlConfig extends MySqlConnectionOptions {
     /**
      * driver name
      */
@@ -140,15 +172,19 @@ export interface MysqlConfig extends MysqlFlattedConfig {
     /**
      * write connection
      */
-    write?: MysqlConnectionOptions | MysqlConnectionOptions[];
+    write?: MySqlConnectionOptions | MySqlConnectionOptions[];
     /**
      * read connection
      */
-    read?: MysqlConnectionOptions | MysqlConnectionOptions[];
+    read?: MySqlConnectionOptions | MySqlConnectionOptions[];
 }
 
-export interface SQliteConnectionOptions
-    extends Omit<ConnectionOptions, 'host' | 'port' | 'username' | 'password' | 'prefix'> {
+export interface SQLiteConnectionOptions
+    extends Omit<ConnectionOptions, 'host' | 'port' | 'username' | 'password' | 'database'> {
+    /**
+     * database
+     */
+    database: string;
     /**
      * make Database ReadOnly
      */
@@ -163,11 +199,11 @@ export interface SQliteConnectionOptions
     lupdo_options?: SqliteOptions;
 }
 
-export interface SQliteFlattedConfig
+export interface SQLiteFlattedConfig
     extends Omit<FlattedConnectionConfig, 'host' | 'port' | 'username' | 'password'>,
-        SQliteConnectionOptions {}
+        Omit<SQLiteConnectionOptions, 'prefix'> {}
 
-export interface SQliteConfig extends SQliteFlattedConfig {
+export interface SQLiteConfig extends SQLiteConnectionOptions {
     /**
      * driver name
      */
@@ -175,14 +211,24 @@ export interface SQliteConfig extends SQliteFlattedConfig {
     /**
      * write connection
      */
-    write?: SQliteConnectionOptions | SQliteConnectionOptions[];
+    write?: SQLiteConnectionOptions | SQLiteConnectionOptions[];
     /**
      * read connection
      */
-    read?: SQliteConnectionOptions | SQliteConnectionOptions[];
+    read?: SQLiteConnectionOptions | SQLiteConnectionOptions[];
 }
 
-export interface PostgresConnectionOptions extends Omit<ConnectionOptions, 'prefix'> {
+export type PostgresSslMode = 'disable' | 'prefer' | 'require' | 'verify-ca' | 'verify-full' | 'no-verify';
+
+export interface PostgresConnectionOptions extends ConnectionOptions {
+    /**
+     * database
+     */
+    database?: string;
+    /**
+     * table prefix
+     */
+    prefix?: string;
     /**
      * use prefix for schema builder
      */
@@ -202,7 +248,7 @@ export interface PostgresConnectionOptions extends Omit<ConnectionOptions, 'pref
     /**
      * search path
      */
-    search_path?: string;
+    search_path?: string | string[];
     /**
      * schema
      */
@@ -219,7 +265,7 @@ export interface PostgresConnectionOptions extends Omit<ConnectionOptions, 'pref
     /**
      * ssl mode
      */
-    sslmode?: string;
+    sslmode?: PostgresSslMode;
     /**
      * trusted CA certificates path.
      */
@@ -238,9 +284,11 @@ export interface PostgresConnectionOptions extends Omit<ConnectionOptions, 'pref
     lupdo_options?: PostgresOptions;
 }
 
-export interface PostgresFlattedConfig extends FlattedConnectionConfig, PostgresConnectionOptions {}
+export interface PostgresFlattedConfig
+    extends FlattedConnectionConfig,
+        Omit<PostgresConnectionOptions, 'prefix' | 'database'> {}
 
-export interface PostgresConfig extends PostgresFlattedConfig {
+export interface PostgresConfig extends PostgresConnectionOptions {
     /**
      * driver name
      */
@@ -291,16 +339,18 @@ export interface SqlServerConnectionOptions extends ConnectionOptions {
     /**
      * multi subnet failover
      */
-    multi_subnet_failover: boolean;
+    multi_subnet_failover?: boolean;
     /**
      * lupdo-mssql options
      */
     lupdo_options?: MssqlOptions;
 }
 
-export interface SqlServerFlattedConfig extends FlattedConnectionConfig, Omit<SqlServerConnectionOptions, 'prefix'> {}
+export interface SqlServerFlattedConfig
+    extends FlattedConnectionConfig,
+        Omit<SqlServerConnectionOptions, 'prefix' | 'database'> {}
 
-export interface SqlServerConfig extends SqlServerFlattedConfig {
+export interface SqlServerConfig extends SqlServerConnectionOptions {
     /**
      * driver name
      */
@@ -318,17 +368,17 @@ export interface SqlServerConfig extends SqlServerFlattedConfig {
 export type DriverConnectionOptions =
     | PostgresConnectionOptions
     | SqlServerConnectionOptions
-    | MysqlConnectionOptions
-    | SQliteConnectionOptions
+    | MySqlConnectionOptions
+    | SQLiteConnectionOptions
     | ConnectionOptions;
 
-export type DriverConfig = PostgresConfig | SqlServerConfig | MysqlConfig | SQliteConfig | ConnectionConfig;
+export type DriverConfig = PostgresConfig | SqlServerConfig | MySqlConfig | SQLiteConfig | ConnectionConfig;
 
 export type DriverFLattedConfig =
     | PostgresFlattedConfig
     | SqlServerFlattedConfig
-    | MysqlFlattedConfig
-    | SQliteFlattedConfig
+    | MySqlFlattedConfig
+    | SQLiteFlattedConfig
     | FlattedConnectionConfig;
 
 export interface DatabaseConfig {

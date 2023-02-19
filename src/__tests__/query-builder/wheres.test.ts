@@ -880,7 +880,7 @@ describe('Query Builder Wheres', () => {
         expect([1]).toEqual(builder.getBindings());
     });
 
-    it('Works Json Where Null Mysql', () => {
+    it('Works Json Where Null MySql', () => {
         const builder = getMySqlBuilder();
         builder.select('*').from('users').whereNull('items->id');
         expect(
@@ -888,7 +888,7 @@ describe('Query Builder Wheres', () => {
         ).toBe(builder.toSql());
     });
 
-    it('Works Json Where Not Null Mysql', () => {
+    it('Works Json Where Not Null MySql', () => {
         const builder = getMySqlBuilder();
         builder.select('*').from('users').whereNotNull('items->id');
         expect(

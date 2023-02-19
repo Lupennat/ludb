@@ -235,6 +235,13 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
+     * Compile a "JSON value cast" statement into SQL.
+     */
+    public compileJsonValueCast(value: string): string {
+        return `to_json(${super.compileJsonValueCast(value)}::text)`;
+    }
+
+    /**
      * Compile a having clause involving a bitwise operator.
      */
     protected compileHavingBitwise(_query: BuilderContract, having: HavingBasic): string {

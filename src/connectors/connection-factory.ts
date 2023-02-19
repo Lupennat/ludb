@@ -10,8 +10,12 @@ import {
     DriverConnectionOptions,
     DriverFLattedConfig,
     FlattedConnectionConfig,
+    MySqlConfig,
+    PostgresConfig,
     PreparedConnectionConfig,
-    ReadWriteType
+    ReadWriteType,
+    SQLiteConfig,
+    SqlServerConfig
 } from '../types/config';
 import DriverConnectionI from '../types/connection';
 import { ConnectorI } from '../types/connector';
@@ -25,8 +29,13 @@ class ConnectionFactory {
     /**
      * Establish a PDO connection based on the configuration.
      */
-    public make(config: ConnectionConfig, name: string): DriverConnectionI {
+    public make<T = MySqlConfig>(config: T, name: string): MySqlConnection;
+    public make<T = SQLiteConfig>(config: T, name: string): SQLiteConnection;
+    public make<T = PostgresConfig>(config: T, name: string): PostgresConnection;
+    public make<T = SqlServerConfig>(config: T, name: string): SqlServerConnection;
+    public make<T extends ConnectionConfig>(config: T, name: string): DriverConnectionI {
         config.prefix = config.prefix || '';
+        config.database = config.database || '';
         config.name = config.name || name;
 
         if ('read' in config) {
@@ -120,6 +129,10 @@ class ConnectionFactory {
     protected createConnector(config: DriverFLattedConfig): ConnectorI {
         const driver = config.driver;
 
+        if (!driver) {
+            throw new TypeError('A driver must be specified.');
+        }
+
         const resolver = Connector.getResolver(driver);
 
         if (resolver !== null) {
@@ -128,6 +141,7 @@ class ConnectionFactory {
 
         switch (config.driver) {
             case 'mysql':
+            case 'mariadb':
                 return new MySqlConnector();
             case 'pgsql':
                 return new PostgresConnector();
@@ -147,8 +161,8 @@ class ConnectionFactory {
         driver: string,
         connection: Pdo,
         config: DriverFLattedConfig,
-        database = '',
-        prefix = ''
+        database: string,
+        prefix: string
     ): DriverConnectionI {
         const resolver = Connection.getResolver(driver);
 
@@ -158,6 +172,7 @@ class ConnectionFactory {
 
         switch (driver) {
             case 'mysql':
+            case 'mariadb':
                 return new MySqlConnection(connection, config, database, prefix);
             case 'pgsql':
                 return new PostgresConnection(connection, config, database, prefix);

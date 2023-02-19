@@ -2,7 +2,7 @@ import deepmerge from 'deepmerge';
 import { ATTR_CASE, ATTR_DEBUG, ATTR_NULLS, CASE_NATURAL, DEBUG_DISABLED, NULL_NATURAL, Pdo } from 'lupdo';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
-import { DriverFLattedConfig } from '../types/config';
+import { ConnectionConfig } from '../types/config';
 import { ConnectorResolver } from '../types/connector';
 
 class Connector {
@@ -24,14 +24,14 @@ class Connector {
      * The default PDO pool options.
      */
     protected poolOptions: PoolOptions = {
-        min: 1,
+        min: 0,
         max: 5
     };
 
     /**
      * Create a new PDO connection.
      */
-    protected createConnection<T = any>(
+    public createConnection<T = any>(
         driver: string,
         options: T,
         poolOptions: PoolOptions,
@@ -43,7 +43,7 @@ class Connector {
     /**
      * Get the PDO attributes based on the configuration.
      */
-    protected getAttributes<T extends DriverFLattedConfig>(config: T): PdoAttributes {
+    protected getAttributes<T extends ConnectionConfig>(config: T): PdoAttributes {
         const attributes = config.attributes ?? {};
 
         return deepmerge(this.attributes, attributes);
@@ -52,7 +52,7 @@ class Connector {
     /**
      * Get the PDO pool options based on the configuration.
      */
-    protected getPoolOptions<T extends DriverFLattedConfig>(config: T): PoolOptions {
+    protected getPoolOptions<T extends ConnectionConfig>(config: T): PoolOptions {
         const poolOptions = config.pool ?? {};
 
         return deepmerge(this.poolOptions, poolOptions);

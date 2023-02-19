@@ -38,7 +38,7 @@ describe('Query Builder Select-From', () => {
         expect(builder.toSql()).toBe('select * from "public"."users"');
     });
 
-    it('Works Mysql Wrapping Protectets Quotation Marks', () => {
+    it('Works MySql Wrapping Protectets Quotation Marks', () => {
         const builder = getMySqlBuilder();
         builder.select('*').from('some`table');
         expect(builder.toSql()).toBe('select * from `some``table`');
@@ -541,5 +541,38 @@ describe('Query Builder Select-From', () => {
         builder = getBuilder();
         builder.select('*').from('users').where('name', '=', 'Taylor', 'Or');
         expect('select * from "users" where "name" = ?').toBe(builder.toSql());
+    });
+
+    it('Works Compile Json Value Cast', () => {
+        const builder = getBuilder();
+        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(`'{"test": "apos''dude"}'`);
+    });
+
+    it('Works Compile Json Value Cast MySql', () => {
+        const builder = getMySqlBuilder();
+        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
+            `cast('{"test": "apos''dude"}' as json)`
+        );
+    });
+
+    it('Works Compile Json Value Cast SQLite', () => {
+        const builder = getSQLiteBuilder();
+        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
+            `json('{"test": "apos''dude"}')`
+        );
+    });
+
+    it('Works Compile Json Value Cast Postgres', () => {
+        const builder = getPostgresBuilder();
+        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
+            `to_json('{"test": "apos''dude"}'::text)`
+        );
+    });
+
+    it('Works Compile Json Value Cast SqlServer', () => {
+        const builder = getSqlServerBuilder();
+        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
+            `json_query('{"test": "apos''dude"}')`
+        );
     });
 });

@@ -92,7 +92,7 @@ class MySqlGrammar extends Grammar {
      * Compile a "JSON value cast" statement into SQL.
      */
     public compileJsonValueCast(value: string): string {
-        return `cast(${value} as json)`;
+        return `cast(${super.compileJsonValueCast(value)} as json)`;
     }
 
     /**

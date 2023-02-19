@@ -3,6 +3,7 @@ import { Pdo, PdoPreparedStatementI, PdoTransactionPreparedStatementI } from 'lu
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import QueryExecuted from '../events/query-executed';
+import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
 import Processor from '../query/processors/processor';
 import { DriverFLattedConfig, FlattedConnectionConfig, ReadWriteType } from '../types/config';
@@ -155,6 +156,9 @@ class Connection implements DriverConnectionI {
     ): void {
         for (let x = 0; x < bindings.length; x++) {
             const binding = bindings[x];
+            if (binding instanceof ExpressionContract) {
+                throw new Error('Expression binding can not be binded directly to statement.');
+            }
             statement.bindValue(x + 1, binding);
         }
     }
@@ -163,8 +167,6 @@ class Connection implements DriverConnectionI {
      * Prepare the query bindings for execution.
      */
     public prepareBindings(bindings: Binding[]): NotExpressionBinding[] {
-        // const grammar = this.getQueryGrammar();
-
         return bindings.map(binding => {
             if (this.queryGrammar.isExpression(binding)) {
                 return this.queryGrammar.getValue(binding).toString();
@@ -178,9 +180,11 @@ class Connection implements DriverConnectionI {
      * Reconnect to the database.
      */
     public async reconnect(): Promise<this> {
-        await this.getPdo().reconnect();
-        await this.getReadPdo().reconnect();
-
+        const promises = [this.pdo.reconnect()];
+        if (this.readPdo !== null) {
+            promises.push(this.readPdo.reconnect());
+        }
+        await Promise.all(promises);
         return this;
     }
 
@@ -188,8 +192,11 @@ class Connection implements DriverConnectionI {
      * Disconnect from the underlying PDO connection.
      */
     public async disconnect(): Promise<void> {
-        await this.getPdo().disconnect();
-        await this.getReadPdo().disconnect();
+        const promises = [this.pdo.disconnect()];
+        if (this.readPdo !== null) {
+            promises.push(this.readPdo.disconnect());
+        }
+        await Promise.all(promises);
     }
 
     /**
@@ -527,14 +534,14 @@ class Connection implements DriverConnectionI {
     /**
      * Run an SQL statement and get the number of rows affected.
      */
-    public affectingStatement(query: string, bindings?: Binding[]): Promise<number> {
+    public async affectingStatement(query: string, bindings?: Binding[]): Promise<number> {
         return this.session().affectingStatement(query, bindings);
     }
 
     /**
      * Run a raw, unprepared query against the PDO connection.
      */
-    public unprepared(query: string): Promise<boolean> {
+    public async unprepared(query: string): Promise<boolean> {
         return this.session().unprepared(query);
     }
 
@@ -559,6 +566,9 @@ class Connection implements DriverConnectionI {
         return this.session().beginTransaction();
     }
 
+    /**
+     * Indicate that the connection should use the write PDO connection for reads.
+     */
     public useWriteConnectionWhenReading(value?: boolean): ConnectionSessionI {
         return this.session().useWriteConnectionWhenReading(value);
     }

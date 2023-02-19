@@ -11,17 +11,17 @@ import GrammarI from './query/grammar';
 export type ConnectionResolver = <T extends FlattedConnectionConfig>(
     pdo: Pdo,
     config: T,
-    database?: string,
-    tablePrefix?: string
+    database: string,
+    tablePrefix: string
 ) => DriverConnectionI;
 
-export type BeforeExecutingCallback = (query: string, bindings: Binding[], connection: unknown) => Promise<void>;
+export type BeforeExecutingCallback = (query: string, bindings: Binding[], connection: unknown) => void | Promise<void>;
 
 export type QueryExecutedCallback = (event: QueryExecuted) => void | Promise<void>;
 
-export type PretendingCallback = (session: ConnectionSessionI) => Promise<void>;
+export type PretendingCallback = (session: ConnectionSessionI) => void | Promise<void>;
 
-export type TransactionCallback = (session: ConnectionSessionI) => Promise<void>;
+export type TransactionCallback = (session: ConnectionSessionI) => void | Promise<void>;
 
 export interface LoggedQuery {
     query: string;

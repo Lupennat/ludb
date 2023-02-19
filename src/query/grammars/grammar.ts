@@ -581,7 +581,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile a "JSON value cast" statement into SQL.
      */
     public compileJsonValueCast(value: string): string {
-        return value;
+        return `'${value.replace(/'/g, "''")}'`;
     }
 
     /**

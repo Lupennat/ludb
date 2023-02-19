@@ -1,7 +1,8 @@
 import deepmerge from 'deepmerge';
 import { Pdo } from 'lupdo';
+import 'lupdo-mssql';
 import { MssqlOptions } from 'lupdo-mssql';
-import { SqlServerFlattedConfig } from '../types/config';
+import { SqlServerConfig } from '../types/config';
 import { ConnectorI } from '../types/connector';
 import Connector from './connector';
 
@@ -9,9 +10,9 @@ class SqlServerConnector extends Connector implements ConnectorI {
     /**
      * Establish a database connection.
      */
-    public connect<T extends SqlServerFlattedConfig>(config: T): Pdo {
-        const attributes = this.getAttributes<SqlServerFlattedConfig>(config);
-        const poolOptions = this.getPoolOptions<SqlServerFlattedConfig>(config);
+    public connect<T extends SqlServerConfig>(config: T): Pdo {
+        const attributes = this.getAttributes<SqlServerConfig>(config);
+        const poolOptions = this.getPoolOptions<SqlServerConfig>(config);
 
         const options: MssqlOptions = {
             server: config.host,

@@ -11,7 +11,7 @@ class FakeThirdPartyConnection implements PoolConnection {
     __lupdo_killed = false;
 }
 
-class FakeConnection implements PdoConnectionI {
+export class FakeConnection implements PdoConnectionI {
     public async query(): Promise<void> {
         return void 0;
     }

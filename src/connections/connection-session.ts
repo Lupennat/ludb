@@ -446,7 +446,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public async transaction(callback: TransactionCallback, attempts = 1): Promise<void> {
         for (let currentAttempt = 1; currentAttempt <= attempts; currentAttempt++) {
-            this.beginTransaction();
+            await this.beginTransaction();
 
             // We'll simply execute the given callback within a try / catch block and if we
             // catch any error we can rollback this transaction so that none of this
@@ -522,7 +522,7 @@ class ConnectionSession implements ConnectionSessionI {
      * Start a new database transaction.
      */
     public async beginTransaction(): Promise<this> {
-        this.createTransaction();
+        await this.createTransaction();
 
         this.transactions++;
 

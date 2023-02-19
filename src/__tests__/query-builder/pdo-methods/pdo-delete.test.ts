@@ -234,7 +234,7 @@ describe('Query Builder Pdo Methods', () => {
         let builder = getBuilder();
         let spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
         await builder.from('users').truncate();
-        expect(spiedTruncate).toHaveBeenCalledWith('truncate table "users"', []);
+        expect(spiedTruncate).toBeCalledWith('truncate table "users"', []);
 
         builder = getSQLiteBuilder();
         spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
@@ -245,6 +245,6 @@ describe('Query Builder Pdo Methods', () => {
         builder = getPostgresBuilder();
         spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
         await builder.from('users').truncate();
-        expect(spiedTruncate).toHaveBeenCalledWith('truncate "users" restart identity cascade', []);
+        expect(spiedTruncate).toBeCalledWith('truncate "users" restart identity cascade', []);
     });
 });

@@ -3,17 +3,18 @@ import { Pdo, PdoConnectionI } from 'lupdo';
 import 'lupdo-postgres';
 import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
-import { PostgresFlattedConfig } from '../types/config';
+import { PostgresConfig } from '../types/config';
 import { ConnectorI } from '../types/connector';
+import { trimChar } from '../utils';
 import Connector from './connector';
 
 class PostgresConnector extends Connector implements ConnectorI {
     /**
      * Establish a database connection.
      */
-    public connect<T extends PostgresFlattedConfig>(config: T): Pdo {
-        const attributes = this.getAttributes<PostgresFlattedConfig>(config);
-        const poolOptions = this.getPoolOptions<PostgresFlattedConfig>(config);
+    public connect<T extends PostgresConfig>(config: T): Pdo {
+        const attributes = this.getAttributes<PostgresConfig>(config);
+        const poolOptions = this.getPoolOptions<PostgresConfig>(config);
 
         poolOptions.created = async (_uuid: string, connection: PdoConnectionI) => {
             await this.configureIsolationLevel(connection, config);
@@ -28,15 +29,31 @@ class PostgresConnector extends Connector implements ConnectorI {
             await this.configureSynchronousCommit(connection, config);
         };
 
-        let ssl: undefined | { [key: string]: string | undefined } = {
-            sslmode: config.sslmode,
+        let ssl: undefined | boolean | { [key: string]: string | undefined | boolean } = {
             cert: config.sslcert ? readFileSync(config.sslcert).toString() : undefined,
             key: config.sslkey ? readFileSync(config.sslkey).toString() : undefined,
             ca: config.sslrootcert ? readFileSync(config.sslrootcert).toString() : undefined
         };
 
-        if (Object.values(ssl).filter(Boolean).length === 0) {
-            ssl = undefined;
+        switch (config.sslmode) {
+            case 'disable':
+                ssl = false;
+                break;
+            case 'prefer':
+            case 'require':
+            case 'verify-ca':
+            case 'verify-full':
+                ssl = Object.values(ssl).filter(Boolean).length === 0 ? true : ssl;
+                break;
+            case 'no-verify':
+                if (Object.values(ssl).filter(Boolean).length === 0) {
+                    ssl = { rejectUnauthorized: false };
+                } else {
+                    ssl.rejectUnauthorized = false;
+                }
+                break;
+            default:
+                ssl = Object.values(ssl).filter(Boolean).length === 0 ? undefined : ssl;
         }
 
         const options: PostgresOptions = deepmerge(
@@ -61,7 +78,7 @@ class PostgresConnector extends Connector implements ConnectorI {
     /**
      * Set the connection transaction isolation level.
      */
-    protected async configureIsolationLevel(connection: PdoConnectionI, config: PostgresFlattedConfig): Promise<void> {
+    public async configureIsolationLevel(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.isolation_level) {
             await connection.query(
                 `set session characteristics as transaction isolation level ${config.isolation_level}`
@@ -72,7 +89,7 @@ class PostgresConnector extends Connector implements ConnectorI {
     /**
      * Set the connection character.
      */
-    protected async configureEncoding(connection: PdoConnectionI, config: PostgresFlattedConfig): Promise<void> {
+    public async configureEncoding(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.charset) {
             await connection.query(`set names '${config.charset}'`);
         }
@@ -81,16 +98,16 @@ class PostgresConnector extends Connector implements ConnectorI {
     /**
      * Set the timezone on the connection.
      */
-    protected async configureTimezone(connection: PdoConnectionI, config: PostgresFlattedConfig): Promise<void> {
+    public async configureTimezone(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.timezone) {
-            await connection.query(`set time zone "${config.timezone}"`);
+            await connection.query(`set time zone '${config.timezone}'`);
         }
     }
 
     /**
      * Set the "search_path" on the database connection.
      */
-    protected async configureSearchPath(connection: PdoConnectionI, config: PostgresFlattedConfig): Promise<void> {
+    public async configureSearchPath(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         const search = config.search_path ?? config.schema;
 
         if (search) {
@@ -101,13 +118,15 @@ class PostgresConnector extends Connector implements ConnectorI {
     /**
      * Parse the Postgres "search_path" configuration value into an array.
      */
-    protected parseSearchPath(searchPath: string): string[] {
-        const regex = new RegExp(/[^\s,"\']+/, 'g');
-        return [...searchPath.matchAll(regex)].map(match => {
-            const trimStartRegex = new RegExp(`^['"]+`, 'g');
-            const trimEndRegex = new RegExp(`['"]+$`, 'g');
-            return match[0].replace(trimStartRegex, '').replace(trimEndRegex, '');
-        });
+    protected parseSearchPath(searchPath: string | string[]): string[] {
+        if (typeof searchPath === 'string') {
+            const regex = new RegExp(/[^\s,"\']+/, 'g');
+            return [...searchPath.matchAll(regex)].map(match => {
+                return trimChar(match[0], '\'"');
+            });
+        } else {
+            return searchPath.map(schema => trimChar(schema, '\'"'));
+        }
     }
 
     /**
@@ -120,10 +139,7 @@ class PostgresConnector extends Connector implements ConnectorI {
     /**
      * Configure the synchronous_commit setting.
      */
-    protected async configureSynchronousCommit(
-        connection: PdoConnectionI,
-        config: PostgresFlattedConfig
-    ): Promise<void> {
+    public async configureSynchronousCommit(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.synchronous_commit) {
             await connection.query(`set synchronous_commit to '${config.synchronous_commit}'`);
         }

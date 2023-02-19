@@ -26,7 +26,7 @@ describe('Query Builder Havings', () => {
             .having('videos_count', '>', 1);
         await builder.count();
 
-        expect(spyConnectionDatabase).toBeCalled();
+        expect(spyConnectionDatabase).toBeCalledWith();
         expect(spyConnection).toBeCalledWith(expected, [1], true);
     });
 

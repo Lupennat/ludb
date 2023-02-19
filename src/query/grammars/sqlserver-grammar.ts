@@ -189,7 +189,7 @@ class SqlServerGrammar extends Grammar {
      * Compile a "JSON value cast" statement into SQL.
      */
     public compileJsonValueCast(value: string): string {
-        return `json_query(${value})`;
+        return `json_query(${super.compileJsonValueCast(value)})`;
     }
 
     /**

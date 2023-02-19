@@ -54,7 +54,7 @@
         "test:sqlite3:coverage": "npm run lint && cross-env DB=sqlite3 jest --config test/jest.config.js --coverage",
         "test:postgres15:coverage": "npm run lint && cross-env DB=postgres15 jest --config test/jest.config.js --coverage",
         "test:mssql22:coverage": "npm run lint && cross-env DB=mssql22 jest --config test/jest.config.js --coverage",
-        "test:all": "npm run lint && jest --config test/jest.config.js",
+        "test:all": "jest --detectOpenHandles --config test/jest.config.js",
         "test:coverage": "npm run lint && jest --config test/jest.config.js --coverage",
         "lint": "eslint --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
         "lint:fix": "eslint --fix --ext \".js,.jsx,.ts,.tsx\" \"./src\"",

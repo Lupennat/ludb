@@ -121,3 +121,9 @@ export function causedByConcurrencyError(error: any): boolean {
 export function raw(value: string | bigint | number): ExpressionContract {
     return new Expression(value);
 }
+
+export function trimChar(value: string, character: string): string {
+    const trimStartRegex = new RegExp(`^[${character}]+`, 'g');
+    const trimEndRegex = new RegExp(`[${character}]+$`, 'g');
+    return value.replace(trimStartRegex, '').replace(trimEndRegex, '');
+}
