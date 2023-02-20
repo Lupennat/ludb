@@ -11,6 +11,7 @@ import DeadlockError from '../errors/deadlock-error';
 import QueryError from '../errors/query-error';
 import ConnectionEvent from '../events/connection-event';
 import QueryExecuted from '../events/query-executed';
+import StatementPrepared from '../events/statement-prepared';
 import TransactionBeginning from '../events/transaction-beginning';
 import TransactionCommitted from '../events/transaction-committed';
 import TransactionCommitting from '../events/transaction-committing';
@@ -29,8 +30,11 @@ import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/quer
 import GrammarI from '../types/query/grammar';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
-type RunCallback<T> = (query: string, bindings: Binding[]) => Promise<T>;
-
+export type RunCallback<T> = (query: string, bindings: Binding[]) => Promise<T>;
+export type AfterCommitEvent = {
+    level: number;
+    query: QueryExecuted;
+};
 class ConnectionSession implements ConnectionSessionI {
     /**
      * Indicates if the connection is in a "dry run".
@@ -65,7 +69,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * After Commit QueryExecuted events
      */
-    protected afterCommit: QueryExecuted[] = [];
+    protected afterCommit: AfterCommitEvent[] = [];
 
     /**
      * Create a new connection session instance.
@@ -127,7 +131,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run a select statement against the database.
      */
-    public async select<T = Dictionary>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T[]> {
+    public async select<T = Dictionary>(query: string, bindings: Binding[] = [], useReadPdo?: boolean): Promise<T[]> {
         return await this.run<T[]>(query, bindings, async (query, bindings) => {
             if (this.pretending()) {
                 return [];
@@ -155,7 +159,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public async cursor<T = Dictionary>(
         query: string,
-        bindings?: Binding[],
+        bindings: Binding[] = [],
         useReadPdo?: boolean
     ): Promise<Generator<T>> {
         const statement = await this.run<PdoPreparedStatementI | PdoTransactionPreparedStatementI | never[]>(
@@ -202,7 +206,7 @@ class ConnectionSession implements ConnectionSessionI {
     protected prepared(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
     ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
-        // this.event(new StatementPrepared($this, $statement));
+        this.getEventDispatcher()?.emit(StatementPrepared.eventName, new StatementPrepared(this, statement));
 
         return statement;
     }
@@ -226,7 +230,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public async insertGetId<T = number | bigint | string>(
         query: string,
-        bindings?: Binding[],
+        bindings: Binding[] = [],
         sequence?: string | null
     ): Promise<T | null> {
         return this.run<T | null>(query, bindings, async (query, bindings) => {
@@ -267,7 +271,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Execute an SQL statement and return the boolean result.
      */
-    public async statement(query: string, bindings?: Binding[]): Promise<boolean> {
+    public async statement(query: string, bindings: Binding[] = []): Promise<boolean> {
         return this.run<boolean>(query, bindings, async (query, bindings) => {
             if (this.pretending()) {
                 return true;
@@ -290,7 +294,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run an SQL statement and get the number of rows affected.
      */
-    public async affectingStatement(query: string, bindings?: Binding[]): Promise<number> {
+    public async affectingStatement(query: string, bindings: Binding[] = []): Promise<number> {
         return this.run(query, bindings, async (query, bindings) => {
             if (this.pretending()) {
                 return 0;
@@ -360,7 +364,7 @@ class ConnectionSession implements ConnectionSessionI {
         // Now we'll execute this callback and capture the result. Once it has been
         // executed we will restore the value of query logging and give back the
         // value of the callback so the original callers can have the results.
-        const result = callback();
+        const result = await callback();
 
         this.loggingQueries = loggingQueries;
 
@@ -370,7 +374,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run a SQL statement and log its execution context.
      */
-    protected async run<T>(query: string, bindings: Binding[] = [], callback: RunCallback<T>): Promise<T> {
+    protected async run<T>(query: string, bindings: Binding[], callback: RunCallback<T>): Promise<T> {
         for (const beforeExecutingCallback of this.getBeforeExecuting()) {
             await beforeExecutingCallback(query, bindings, this);
         }
@@ -384,10 +388,10 @@ class ConnectionSession implements ConnectionSessionI {
         try {
             result = await this.runQueryCallback<T>(query, bindings, callback);
         } catch (error) {
-            if (error instanceof QueryError) {
-                result = await this.handleQueryError<T>(error, query, bindings, callback);
-            } else {
-                throw error;
+            try {
+                result = await this.handleQueryError<T>(error as QueryError, query, bindings, callback);
+            } catch (err) {
+                throw err;
             }
         }
 
@@ -412,25 +416,28 @@ class ConnectionSession implements ConnectionSessionI {
             // If an error occurs when attempting to run a query, we'll format the error
             // message to include the bindings with SQL, which will make this error a
             // lot more helpful to the developer instead of just the database's errors.
-            throw new QueryError(this.getName(), query, this.prepareBindings(bindings), error);
+            throw new QueryError(this, query, this.prepareBindings(bindings), error);
         }
     }
 
     /**
      * Log a query in the connection's query log.
      */
-    protected logQuery(query: string, bindings: Binding[], time: number | null = null): void {
-        if (this.transactions > 0) {
-            this.afterCommit.push(new QueryExecuted(this.getName(), query, bindings, time, false));
+    protected logQuery(query: string, bindings: Binding[], time: number): void {
+        if (this.transactionLevel() > 0) {
+            this.afterCommit.push({
+                level: this.transactionLevel(),
+                query: new QueryExecuted(this, query, bindings, time, false)
+            });
         }
 
         this.getEventDispatcher()?.emit(
             QueryExecuted.eventName,
-            new QueryExecuted(this.getName(), query, bindings, time, this.transactions > 0)
+            new QueryExecuted(this, query, bindings, time, this.transactionLevel() > 0)
         );
 
         if (this.loggingQueries) {
-            this.queryLog.push({ query, bindings, time });
+            this.queryLog.push({ query, bindings });
         }
     }
 
@@ -457,21 +464,15 @@ class ConnectionSession implements ConnectionSessionI {
                 // If we catch an error we'll rollback this transaction and try again if we
                 // are not out of attempts. If we are out of attempts we will just throw the
                 // error back out, and let the developer handle an uncaught error.
-                this.handleTransactionError(error, currentAttempt, attempts);
+                await this.handleTransactionError(error, currentAttempt, attempts);
 
                 continue;
             }
 
             try {
-                if (this.transactionLevel() === 1) {
-                    this.fireConnectionEvent('committing');
-                    await this.getEnsuredPdoTransaction().commit();
-                }
-
-                this.transactions = Math.max(0, this.transactionLevel() - 1);
+                await this.performCommit();
             } catch (error) {
-                this.handleCommitTransactionError(error, currentAttempt, attempts);
-                this.fireAfterCommitEvent();
+                await this.handleCommitTransactionError(error, currentAttempt, attempts);
                 continue;
             }
 
@@ -486,9 +487,9 @@ class ConnectionSession implements ConnectionSessionI {
      */
     protected fireAfterCommitEvent(): void {
         if (this.transactionLevel() === 0) {
-            let event: QueryExecuted | undefined;
+            let event: AfterCommitEvent | undefined;
             while ((event = this.afterCommit.shift())) {
-                this.getEventDispatcher()?.emit(QueryExecuted.eventName, event);
+                this.getEventDispatcher()?.emit(QueryExecuted.eventName, event.query);
             }
         }
     }
@@ -567,23 +568,58 @@ class ConnectionSession implements ConnectionSessionI {
     }
 
     /**
-     * Commit the active database transaction.
+     * Perform a commit within the database When Necessary.
      */
-    public async commit(): Promise<void> {
+    protected async performCommit(): Promise<void> {
         if (this.transactionLevel() === 1) {
             this.fireConnectionEvent('committing');
-            await this.getEnsuredPdoTransaction().commit();
+            await this.doRealCommit();
         }
 
         this.transactions = Math.max(0, this.transactionLevel() - 1);
+        this.fireAfterCommitEvent();
+    }
+
+    /**
+     * Commit the active database transaction Within Pdo.
+     */
+    protected async doRealCommit(): Promise<void> {
+        try {
+            await this.getEnsuredPdoTransaction().commit();
+        } catch (error) {
+            this.handleCommitError(error);
+        }
+    }
+
+    /**
+     * Commit the active database transaction.
+     */
+    public async commit(): Promise<void> {
+        await this.performCommit();
 
         this.fireConnectionEvent('committed');
     }
 
     /**
+     * Handle an error from a commit.
+     */
+    protected handleCommitError(error: any): Promise<void> {
+        // lupdo will release connection to the pool when an error raised on commit
+        // we need to reset transaction, user must retry manually the transaction
+        this.transactions = 0;
+        this.filterAfterCommit();
+
+        throw error;
+    }
+
+    /**
      * Handle an error encountered when committing a transaction.
      */
-    protected handleCommitTransactionError(error: any, currentAttempt: number, maxAttempts: number): void {
+    protected async handleCommitTransactionError(
+        error: any,
+        currentAttempt: number,
+        maxAttempts: number
+    ): Promise<void> {
         this.transactions = Math.max(0, this.transactionLevel() - 1);
 
         if (causedByConcurrencyError(error) && currentAttempt < maxAttempts) {
@@ -592,9 +628,19 @@ class ConnectionSession implements ConnectionSessionI {
 
         if (causedByLostConnection(error)) {
             this.transactions = 0;
+            this.filterAfterCommit();
         }
 
         throw error;
+    }
+
+    /**
+     * filter AfterCommit based on new transactionLevel
+     */
+    protected filterAfterCommit(): void {
+        this.afterCommit = this.afterCommit.filter(
+            afterCommitEvent => afterCommitEvent.level <= this.transactionLevel()
+        );
     }
 
     /**
@@ -616,12 +662,21 @@ class ConnectionSession implements ConnectionSessionI {
         try {
             await this.performRollBack(toLevel);
         } catch (error) {
-            this.handleRollBackError(error);
+            await this.handleRollBackError(error);
         }
 
         this.transactions = toLevel;
 
+        this.filterAfterCommit();
+
         this.fireConnectionEvent('rollingBack');
+    }
+
+    /**
+     * Rollback the active database transaction Within Pdo When Necessary.
+     */
+    protected async doRealRollback(): Promise<void> {
+        await this.getEnsuredPdoTransaction().rollback();
     }
 
     /**
@@ -629,7 +684,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     protected async performRollBack(toLevel: number): Promise<void> {
         if (toLevel === 0) {
-            await this.getEnsuredPdoTransaction().rollback();
+            await this.doRealRollback();
         } else if (this.getQueryGrammar().supportsSavepoints()) {
             await this.getEnsuredPdoTransaction().exec(
                 this.getQueryGrammar().compileSavepointRollBack(`trans${toLevel + 1}`)
@@ -640,9 +695,18 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Handle an error from a rollback.
      */
-    protected handleRollBackError(error: any): void {
+    protected async handleRollBackError(error: any): Promise<void> {
         if (causedByLostConnection(error)) {
+            // calling exec to rollback savepoint will not release connection to the pool
+            // lupdo need to real close transaction otherwise connection
+            // even if will be an error calling real rollback will release the connection
+            if (this.transactionLevel() > 1) {
+                try {
+                    await this.doRealRollback();
+                } catch (err) {}
+            }
             this.transactions = 0;
+            this.filterAfterCommit();
         }
 
         throw error;
@@ -778,19 +842,15 @@ class ConnectionSession implements ConnectionSessionI {
      * Get the current PDO connection.
      */
     public getPdo(): Pdo | PdoTransactionI {
-        return this.pdoTransaction ?? this.getEnsuredPdo();
+        return this.transactionLevel() > 0 ? this.getEnsuredPdoTransaction() : this.getEnsuredPdo();
     }
 
     /**
      * Get the current PDO connection used for reading.
      */
     public getReadPdo(): Pdo | PdoTransactionI {
-        if (this.transactionLevel() > 0) {
-            return this.driverConnection.getPdo();
-        }
-
-        if (this.readOnWriteConnection) {
-            return this.driverConnection.getPdo();
+        if (this.transactionLevel() > 0 || this.readOnWriteConnection) {
+            return this.getPdo();
         }
 
         return this.driverConnection.getReadPdo();
@@ -823,7 +883,7 @@ class ConnectionSession implements ConnectionSessionI {
     getConfig<T extends FlattedConnectionConfig>(): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
     getConfig<T>(option?: string, defaultValue?: T): T {
-        return this.getConfig<T>(option, defaultValue);
+        return this.driverConnection.getConfig<T>(option, defaultValue);
     }
 
     /**

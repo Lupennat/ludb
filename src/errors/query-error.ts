@@ -1,4 +1,5 @@
 import { PdoError } from 'lupdo';
+import { ConnectionSessionI } from '../types/connection';
 import { Binding, NotExpressionBinding } from '../types/query/builder';
 
 class QueryError extends PdoError {
@@ -6,7 +7,7 @@ class QueryError extends PdoError {
      * Create a new query exception instance.
      */
     constructor(
-        protected connectionName: string,
+        protected connection: ConnectionSessionI,
         protected sql: string,
         protected bindings: NotExpressionBinding[],
         error: Error
@@ -22,17 +23,17 @@ class QueryError extends PdoError {
         const bindings = this.bindings.slice();
         const sql = this.sql.replace(/\?/g, () => {
             const binding = bindings.shift();
-            return binding == null ? 'null' : binding.toString();
+            return binding == null ? 'null' : this.connection.getQueryGrammar().wrap(binding.toString());
         });
 
-        return `${this.cause.message} (Connection: ${this.connectionName}, SQL: ${sql})`;
+        return `${this.cause.message} (Connection: ${this.connection.getName()}, SQL: ${sql})`;
     }
 
     /**
      * Get the connection name for the query.
      */
     public getConnectionName(): string {
-        return this.connectionName;
+        return this.connection.getName();
     }
 
     /**

@@ -1,5 +1,7 @@
-import { Pdo } from 'lupdo';
+import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStatementI } from 'lupdo';
+import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import Connection from '../../connections/connection';
+import ConnectionSession, { RunCallback } from '../../connections/connection-session';
 import ConnectionFactory from '../../connectors/connection-factory';
 import Builder from '../../query/builder';
 import Grammar from '../../query/grammars/grammar';
@@ -13,7 +15,7 @@ import Processor from '../../query/processors/processor';
 import { DriverFLattedConfig } from '../../types/config';
 import DriverConnectionI from '../../types/connection';
 import { ConnectorI } from '../../types/connector';
-import BuilderI from '../../types/query/builder';
+import BuilderI, { Binding } from '../../types/query/builder';
 import FakePdo from './fake-pdo';
 export { FakeConnection } from './fake-pdo';
 
@@ -81,4 +83,96 @@ export class MockedFactory extends ConnectionFactory {
     ): DriverConnectionI {
         return super.createConnection(driver, connection, config, database, prefix);
     }
+}
+
+export class MockedConnectionSession extends ConnectionSession {
+    public hasPdoTransaction(): boolean {
+        return this.pdoTransaction != null;
+    }
+
+    public setPdoTransaction(pdoTransaction: PdoTransactionI): void {
+        this.pdoTransaction = pdoTransaction;
+    }
+
+    public incrementTransaction(): void {
+        this.transactions++;
+    }
+
+    public decrementTransaction(): void {
+        this.transactions--;
+    }
+
+    public getPdoForSelect(useReadPdo?: boolean): Pdo | PdoTransactionI {
+        return super.getPdoForSelect(useReadPdo);
+    }
+
+    public enableQueryLog(): void {
+        super.enableQueryLog();
+    }
+
+    public logQuery(query: string, bindings: Binding[], time: number): void {
+        return super.logQuery(query, bindings, time);
+    }
+
+    public async run<T>(query: string, bindings: Binding[], callback: RunCallback<T>): Promise<T> {
+        return super.run<T>(query, bindings, callback);
+    }
+
+    public prepared(
+        statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
+    ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
+        return super.prepared(statement);
+    }
+
+    public pretending(): boolean {
+        return super.pretending();
+    }
+
+    public getEnsuredPdo(): Pdo {
+        return super.getEnsuredPdo();
+    }
+
+    public getEnsuredPdoTransaction(): PdoTransactionI {
+        return super.getEnsuredPdoTransaction();
+    }
+}
+
+export function mockedSessionWithResults(connection: Connection, results: Dictionary[] = []): MockedConnectionSession {
+    class MockedConnectionSessionWithResults extends MockedConnectionSession {
+        public prepared(
+            statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
+        ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
+            statement = super.prepared(statement);
+            jest.spyOn(statement, 'fetchDictionary').mockImplementation(() => {
+                return {
+                    get: () => {
+                        return results.shift() ?? null;
+                    },
+                    all: () => {
+                        return results;
+                    },
+                    group: () => {
+                        const map = new Map();
+                        return map;
+                    },
+                    unique: () => {
+                        const map = new Map();
+                        return map;
+                    },
+                    [Symbol.iterator]() {
+                        return {
+                            next: () => {
+                                return { done: true, value: undefined };
+                            },
+                            return: () => {
+                                return { done: true, value: undefined };
+                            }
+                        };
+                    }
+                };
+            });
+            return statement;
+        }
+    }
+    return new MockedConnectionSessionWithResults(connection);
 }

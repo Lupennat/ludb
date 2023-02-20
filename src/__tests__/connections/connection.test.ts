@@ -359,10 +359,10 @@ describe('Connection', () => {
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'beginTransaction');
-        const trx = await connection.beginTransaction();
-        expect(trx).toEqual(session);
+        const sess = await connection.beginTransaction();
+        expect(sess).toEqual(session);
         expect(spiedSession).toBeCalled();
-        await trx.rollBack();
+        await sess.rollBack();
     });
 
     it('Works Use Write Connection When Reading', () => {

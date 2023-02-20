@@ -26,7 +26,6 @@ export type TransactionCallback = (session: ConnectionSessionI) => void | Promis
 export interface LoggedQuery {
     query: string;
     bindings: Binding[];
-    time: number | null;
 }
 
 export default interface DriverConnectionI
