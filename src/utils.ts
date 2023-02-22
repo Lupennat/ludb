@@ -1,3 +1,4 @@
+import { TypedBinding } from 'lupdo';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
 import GrammarI from './types/query/grammar';
@@ -14,22 +15,28 @@ export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) 
     };
 }
 
-function getMessagesFromError(error: any): string[] {
+function getErrorMessages(error: any, depth: number, current = 1): string[] {
     let messages = [error.message];
     if (error.cause) {
-        messages = messages.concat(getMessagesFromError(error));
+        messages = messages.concat(
+            depth > current ? getErrorMessages(error.cause, depth, current + 1) : error.cause.message
+        );
     }
     if (error.errors && Array.isArray(error.errors)) {
-        for (const err in error.errors) {
-            messages = messages.concat(err);
+        for (const err of error.errors) {
+            messages = messages.concat(depth > current ? getErrorMessages(err, depth, current + 1) : err.message);
         }
     }
 
     return messages;
 }
 
+export function getMessagesFromError(error: any, depth = 1): string[] {
+    return getErrorMessages(error, depth).filter((value, index, array) => array.indexOf(value) === index);
+}
+
 /**
- * Determine if the given exception was caused by a lost connection.
+ * Determine if the given error was caused by a lost connection.
  */
 export function causedByLostConnection(error: any): boolean {
     const errorMsgs = getMessagesFromError(error);
@@ -81,7 +88,7 @@ export function causedByLostConnection(error: any): boolean {
 
     for (const message of messages) {
         for (const errorMsg of errorMsgs) {
-            if (message.toLowerCase().includes(errorMsg.toLowerCase())) {
+            if (errorMsg.includes(message)) {
                 return true;
             }
         }
@@ -91,7 +98,7 @@ export function causedByLostConnection(error: any): boolean {
 }
 
 /**
- * Determine if the given exception was caused by a concurrency error such as a deadlock or serialization failure.
+ * Determine if the given error was caused by a concurrency error such as a deadlock or serialization failure.
  */
 export function causedByConcurrencyError(error: any): boolean {
     const errorMsgs = getMessagesFromError(error);
@@ -109,7 +116,7 @@ export function causedByConcurrencyError(error: any): boolean {
 
     for (const message of messages) {
         for (const errorMsg of errorMsgs) {
-            if (message.toLowerCase().includes(errorMsg.toLowerCase())) {
+            if (errorMsg.includes(message)) {
                 return true;
             }
         }
@@ -123,7 +130,30 @@ export function raw(value: string | bigint | number): ExpressionContract {
 }
 
 export function trimChar(value: string, character: string): string {
+    character = '\\' + character.split('').join('\\');
     const trimStartRegex = new RegExp(`^[${character}]+`, 'g');
     const trimEndRegex = new RegExp(`[${character}]+$`, 'g');
     return value.replace(trimStartRegex, '').replace(trimEndRegex, '');
+}
+
+/**
+ * Parameter is a Primitive Binding
+ */
+export function isPrimitiveBinding(value: any): boolean {
+    return (
+        value === null ||
+        Buffer.isBuffer(value) ||
+        ['number', 'boolean', 'bigint', 'string'].includes(typeof value) ||
+        isPrimitiveObject(value)
+    );
+}
+
+/**
+ * Parameter is a Primitive Object
+ */
+export function isPrimitiveObject(value: any): boolean {
+    return (
+        typeof value === 'object' &&
+        (value instanceof TypedBinding || value instanceof ExpressionContract || value instanceof Date)
+    );
 }

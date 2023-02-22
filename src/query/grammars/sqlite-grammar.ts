@@ -2,7 +2,7 @@ import deepmerge from 'deepmerge';
 import set from 'set-value';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereDateTime } from '../../types/query/registry';
-import { stringifyReplacer } from '../../utils';
+import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -163,21 +163,28 @@ class SQLiteGrammar extends Grammar {
         query: BuilderContract,
         values: RowValues[] | RowValues,
         uniqueBy: string[],
-        update: string[] | RowValues
+        update: Array<string | RowValues>
     ): string {
         let sql = this.compileInsert(query, values);
 
         sql += ` on conflict (${this.columnize(uniqueBy)}) do update set `;
 
-        const columns = (
-            Array.isArray(update)
-                ? update.map(item => {
-                      return `${this.wrap(item)} = ${this.wrapValue('excluded')}.${this.wrap(item)}`;
-                  })
-                : Object.keys(update).map(key => {
-                      return `${this.wrap(key)} = ${this.parameter(update[key])}`;
-                  })
-        ).join(', ');
+        const stringUpdate = update.filter(binding => isPrimitiveBinding(binding)) as string[];
+        const rowValues = update.filter(binding => !isPrimitiveBinding(binding)) as RowValues[];
+
+        const columns = stringUpdate
+            .map(item => {
+                return `${this.wrap(item)} = ${this.wrapValue('excluded')}.${this.wrap(item)}`;
+            })
+            .concat(
+                rowValues.reduce((carry: string[], item) => {
+                    for (const key in item) {
+                        carry.push(`${this.wrap(key)} = ${this.parameter(item[key])}`);
+                    }
+                    return carry;
+                }, [])
+            )
+            .join(', ');
 
         return `${sql}${columns}`;
     }

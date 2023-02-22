@@ -1766,15 +1766,15 @@ abstract class BuilderContract {
      * Insert new records or update the existing ones.
      */
     public abstract upsert(
-        values: RowValues[] | RowValues,
+        values: RowValues | RowValues[],
         uniqueBy: string | string[],
-        update?: string[] | RowValues | null
+        update?: Array<string | RowValues> | null
     ): Promise<number>;
 
     /**
      * Increment a column's value by a given amount.
      */
-    public abstract increment(column: string, amount?: number | bigint, extra?: RowValues): Promise<number>;
+    public abstract increment(column: string, amount?: number | bigint | string, extra?: RowValues): Promise<number>;
 
     /**
      * Increment the given column's values by the given amounts.
@@ -1784,7 +1784,7 @@ abstract class BuilderContract {
     /**
      * Decrement a column's value by a given amount.
      */
-    public abstract decrement(column: string, amount?: number | bigint, extra?: RowValues): Promise<number>;
+    public abstract decrement(column: string, amount?: number | bigint | string, extra?: RowValues): Promise<number>;
 
     /**
      * Decrement the given column's values by the given amounts.

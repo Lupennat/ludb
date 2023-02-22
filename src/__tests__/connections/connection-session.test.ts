@@ -1,5 +1,6 @@
 import { Pdo } from 'lupdo';
 import { EventEmitter } from 'stream';
+import DeadlockError from '../../errors/deadlock-error';
 import QueryExecuted from '../../events/query-executed';
 import TransactionBeginning from '../../events/transaction-beginning';
 import TransactionCommitted from '../../events/transaction-committed';
@@ -1215,16 +1216,7 @@ describe('Connection Session', () => {
         expect(spiedBeginTransaction).toBeCalledTimes(1);
     });
 
-    it('Works Transaction Attempts', async () => {
-        const connection = getConnection();
-        const session = new MockedConnectionSession(connection);
-        const spiedBeginTransaction = jest.spyOn(session, 'beginTransaction');
-
-        await session.transaction(() => {}, -1);
-        expect(spiedBeginTransaction).toBeCalledTimes(0);
-    });
-
-    it('Works Transaction Attempts', async () => {
+    it('Works Transaction Attempts On Transaction Error', async () => {
         const connection = getConnection();
         const session = new MockedConnectionSession(connection);
         const spiedBeginTransaction = jest.spyOn(session, 'beginTransaction');
@@ -1250,21 +1242,71 @@ describe('Connection Session', () => {
         expect(spiedRollback).toBeCalledTimes(6);
     });
 
-    // it('Works Transaction Error DeadLock Will Reset ', async () => {
-    //     const connection = getConnection();
-    //     const session = new MockedConnectionSession(connection);
-    //     const spiedBeginTransaction = jest.spyOn(session, 'beginTransaction');
-    //     const spiedRollback = jest.spyOn(session, 'rollBack');
-    //     await session.transaction(() => {}, -1);
-    //     expect(spiedBeginTransaction).toBeCalledTimes(0);
-    //     expect(spiedRollback).toBeCalledTimes(0);
+    it('Works Transaction Attempts On Commit Error', async () => {
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        const spiedBeginTransaction = jest.spyOn(session, 'beginTransaction');
+        const spiedCommit = jest.spyOn(session, 'performCommit');
+        const pdo = new Pdo('fake', {}, {}, {});
+        const originalTransaction = pdo.beginTransaction;
+        let called = false;
+        jest.spyOn(pdo, 'beginTransaction').mockImplementation(async () => {
+            const trx = await originalTransaction.call(pdo);
+            const originalCommit = trx.commit;
+            jest.spyOn(trx, 'commit').mockImplementation(async () => {
+                await originalCommit.call(trx);
+                if (!called) {
+                    called = true;
+                    throw new Error('server has gone away');
+                } else {
+                    throw new Error('deadlock detected');
+                }
+            });
+            return trx;
+        });
+        jest.spyOn(session, 'getEnsuredPdo').mockReturnValue(pdo);
+        await expect(session.transaction(async () => {}, 5)).rejects.toThrowError('server has gone away');
+        expect(spiedBeginTransaction).toBeCalledTimes(1);
+        expect(spiedCommit).toBeCalledTimes(1);
+        await expect(session.transaction(async () => {}, 5)).rejects.toThrowError('deadlock detected');
+        expect(spiedBeginTransaction).toBeCalledTimes(6);
+        expect(spiedCommit).toBeCalledTimes(6);
+        await pdo.disconnect();
+    });
 
-    //     await expect(
-    //         session.transaction(async () => {
-    //             throw new Error('deadlock detected');
-    //         }, 5)
-    //     ).rejects.toThrowError('deadlock detected');
-    //     expect(spiedBeginTransaction).toBeCalledTimes(6);
-    //     expect(spiedRollback).toBeCalledTimes(6);
-    // });
+    it('Works Nested Transaction DeadLock Will Throw Without Retry Current Level', async () => {
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        const spiedBeginTransaction = jest.spyOn(session, 'beginTransaction');
+        const spiedRollback = jest.spyOn(session, 'rollBack');
+        await session.transaction(() => {}, -1);
+
+        await expect(
+            session.transaction(async ses => {
+                await ses.transaction(async () => {
+                    throw new Error('deadlock detected');
+                }, 5);
+            }, 2)
+        ).rejects.toThrowError(DeadlockError);
+        expect(spiedBeginTransaction).toBeCalledTimes(4);
+        expect(spiedRollback).toBeCalledTimes(2);
+    });
+
+    it('Works Nested Transaction Lost Connection Will Throw Without Retry Any Level', async () => {
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        const spiedBeginTransaction = jest.spyOn(session, 'beginTransaction');
+        const spiedRollback = jest.spyOn(session, 'rollBack');
+        await session.transaction(() => {}, -1);
+
+        await expect(
+            session.transaction(async ses => {
+                await ses.transaction(async () => {
+                    throw new Error('server has gone away');
+                }, 5);
+            }, 5)
+        ).rejects.toThrowError('server has gone away');
+        expect(spiedBeginTransaction).toBeCalledTimes(2);
+        expect(spiedRollback).toBeCalledTimes(2);
+    });
 });

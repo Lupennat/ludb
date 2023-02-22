@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { TypedBinding } from 'lupdo';
 import BaseGrammar from '../../grammar';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import GrammarI from '../../types/query/grammar';
@@ -36,9 +35,8 @@ import {
     WhereSub,
     whereFulltext
 } from '../../types/query/registry';
-import { stringifyReplacer } from '../../utils';
+import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
-import ExpressionContract from '../expression-contract';
 import IndexHint from '../index-hint';
 import JoinClause from '../join-clause';
 
@@ -913,7 +911,7 @@ class Grammar extends BaseGrammar implements GrammarI {
         _query: BuilderContract,
         _values: RowValues[] | RowValues,
         _uniqueBy: string[],
-        _update: string[] | RowValues
+        _update: Array<string | RowValues>
     ): string {
         throw new Error('This database engine does not support upserts.');
     }
@@ -1100,29 +1098,14 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Parameter must be converted to String with JSON.stringify
      */
     protected mustBeJsonStringified(value: any): boolean {
-        return Array.isArray(value) || !this.isPrimitiveBinding(value);
+        return Array.isArray(value) || !isPrimitiveBinding(value);
     }
 
     /**
-     * Parameter is a Primitive Binding
+     * is RowValues
      */
-    protected isPrimitiveBinding(value: any): boolean {
-        return (
-            value === null ||
-            Buffer.isBuffer(value) ||
-            ['number', 'boolean', 'bigint', 'string'].includes(typeof value) ||
-            this.isPrimitiveObject(value)
-        );
-    }
-
-    /**
-     * Parameter is a Primitive Object
-     */
-    protected isPrimitiveObject(value: any): boolean {
-        return (
-            typeof value === 'object' &&
-            (value instanceof TypedBinding || value instanceof ExpressionContract || value instanceof Date)
-        );
+    protected isRowValues(value: any): value is RowValues {
+        return !isPrimitiveBinding(value);
     }
 }
 

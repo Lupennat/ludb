@@ -71,7 +71,7 @@ export default interface GrammarI extends BaseGrammarI {
         query: BuilderContract,
         values: RowValues[] | RowValues,
         uniqueBy: string[],
-        update: string[] | RowValues
+        update: Array<string | RowValues>
     ): string;
 
     /**

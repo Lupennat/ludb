@@ -7,8 +7,8 @@ export default interface ProcessorI {
      */
     processSelect<T = Dictionary>(query: BuilderContract, results: T[]): T[];
 
-    /**
-     * Process the results of a column listing query.
-     */
-    processColumnListing(results: unknown[]): unknown[];
+    // /**
+    //  * Process the results of a column listing query.
+    //  */
+    // processColumnListing(results: unknown[]): unknown[];
 }

@@ -22,6 +22,8 @@ describe('Query Builder Pdo Methods Modify', () => {
             return true;
         });
         expect(await builder.from('users').insert({ email: 'foo' })).toBeTruthy();
+        expect(await builder.from('users').insert({})).toBeTruthy();
+        expect(await builder.from('users').insert([])).toBeTruthy();
     });
 
     it('Works Insert Using Method', async () => {
@@ -53,6 +55,7 @@ describe('Query Builder Pdo Methods Modify', () => {
         await expect(builder.from('users').insertOrIgnore({ email: 'foo' })).rejects.toThrowError(
             'This database engine does not support inserting while ignoring errors.'
         );
+        expect(await builder.from('users').insertOrIgnore([])).toBe(0);
     });
 
     it('Works MySql Insert Or Ignore Method', async () => {
@@ -67,12 +70,25 @@ describe('Query Builder Pdo Methods Modify', () => {
 
     it('Works Postgres Insert Or Ignore Method', async () => {
         const builder = getPostgresBuilder();
-        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
-            expect(query).toBe('insert into "users" ("email") values (?) on conflict do nothing');
-            expect(bindings).toEqual(['foo']);
-            return 1;
-        });
+        jest.spyOn(builder.getConnection(), 'affectingStatement')
+            .mockImplementationOnce(async (query, bindings) => {
+                expect(query).toBe('insert into "users" ("email") values (?) on conflict do nothing');
+                expect(bindings).toEqual(['foo']);
+                return 1;
+            })
+            .mockImplementationOnce(async (query, bindings) => {
+                expect(query).toBe('insert into "users" ("email") values (?), (?) on conflict do nothing');
+                expect(bindings).toEqual(['foo', 'baz']);
+                return 2;
+            });
         expect(await builder.from('users').insertOrIgnore({ email: 'foo' })).toBe(1);
+        expect(await builder.from('users').insertOrIgnore([{ email: 'foo' }, { email: 'baz' }])).toBe(2);
+        await expect(
+            builder.from('users').insertOrIgnore([{ email: 'foo' }, { email: 'baz', name: 'test' }])
+        ).rejects.toThrowError('Missing columns [name], please add to each rows.');
+        await expect(
+            builder.from('users').insertOrIgnore([{ email: 'foo', name: 'test', role: 'test' }, { email: 'baz' }])
+        ).rejects.toThrowError('Missing columns [name, role], please add to each rows.');
     });
 
     it('Works SQLite Insert Or Ignore Method', async () => {
@@ -219,18 +235,19 @@ describe('Query Builder Pdo Methods Modify', () => {
         });
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
-                'insert into `users` (`email`, `name`) values (?, ?), (?, ?) on duplicate key update `email` = values(`email`), `name` = values(`name`)'
+                'insert into `users` (`email`, `name`, `role`) values (?, ?, ?), (?, ?, ?) on duplicate key update `email` = values(`email`), `name` = values(`name`)'
             );
-            expect(bindings).toEqual(['foo', 'bar', 'foo2', 'bar2']);
+            expect(bindings).toEqual(['foo', 'bar', 'baz', 'foo2', 'bar2', 'baz2']);
             return 2;
         });
         expect(
             await builder.from('users').upsert(
                 [
-                    { email: 'foo', name: 'bar' },
-                    { name: 'bar2', email: 'foo2' }
+                    { email: 'foo', name: 'bar', role: 'baz' },
+                    { name: 'bar2', email: 'foo2', role: 'baz2' }
                 ],
-                'email'
+                ['email', 'role'],
+                ['email', 'name']
             )
         ).toBe(2);
 
@@ -259,9 +276,9 @@ describe('Query Builder Pdo Methods Modify', () => {
         builder = getPostgresBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
-                'insert into "users" ("email", "name") values (?, ?), (?, ?) on conflict ("email") do update set "email" = "excluded"."email", "name" = "excluded"."name"'
+                'insert into "users" ("email", "name") values (?, ?), (?, ?) on conflict ("email") do update set "name" = "excluded"."name", "role" = ?'
             );
-            expect(bindings).toEqual(['foo', 'bar', 'foo2', 'bar2']);
+            expect(bindings).toEqual(['foo', 'bar', 'foo2', 'bar2', 'fake']);
             return 2;
         });
         expect(
@@ -270,7 +287,8 @@ describe('Query Builder Pdo Methods Modify', () => {
                     { email: 'foo', name: 'bar' },
                     { name: 'bar2', email: 'foo2' }
                 ],
-                'email'
+                'email',
+                ['name', { role: 'fake' }]
             )
         ).toBe(2);
 
@@ -309,6 +327,32 @@ describe('Query Builder Pdo Methods Modify', () => {
                 'email'
             )
         ).toBe(2);
+    });
+
+    it('Works Upsert Return Zero On Empty Columns', async () => {
+        const builder = getMySqlBuilder();
+        expect(await builder.upsert([], 'email', ['name'])).toBe(0);
+    });
+
+    it('Works Upsert Without Update Columns Call Insert', async () => {
+        const builder = getMySqlBuilder();
+        const spiedInsert = jest.spyOn(builder, 'insert');
+        expect(
+            await builder.upsert(
+                [
+                    { email: 'foo', name: 'bar' },
+                    { name: 'bar2', email: 'foo2' }
+                ],
+                'email',
+                []
+            )
+        ).toBe(2);
+        expect(spiedInsert).toHaveBeenCalledWith([
+            { email: 'foo', name: 'bar' },
+            { name: 'bar2', email: 'foo2' }
+        ]);
+        expect(await builder.upsert({ name: 'bar2', email: 'foo2' }, 'email', [])).toBe(1);
+        expect(spiedInsert).toHaveBeenCalledWith({ name: 'bar2', email: 'foo2' });
     });
 
     it('Works Upsert Method With Update Columns', async () => {
@@ -835,5 +879,109 @@ describe('Query Builder Pdo Methods Modify', () => {
         expect(await builder.updateOrInsert({ email: 'foo' })).toBeTruthy();
         expect(spiedWhere).toBeCalledWith({ email: 'foo' });
         expect(spiedUpdate).not.toBeCalled();
+    });
+
+    it('Works Increment', async () => {
+        const builder = getBuilder();
+        const spiedEach = jest.spyOn(builder, 'incrementEach');
+        await builder.increment('votes');
+        expect(spiedEach).toHaveBeenLastCalledWith({ votes: 1 }, {});
+        await builder.increment('votes', BigInt('2'));
+        expect(spiedEach).toHaveBeenLastCalledWith({ votes: BigInt('2') }, {});
+        await builder.increment('votes', '3', { name: 'Claudio' });
+        expect(spiedEach).toHaveBeenLastCalledWith({ votes: '3' }, { name: 'Claudio' });
+    });
+
+    it('Works Increment Throw Error When Not Numeric', async () => {
+        const builder = getBuilder();
+        await expect(builder.increment('votes', 'ab')).rejects.toThrowError(
+            'Non-numeric value passed to increment method.'
+        );
+    });
+
+    it('Works Increment Each', async () => {
+        const builder = getBuilder();
+        const spiedUpdate = jest.spyOn(builder, 'update');
+
+        await builder.incrementEach({
+            votes: 2,
+            balance: 100
+        });
+
+        expect(spiedUpdate).toHaveBeenLastCalledWith({
+            votes: new Raw('"votes" + 2'),
+            balance: new Raw('"balance" + 100')
+        });
+        await builder.incrementEach(
+            {
+                votes: 2,
+                balance: 100
+            },
+            { name: 'Claudio' }
+        );
+        expect(spiedUpdate).toHaveBeenLastCalledWith({
+            votes: new Raw('"votes" + 2'),
+            balance: new Raw('"balance" + 100'),
+            name: 'Claudio'
+        });
+    });
+
+    it('Works Increment Many Argument Validation', async () => {
+        const builder = getBuilder();
+        await expect(builder.from('users').incrementEach({ col: 'a' })).rejects.toThrowError(
+            "Non-numeric value passed as increment amount for column: 'col'."
+        );
+    });
+
+    it('Works Decrement', async () => {
+        const builder = getBuilder();
+        const spiedEach = jest.spyOn(builder, 'decrementEach');
+        await builder.decrement('votes');
+        expect(spiedEach).toHaveBeenLastCalledWith({ votes: 1 }, {});
+        await builder.decrement('votes', BigInt('2'));
+        expect(spiedEach).toHaveBeenLastCalledWith({ votes: BigInt('2') }, {});
+        await builder.decrement('votes', '3', { name: 'Claudio' });
+        expect(spiedEach).toHaveBeenLastCalledWith({ votes: '3' }, { name: 'Claudio' });
+    });
+
+    it('Works Decrement Throw Error When Not Numeric', async () => {
+        const builder = getBuilder();
+        await expect(builder.decrement('votes', 'ab')).rejects.toThrowError(
+            'Non-numeric value passed to decrement method.'
+        );
+    });
+
+    it('Works Decrement Each', async () => {
+        const builder = getBuilder();
+        const spiedUpdate = jest.spyOn(builder, 'update');
+
+        await builder.decrementEach({
+            votes: 2,
+            balance: 100
+        });
+
+        expect(spiedUpdate).toHaveBeenLastCalledWith({
+            votes: new Raw('"votes" - 2'),
+            balance: new Raw('"balance" - 100')
+        });
+        await builder.decrementEach(
+            {
+                votes: 2,
+                balance: 100
+            },
+            { name: 'Claudio' }
+        );
+        expect(spiedUpdate).toHaveBeenLastCalledWith({
+            votes: new Raw('"votes" - 2'),
+            balance: new Raw('"balance" - 100'),
+            name: 'Claudio'
+        });
+    });
+
+    it('Works Decrement Many Argument Validation', async () => {
+        const builder = getBuilder();
+        await expect(builder.from('users').decrementEach({ col: 'a' })).rejects.toThrowError(
+            "Non-numeric value passed as decrement amount for column: 'col'."
+        );
     });
 });

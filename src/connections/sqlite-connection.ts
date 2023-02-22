@@ -1,4 +1,6 @@
 import SQLiteGrammar from '../query/grammars/sqlite-grammar';
+import SQLiteProcessor from '../query/processors/sqlite-processor';
+import ProcessorI from '../types/processor';
 import GrammarI from '../types/query/grammar';
 import Connection from './connection';
 
@@ -47,15 +49,12 @@ class SQLiteConnection extends Connection {
     //     return new SqliteSchemaState($this, $files, $processFactory);
     // }
 
-    // /**
-    //  * Get the default post processor instance.
-    //  *
-    //  * @return \Illuminate\Database\Query\Processors\SQLiteProcessor
-    //  */
-    // protected function getDefaultPostProcessor()
-    // {
-    //     return new SQLiteProcessor;
-    // }
+    /**
+     * Get the default post processor instance.
+     */
+    protected getDefaultPostProcessor(): ProcessorI {
+        return new SQLiteProcessor();
+    }
 }
 
 export default SQLiteConnection;

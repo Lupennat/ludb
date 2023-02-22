@@ -1,4 +1,6 @@
 import PostgresGrammar from '../query/grammars/postgres-grammar';
+import PostgresProcessor from '../query/processors/postgres-processor';
+import ProcessorI from '../types/processor';
 import GrammarI from '../types/query/grammar';
 import Connection from './connection';
 
@@ -46,15 +48,12 @@ class PostgresConnection extends Connection {
     //     return new PostgresSchemaState($this, $files, $processFactory);
     // }
 
-    // /**
-    //  * Get the default post processor instance.
-    //  *
-    //  * @return \Illuminate\Database\Query\Processors\PostgresProcessor
-    //  */
-    // protected function getDefaultPostProcessor()
-    // {
-    //     return new PostgresProcessor;
-    // }
+    /**
+     * Get the default post processor instance.
+     */
+    protected getDefaultPostProcessor(): ProcessorI {
+        return new PostgresProcessor();
+    }
 }
 
 export default PostgresConnection;

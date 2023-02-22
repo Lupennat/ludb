@@ -1,17 +1,10 @@
 import Collection from '../../../collections/collection';
+import Raw from '../../../query/expression';
 import { getBuilder, getSqlServerBuilder, pdo } from '../../fixtures/mocked';
 
 describe('Query Builder Pdo Methods Select', () => {
     afterAll(async () => {
         await pdo.disconnect();
-    });
-
-    it('Works Increment Many Argument Validation', async () => {
-        const builder = getBuilder();
-        // @ts-expect-error test arguments validation
-        await expect(builder.from('users').incrementEach({ col: 'a' })).rejects.toThrowError(
-            "Non-numeric value passed as increment amount for column: 'col'."
-        );
     });
 
     it('Works Find Returns First Result By ID', async () => {
@@ -238,6 +231,18 @@ describe('Query Builder Pdo Methods Select', () => {
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select count(distinct access, "id") as aggregate from "users"');
+            expect(bindings).toEqual([]);
+            expect(useReadPdo).toBeTruthy();
+            return [{ aggregate: 1 }];
+        });
+
+        expect(await builder.from('users').count([new Raw('distinct access'), 'id'])).toBe(1);
+        expect(spiedConnection).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select exists(select * from "users") as "exists"');
             expect(bindings).toEqual([]);
             expect(useReadPdo).toBeTruthy();
@@ -317,6 +322,23 @@ describe('Query Builder Pdo Methods Select', () => {
         });
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select sum("id") as aggregate from "users"');
+            expect(bindings).toEqual([]);
+            expect(useReadPdo).toBeTruthy();
+            return [{ aggregate: null }];
+        });
+
+        expect(await builder.from('users').sum('id')).toBe(0);
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((_query, results) => {
+            return results;
+        });
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select avg("id") as aggregate from "users"');
             expect(bindings).toEqual([]);
             expect(useReadPdo).toBeTruthy();
@@ -343,6 +365,90 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(await builder.from('users').average('id')).toBe(1);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
+    });
+
+    it('Works Aggregate', async () => {
+        const builder = getBuilder();
+        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((_query, results) => {
+            return results;
+        });
+        const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select count(*) as aggregate from "users"');
+            expect(bindings).toEqual([]);
+            expect(useReadPdo).toBeTruthy();
+            return [];
+        });
+
+        expect(await builder.from('users').aggregate('count')).toBeNull();
+    });
+
+    it('Works Numeric Aggregate', async () => {
+        const builder = getBuilder();
+        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((_query, results) => {
+            return results;
+        });
+        const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select count(*) as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [];
+            })
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select count(*) as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [{ aggregate: BigInt('100') }];
+            })
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select count("id") as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [{ aggregate: 10 }];
+            })
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select least("id", "access") as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [{ aggregate: 10.4467 }];
+            })
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select count("id") as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [{ aggregate: '1055333434343424234343.443' }];
+            })
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select count("id") as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [{ aggregate: '9007199254740992' }];
+            })
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select count("id") as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [{ aggregate: '-9007199254740992' }];
+            })
+            .mockImplementationOnce(async (query, bindings, useReadPdo) => {
+                expect(query).toBe('select count("id") as aggregate from "users"');
+                expect(bindings).toEqual([]);
+                expect(useReadPdo).toBeTruthy();
+                return [{ aggregate: '100' }];
+            });
+
+        expect(await builder.from('users').numericAggregate('count')).toBe(0);
+        expect(await builder.from('users').numericAggregate('count')).toBe(BigInt('100'));
+        expect(await builder.from('users').numericAggregate('count', ['id'])).toBe(10);
+        expect(await builder.from('users').numericAggregate('least', ['id', 'access'])).toBe(10.4467);
+        expect(await builder.from('users').numericAggregate('count', ['id'])).toBe(1.0553334343434243e21);
+        expect(await builder.from('users').numericAggregate('count', ['id'])).toBe(BigInt('9007199254740992'));
+        expect(await builder.from('users').numericAggregate('count', ['id'])).toBe(BigInt('-9007199254740992'));
+        expect(await builder.from('users').numericAggregate('count', ['id'])).toBe(100);
     });
 
     it('Works SqlServer Exists', async () => {
@@ -504,6 +610,51 @@ describe('Query Builder Pdo Methods Select', () => {
             builder.getGrammar().getValue(builder.getRegistry().columns![0])
         );
         expect(['foo']).toEqual(builder.getBindings());
+    });
+
+    it('Works Explain', async () => {
+        const builder = getBuilder();
+        jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe(
+                'EXPLAIN select (select "foo", "bar" from "posts" where "title" = ?) as "post" from "users"'
+            );
+            expect(bindings).toEqual(['foo']);
+            expect(useReadPdo).toBeUndefined();
+            return [
+                {
+                    id: 1,
+                    select_type: 'SIMPLE',
+                    type: 'index',
+                    possible_keys: null,
+                    key: 'PRIMARY',
+                    key_len: 8,
+                    ref: null,
+                    rows: 1800,
+                    Extra: null
+                }
+            ];
+        });
+
+        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
+            return results;
+        });
+
+        builder.from('users').selectSub(query => {
+            query.from('posts').select('foo', 'bar').where('title', 'foo');
+        }, 'post');
+        const explain = await builder.explain();
+        expect(explain).toBeInstanceOf(Collection);
+        expect(explain.first()).toEqual({
+            id: 1,
+            select_type: 'SIMPLE',
+            type: 'index',
+            possible_keys: null,
+            key: 'PRIMARY',
+            key_len: 8,
+            ref: null,
+            rows: 1800,
+            Extra: null
+        });
     });
 
     it('Works Chunk With Last Chunk Complete', async () => {

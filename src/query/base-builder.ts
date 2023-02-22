@@ -1,4 +1,3 @@
-import { Collection } from 'collect.js';
 import deepmerge from 'deepmerge';
 import { snakeCase } from 'snake-case';
 import LazyCollection from '../collections/lazy-collection';
@@ -30,8 +29,9 @@ import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
 
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
+import Collection from '../collections/collection';
 import Registry, { BindingTypes, Order, Where } from '../types/query/registry';
-import { raw } from '../utils';
+import { isPrimitiveBinding, raw } from '../utils';
 import BuilderContract from './builder-contract';
 import ExpressionContract from './expression-contract';
 import IndexHint from './index-hint';
@@ -129,15 +129,12 @@ abstract class BaseBuilder extends BuilderContract {
 
         for (const column of columns) {
             if (this.isStringable(column)) {
-                if (this.registry.columns == null) {
-                    this.registry.columns = [];
-                }
-
                 this.registry.columns.push(column);
             } else {
                 for (const key in column) {
-                    if (this.isQueryable(key)) {
-                        this.selectSub(column[key], key);
+                    const value = column[key];
+                    if (this.isQueryable(value)) {
+                        this.selectSub(value, key);
                     }
                 }
             }
@@ -227,8 +224,9 @@ abstract class BaseBuilder extends BuilderContract {
         if (query.getConnection().getDatabaseName() !== this.getConnection().getDatabaseName()) {
             const databaseName = query.getConnection().getDatabaseName();
             const queryFrom = query.getGrammar().getValue(query.getRegistry().from).toString();
-            if (queryFrom.startsWith(databaseName) && !queryFrom.includes('.')) {
-                query.getRegistry().from = `${databaseName}.${queryFrom}`;
+
+            if (!queryFrom.startsWith(databaseName) && !queryFrom.includes('.')) {
+                query.from(`${databaseName}.${queryFrom}`);
             }
         }
 
@@ -254,8 +252,12 @@ abstract class BaseBuilder extends BuilderContract {
                 this.registry.columns.push(column);
             } else {
                 for (const key in column) {
-                    if (this.isQueryable(key)) {
-                        this.selectSub(column[key], key);
+                    if (this.registry.columns == null) {
+                        this.select(`${this.registry.from}.*`);
+                    }
+                    const value = column[key];
+                    if (this.isQueryable(value)) {
+                        this.selectSub(value, key);
                     }
                 }
             }
@@ -3513,11 +3515,16 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public async count(columns: Stringable | Stringable[] = '*'): Promise<number | bigint> {
         const res = await this.aggregate('count', Array.isArray(columns) ? columns : [columns]);
-        return res === null
-            ? 0
-            : BigInt(res) > Number.MAX_SAFE_INTEGER || BigInt(res) < Number.MIN_SAFE_INTEGER
-            ? BigInt(res)
-            : Number(res);
+        return res === null ? 0 : this.getInteger(res);
+    }
+
+    /**
+     * Get Number Or Bigint Integer
+     */
+    protected getInteger(value: string | number | bigint): number | bigint {
+        return BigInt(value) > Number.MAX_SAFE_INTEGER || BigInt(value) < Number.MIN_SAFE_INTEGER
+            ? BigInt(value)
+            : Number(value);
     }
 
     /**
@@ -3594,11 +3601,7 @@ abstract class BaseBuilder extends BuilderContract {
         // If the result doesn't contain a decimal place, we will assume it is an int then
         // cast it to one. When it does we will cast it to a float since it needs to be
         // cast to the expected data type for the developers out of pure convenience.
-        return !result.includes('.')
-            ? BigInt(result) > Number.MAX_SAFE_INTEGER || BigInt(result) < Number.MIN_SAFE_INTEGER
-                ? BigInt(result)
-                : Number(result)
-            : parseFloat(result);
+        return !result.includes('.') ? this.getInteger(result) : parseFloat(result);
     }
 
     /**
@@ -3645,22 +3648,7 @@ abstract class BaseBuilder extends BuilderContract {
             return true;
         }
 
-        const processed = !Array.isArray(values)
-            ? [values]
-            : // Here, we will sort the insert keys for every record so that each insert is
-              // in the same order for the record. We need to make sure this is the case
-              // so there are not any errors or problems when inserting these records.
-              values.map(value => {
-                  return Object.keys(value)
-                      .sort()
-                      .reduce(
-                          (acc: RowValues, key) => ({
-                              ...acc,
-                              [key]: value[key]
-                          }),
-                          {}
-                      );
-              });
+        const sortedRowValues = this.getSortedRowValues(values);
 
         this.applyBeforeQueryCallbacks();
 
@@ -3668,8 +3656,8 @@ abstract class BaseBuilder extends BuilderContract {
         // the results. We will need to also flatten these bindings before running
         // the query so they are all in one huge, flattened array for execution.
         return this.getConnection().insert(
-            this.getGrammar().compileInsert(this, processed),
-            this.cleanBindings(processed.map(value => Object.values(value)).flat(1))
+            this.getGrammar().compileInsert(this, sortedRowValues),
+            this.cleanBindings(sortedRowValues.map(value => Object.values(value)).flat(1))
         );
     }
 
@@ -3681,10 +3669,29 @@ abstract class BaseBuilder extends BuilderContract {
             return 0;
         }
 
-        const processed = !Array.isArray(values)
+        const sortedRowValues = this.getSortedRowValues(values);
+
+        this.applyBeforeQueryCallbacks();
+
+        return await this.getConnection().affectingStatement(
+            this.getGrammar().compileInsertOrIgnore(this, sortedRowValues),
+            this.cleanBindings(sortedRowValues.map(value => Object.values(value)).flat(1))
+        );
+    }
+
+    /**
+     * Get Sorted Values From Array Of RowValues
+     */
+    protected getSortedRowValues(values: RowValues | RowValues[]): RowValues[] {
+        let currentKeys: string[];
+
+        return !Array.isArray(values)
             ? [values]
-            : values.map(value => {
-                  return Object.keys(value)
+            : // Here, we will sort the insert keys for every record so that each insert is
+              // in the same order for the record. We need to make sure this is the case
+              // so there are not any errors or problems when inserting these records.
+              values.map(value => {
+                  const row = Object.keys(value)
                       .sort()
                       .reduce(
                           (acc: RowValues, key) => ({
@@ -3693,14 +3700,19 @@ abstract class BaseBuilder extends BuilderContract {
                           }),
                           {}
                       );
+                  if (currentKeys == null) {
+                      currentKeys = Object.keys(row);
+                  } else {
+                      const keys = Object.keys(row);
+                      if (keys.length !== currentKeys.length) {
+                          const difference = keys
+                              .filter(x => !currentKeys.includes(x))
+                              .concat(currentKeys.filter(x => !keys.includes(x)));
+                          throw new Error(`Missing columns [${difference.join(', ')}], please add to each rows.`);
+                      }
+                  }
+                  return row;
               });
-
-        this.applyBeforeQueryCallbacks();
-
-        return await this.getConnection().affectingStatement(
-            this.getGrammar().compileInsertOrIgnore(this, processed),
-            this.cleanBindings(processed.map(value => Object.values(value)).flat(1))
-        );
     }
 
     /**
@@ -3780,48 +3792,47 @@ abstract class BaseBuilder extends BuilderContract {
      * Insert new records or update the existing ones.
      */
     public async upsert(
-        values: RowValues[] | RowValues,
+        values: RowValues | RowValues[],
         uniqueBy: string | string[],
-        update: string[] | RowValues | null = null
+        update: Array<string | RowValues> | null = null
     ): Promise<number> {
         if ((Array.isArray(values) && values.length === 0) || Object.keys(values).length === 0) {
             return 0;
-        } else if (
-            update !== null &&
-            ((Array.isArray(update) && update.length === 0) || Object.keys(update).length === 0)
-        ) {
-            return Number(this.insert(values));
+        } else if (update !== null && Array.isArray(update) && update.length === 0) {
+            await this.insert(values);
+            return Array.isArray(values) ? values.length : 1;
         }
 
-        const processed = !Array.isArray(values)
-            ? [values]
-            : values.map(value => {
-                  return Object.keys(value)
-                      .sort()
-                      .reduce(
-                          (acc: RowValues, key) => ({
-                              ...acc,
-                              [key]: value[key]
-                          }),
-                          {}
-                      );
-              });
+        const sortedRowValues = this.getSortedRowValues(values);
 
         if (update === null) {
-            update = Object.keys(processed[0]);
+            update = Object.keys(sortedRowValues[0]);
         }
 
         this.applyBeforeQueryCallbacks();
 
         const bindings = this.cleanBindings(
-            processed
+            sortedRowValues
                 .map(value => Object.values(value))
                 .flat(1)
-                .concat(Array.isArray(update) ? [] : Object.values(update))
+                .concat(
+                    update
+                        .filter(binding => {
+                            return !isPrimitiveBinding(binding);
+                        })
+                        .reduce((carry, item) => {
+                            return carry.concat(Object.values(item));
+                        }, [])
+                )
         );
 
         return this.getConnection().affectingStatement(
-            this.getGrammar().compileUpsert(this, processed, Array.isArray(uniqueBy) ? uniqueBy : [uniqueBy], update),
+            this.getGrammar().compileUpsert(
+                this,
+                sortedRowValues,
+                Array.isArray(uniqueBy) ? uniqueBy : [uniqueBy],
+                update
+            ),
             bindings
         );
     }
@@ -3834,7 +3845,7 @@ abstract class BaseBuilder extends BuilderContract {
             throw new TypeError('Non-numeric value passed to increment method.');
         }
 
-        return this.incrementEach({ [column]: Number(amount) }, extra);
+        return this.incrementEach({ [column]: amount }, extra);
     }
 
     /**
@@ -3981,15 +3992,13 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Create a new query instance for a sub-query.
      */
-    protected forSubQuery(): BuilderContract {
-        return this.newQuery();
-    }
+    protected abstract forSubQuery(): BuilderContract;
 
     /**
      * Get all of the query builder's columns in a text-only array with all expressions evaluated.
      */
     public getColumns(): string[] {
-        const columns = this.getRegistry().columns;
+        const columns = this.registry.columns;
         return columns !== null ? columns.map(column => this.getGrammar().getValue(column).toString()) : [];
     }
 
@@ -4167,13 +4176,6 @@ abstract class BaseBuilder extends BuilderContract {
      */
     protected isWhereObject(parameter: any): parameter is WhereObject {
         return typeof parameter === 'object' && !this.isBuilderContract(parameter) && !this.isExpression(parameter);
-    }
-
-    /**
-     * Determine if the value is a RowValues Array
-     */
-    protected isRowValuesArray(parameter: any): parameter is RowValues[] {
-        return Array.isArray(parameter);
     }
 
     public abstract clone(): BuilderContract;

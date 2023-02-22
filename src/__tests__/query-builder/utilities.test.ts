@@ -1,11 +1,38 @@
+import Grammar from '../../grammar';
+import Builder from '../../query/builder';
 import Raw from '../../query/expression';
+import MySqlGrammar from '../../query/grammars/mysql-grammar';
+import MySqlProcessor from '../../query/processors/mysql-processor';
+import Processor from '../../query/processors/processor';
 import BuilderI from '../../types/query/builder';
 import { WhereBasic } from '../../types/query/registry';
-import { getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getConnection, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
 describe('Query Builder Utilities', () => {
     afterAll(async () => {
         await pdo.disconnect();
+    });
+
+    it('Works Builder Get Grammar From Connection Session', () => {
+        const session = getConnection().session();
+        const spiedGrammar = jest.spyOn(session, 'getQueryGrammar');
+        let builder = new Builder(session);
+        expect(builder.getGrammar()).toBeInstanceOf(Grammar);
+        expect(spiedGrammar).toBeCalledTimes(1);
+        builder = new Builder(session, new MySqlGrammar());
+        expect(builder.getGrammar()).toBeInstanceOf(Grammar);
+        expect(spiedGrammar).toBeCalledTimes(1);
+    });
+
+    it('Works Builder Get Processor From Connection Session', () => {
+        const session = getConnection().session();
+        const spiedProcessor = jest.spyOn(session, 'getPostProcessor');
+        let builder = new Builder(session);
+        expect(builder.getProcessor()).toBeInstanceOf(Processor);
+        expect(spiedProcessor).toBeCalledTimes(1);
+        builder = new Builder(session, new MySqlGrammar(), new MySqlProcessor());
+        expect(builder.getProcessor()).toBeInstanceOf(MySqlProcessor);
+        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works When Callback', () => {
@@ -19,6 +46,23 @@ describe('Query Builder Utilities', () => {
         builder = getBuilder();
         builder.select('*').from('users').when(false, callback).where('email', 'foo');
         expect(builder.toSql()).toBe('select * from "users" where "email" = ?');
+    });
+
+    it('Works When Callback Closure', () => {
+        const callback = (query: BuilderI, condition: boolean): void => {
+            expect(condition).toBeTruthy();
+            query.where('id', '=', 1);
+        };
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .when(query => {
+                expect(query).toEqual(builder);
+                return true;
+            }, callback)
+            .where('email', 'foo');
+        expect(builder.toSql()).toBe('select * from "users" where "id" = ? and "email" = ?');
     });
 
     it('Works When Callback With Return', () => {
@@ -43,12 +87,16 @@ describe('Query Builder Utilities', () => {
             expect(condition).toBe(0);
             return query.where('id', '=', 2);
         };
+        const defaultCBNoReturn = (query: BuilderI, condition: string | number): void => {
+            expect(condition).toBe(0);
+            query.where('id', '=', 2);
+        };
         let builder = getBuilder();
         builder.select('*').from('users').when<string>('truthy', callback, defaultCB).where('email', 'foo');
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? and "email" = ?');
         expect(builder.getBindings()).toEqual([1, 'foo']);
         builder = getBuilder();
-        builder.select('*').from('users').when<number>(0, callback, defaultCB).where('email', 'foo');
+        builder.select('*').from('users').when<number>(0, callback, defaultCBNoReturn).where('email', 'foo');
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? and "email" = ?');
         expect(builder.getBindings()).toEqual([2, 'foo']);
     });
@@ -64,6 +112,23 @@ describe('Query Builder Utilities', () => {
         builder = getBuilder();
         builder.select('*').from('users').unless(true, callback).where('email', 'foo');
         expect(builder.toSql()).toBe('select * from "users" where "email" = ?');
+    });
+
+    it('Works Unless Callback Closure', () => {
+        const callback = (query: BuilderI, condition: boolean): void => {
+            expect(condition).toBeFalsy();
+            query.where('id', '=', 1);
+        };
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .unless(query => {
+                expect(query).toEqual(builder);
+                return false;
+            }, callback)
+            .where('email', 'foo');
+        expect(builder.toSql()).toBe('select * from "users" where "id" = ? and "email" = ?');
     });
 
     it('Works Unless Callback With Return', () => {
@@ -88,12 +153,16 @@ describe('Query Builder Utilities', () => {
             expect(condition).toBe('truthy');
             return query.where('id', '=', 2);
         };
+        const defaultCBNoReturn = (query: BuilderI, condition: string | number): void => {
+            expect(condition).toBe('truthy');
+            query.where('id', '=', 2);
+        };
         let builder = getBuilder();
         builder.select('*').from('users').unless<number>(0, callback, defaultCB).where('email', 'foo');
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? and "email" = ?');
         expect(builder.getBindings()).toEqual([1, 'foo']);
         builder = getBuilder();
-        builder.select('*').from('users').unless<string>('truthy', callback, defaultCB).where('email', 'foo');
+        builder.select('*').from('users').unless<string>('truthy', callback, defaultCBNoReturn).where('email', 'foo');
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? and "email" = ?');
         expect(builder.getBindings()).toEqual([2, 'foo']);
     });
@@ -309,6 +378,28 @@ describe('Query Builder Utilities', () => {
         expect(expectedBindings).toEqual(builder.getBindings());
     });
 
+    it('Works Set Binding With Array Replace Bindings', () => {
+        const builder = getBuilder();
+        builder.addBinding(['foo', 'bar']);
+        builder.setBindings(['baz']);
+        expect(['baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Set Binding With Array Replace Bindings In Correct Order', () => {
+        const builder = getBuilder();
+        builder.setBindings(['bar', 'baz'], 'having');
+        builder.setBindings(['foo'], 'where');
+        expect(['foo', 'bar', 'baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Set Binding Throw Error', () => {
+        const builder = getBuilder();
+        expect(() => {
+            // @ts-expect-error test wrong argument
+            builder.setBindings(['bar', 'baz'], 'noway');
+        }).toThrowError('Invalid binding type: noway.');
+    });
+
     it('Works Add Binding With Array Merges Bindings', () => {
         const builder = getBuilder();
         builder.addBinding(['foo', 'bar']);
@@ -321,6 +412,14 @@ describe('Query Builder Utilities', () => {
         builder.addBinding(['bar', 'baz'], 'having');
         builder.addBinding(['foo'], 'where');
         expect(['foo', 'bar', 'baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Add Binding Throw Error', () => {
+        const builder = getBuilder();
+        expect(() => {
+            // @ts-expect-error test wrong argument
+            builder.addBinding(['bar', 'baz'], 'noway');
+        }).toThrowError('Invalid binding type: noway.');
     });
 
     it('Works Merge Builders', () => {
@@ -371,5 +470,12 @@ describe('Query Builder Utilities', () => {
 
         expect('select * from "users" order by "email" asc').toBe(clone.toSql());
         expect([]).toEqual(clone.getBindings());
+    });
+
+    it('Works Get Columns', () => {
+        const builder = getBuilder();
+        expect(builder.getColumns()).toEqual([]);
+        builder.select(new Raw('name'));
+        expect(builder.getColumns()).toEqual(['name']);
     });
 });

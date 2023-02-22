@@ -1,6 +1,6 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime } from '../../types/query/registry';
-import { stringifyReplacer } from '../../utils';
+import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -286,7 +286,7 @@ class SqlServerGrammar extends Grammar {
         query: BuilderContract,
         values: RowValues[] | RowValues,
         uniqueBy: string[],
-        update: string[] | RowValues
+        update: Array<string | RowValues>
     ): string {
         const columns = this.columnize(Object.keys(Array.isArray(values) ? values[0] : values));
 
@@ -310,17 +310,26 @@ class SqlServerGrammar extends Grammar {
 
         sql += `on ${on} `;
 
-        const updateString = (
-            Array.isArray(update)
-                ? update.map(value => {
-                      return `${this.wrap(value)} = ${this.wrap('laravel_source.' + value)}`;
-                  })
-                : Object.keys(update).map(key => {
-                      return `${this.wrap(key)} = ${this.parameter(update[key])}`;
-                  })
-        ).join(', ');
+        const stringUpdate = update.filter(binding => isPrimitiveBinding(binding)) as string[];
+        const rowValues = update.filter(binding => !isPrimitiveBinding(binding)) as RowValues[];
 
-        sql += `when matched then update set ${updateString} `;
+        const updateString = stringUpdate
+            .map(item => {
+                return `${this.wrap(item)} = ${this.wrap('laravel_source.' + item)}`;
+            })
+            .concat(
+                rowValues.reduce((carry: string[], item) => {
+                    for (const key in item) {
+                        carry.push(`${this.wrap(key)} = ${this.parameter(item[key])}`);
+                    }
+                    return carry;
+                }, [])
+            )
+            .join(', ');
+
+        if (updateString) {
+            sql += `when matched then update set ${updateString} `;
+        }
 
         sql += `when not matched then insert (${columns}) values (${columns})`;
 

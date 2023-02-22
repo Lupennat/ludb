@@ -38,6 +38,12 @@ describe('Query Builder Wheres', () => {
         expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
 
         builder = getMySqlBuilder();
+        // @ts-expect-error test wrong array will be flatted
+        builder.select('*').from('users').whereDate('created_at', [1, 2]);
+        expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual([1]);
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereDay('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
 

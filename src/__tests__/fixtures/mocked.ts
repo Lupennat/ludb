@@ -46,6 +46,24 @@ export function getBuilder(): BuilderI {
     return new Builder(connection.session(), new Grammar(), new Processor());
 }
 
+export function getBuilderAlternative(): BuilderI {
+    const connection = new Connection(
+        pdo,
+        {
+            driver: 'fake',
+            name: 'fake',
+            database: 'alternative',
+            prefix: 'prefix',
+            pool: {
+                killResource: false
+            }
+        },
+        'alternative',
+        'prefix'
+    );
+    return new Builder(connection.session(), new Grammar(), new Processor());
+}
+
 export function getMySqlBuilderWithProcessor(): BuilderI {
     return new Builder(connection.session(), new MySqlGrammar(), new MySqlProcessor());
 }
@@ -122,6 +140,10 @@ export class MockedConnectionSession extends ConnectionSession {
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
     ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
         return super.prepared(statement);
+    }
+
+    public async performCommit(): Promise<void> {
+        return super.performCommit();
     }
 
     public pretending(): boolean {

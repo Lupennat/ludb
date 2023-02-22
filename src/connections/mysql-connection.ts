@@ -1,4 +1,6 @@
 import MySqlGrammar from '../query/grammars/mysql-grammar';
+import MySqlProcessor from '../query/processors/mysql-processor';
+import ProcessorI from '../types/processor';
 import GrammarI from '../types/query/grammar';
 import Connection from './connection';
 
@@ -53,15 +55,12 @@ class MySqlConnection extends Connection {
     //     return new MySqlSchemaState($this, $files, $processFactory);
     // }
 
-    // /**
-    //  * Get the default post processor instance.
-    //  *
-    //  * @return \Illuminate\Database\Query\Processors\MySqlProcessor
-    //  */
-    // protected getDefaultPostProcessor()
-    // {
-    //     return new MySqlProcessor;
-    // }
+    /**
+     * Get the default post processor instance.
+     */
+    protected getDefaultPostProcessor(): ProcessorI {
+        return new MySqlProcessor();
+    }
 }
 
 export default MySqlConnection;

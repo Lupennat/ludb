@@ -1,6 +1,7 @@
 import Raw from '../../query/expression';
 import {
     getBuilder,
+    getBuilderAlternative,
     getMySqlBuilder,
     getMySqlBuilderWithProcessor,
     getPostgresBuilder,
@@ -14,9 +15,21 @@ describe('Query Builder Select-From', () => {
     });
 
     it('Works Basic Select', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder.select('*').from('users');
         expect(builder.toSql()).toBe('select * from "users"');
+        builder = getBuilder();
+        builder.select().from('users');
+        expect(builder.toSql()).toBe('select * from "users"');
+    });
+
+    it('Works Basic Select Sub', () => {
+        const builder = getBuilder();
+        builder
+            .select({ nickname: getBuilder().from('two').select('baz').where('subkey', '=', 'subval') })
+            .from('users');
+        expect(builder.toSql()).toBe('select (select "baz" from "two" where "subkey" = ?) as "nickname" from "users"');
+        expect(builder.getBindings()).toEqual(['subval']);
     });
 
     it('Works Basic Select With Get Columns', async () => {
@@ -66,9 +79,26 @@ describe('Query Builder Select-From', () => {
     });
 
     it('Works Adding Selects', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder.select('foo').addSelect('bar').addSelect(['baz', 'boom']).addSelect('bar').from('users');
         expect(builder.toSql()).toBe('select "foo", "bar", "baz", "boom" from "users"');
+
+        builder = getBuilder();
+        builder
+            .from('users')
+            .addSelect({ nickname: getBuilder().from('two').select('baz').where('subkey', '=', 'subval') });
+        expect(builder.toSql()).toBe(
+            'select "users".*, (select "baz" from "two" where "subkey" = ?) as "nickname" from "users"'
+        );
+
+        builder = getBuilder();
+        builder
+            .addSelect({ nickname: getBuilder().from('two').select('baz').where('subkey', '=', 'subval') })
+            .from('users');
+
+        expect(builder.toSql()).toBe(
+            'select "".*, (select "baz" from "two" where "subkey" = ?) as "nickname" from "users"'
+        );
     });
 
     it('Works Basic Select With Prefix', () => {
@@ -79,9 +109,17 @@ describe('Query Builder Select-From', () => {
     });
 
     it('Works Basic Select Distinct', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder.distinct().select('foo', 'bar').from('users');
         expect(builder.toSql()).toBe('select distinct "foo", "bar" from "users"');
+
+        builder = getBuilder();
+        builder.distinct(true).select('foo', 'bar').from('users');
+        expect(builder.toSql()).toBe('select distinct "foo", "bar" from "users"');
+
+        builder = getBuilder();
+        builder.distinct(true).distinct(false).select('foo', 'bar').from('users');
+        expect(builder.toSql()).toBe('select "foo", "bar" from "users"');
     });
 
     it('Works Basic Select Distinct On Columns', () => {
@@ -230,6 +268,27 @@ describe('Query Builder Select-From', () => {
             // @ts-expect-error test wrong parameter
             builder.selectSub(['foo'], 'sub');
         }).toThrowError('A subquery must be a query builder instance, a Closure, or a string.');
+    });
+
+    it('Works Sub Select Cross Database', () => {
+        const expectedSql =
+            'select "foo", "bar", (select "baz" from "alternative"."two" where "subkey" = ?) as "sub" from "one" where "key" = ?';
+        const expectedBindings = ['subval', 'val'];
+        let builder = getBuilder();
+        builder.from('one').select(['foo', 'bar']).where('key', '=', 'val');
+        let subBuilder = getBuilderAlternative();
+        subBuilder.from('two').select('baz').where('subkey', '=', 'subval');
+        builder.selectSub(subBuilder, 'sub');
+        expect(expectedSql).toBe(builder.toSql());
+        expect(expectedBindings).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder.from('one').select(['foo', 'bar']).where('key', '=', 'val');
+        subBuilder = getBuilderAlternative();
+        subBuilder.from('alternative.two').select('baz').where('subkey', '=', 'subval');
+        builder.selectSub(subBuilder, 'sub');
+        expect(expectedSql).toBe(builder.toSql());
+        expect(expectedBindings).toEqual(builder.getBindings());
     });
 
     it('Works Sub Select Reset Bindings', () => {

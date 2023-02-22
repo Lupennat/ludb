@@ -37,7 +37,7 @@ export interface RowValues {
 }
 
 export interface NumericValues {
-    [key: string]: number | bigint;
+    [key: string]: number | bigint | string;
 }
 
 export type ConditionBoolean = `${'A' | 'a'}${'N' | 'n'}${'D' | 'd'}` | `${'O' | 'o'}${'R' | 'r'}`;
