@@ -131,27 +131,19 @@ export interface WhereDateTime extends WhereBase {
 }
 
 export type HavingRaw = WhereRaw;
-
-export interface HavingBasic extends WhereBasic {
-    type: 'Basic' | 'Bitwise';
-}
-
+export type HavingBasic = WhereBasic;
 export type HavingNested = WhereNested;
-
 export type HavingNull = WhereNull;
-
-export interface HavingBetween extends WhereBetween {
-    type: 'Between';
-}
+export type HavingBetween = WhereBetween;
 
 export type Having = HavingRaw | HavingBasic | HavingNested | HavingNull | HavingBetween;
 
-interface OrderColumn {
+export interface OrderColumn {
     column: Stringable;
     direction: Lowercase<OrderDirection>;
 }
 
-interface OrderRaw {
+export interface OrderRaw {
     type: 'Raw';
     sql: string;
 }

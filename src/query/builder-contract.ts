@@ -1136,7 +1136,8 @@ abstract class BuilderContract {
         columns: Stringable[],
         operator: string,
         values: Binding[],
-        boolean?: ConditionBoolean
+        boolean?: ConditionBoolean,
+        not?: boolean
     ): this;
 
     /**
@@ -1144,6 +1145,20 @@ abstract class BuilderContract {
      */
     public abstract orWhereRowValues(columns: Stringable[], operator: string, values: Binding[]): this;
 
+    /**
+     * Adds a where not condition using row values.
+     */
+    public abstract whereRowValuesNot(
+        columns: Stringable[],
+        operator: string,
+        values: Binding[],
+        boolean?: ConditionBoolean
+    ): this;
+
+    /**
+     * Adds an or where not condition using row values.
+     */
+    public abstract orWhereRowValuesNot(columns: Stringable[], operator: string, values: Binding[]): this;
     /**
      * Add a "where JSON contains" clause to the query.
      */
@@ -1251,7 +1266,7 @@ abstract class BuilderContract {
     /**
      * Add a "or where fulltext" clause to the query.
      */
-    public abstract orwhereFulltext(columns: Stringable | Stringable[], value: string, options?: FulltextOptions): this;
+    public abstract orWhereFulltext(columns: Stringable | Stringable[], value: string, options?: FulltextOptions): this;
 
     /**
      * Add a "where not fulltext" clause to the query.
@@ -1266,7 +1281,7 @@ abstract class BuilderContract {
     /**
      * Add a "or where not fulltext" clause to the query.
      */
-    public abstract orwhereFulltextNot(
+    public abstract orWhereFulltextNot(
         columns: Stringable | Stringable[],
         value: string,
         options?: FulltextOptions
@@ -1476,12 +1491,12 @@ abstract class BuilderContract {
     /**
      * Constrain the query to the previous "page" of results before a given ID.
      */
-    public abstract forPageBeforeId(perPage?: number, lastId?: number | bigint | null, column?: Stringable): this;
+    public abstract forPageBeforeId(perPage?: number, lastId?: number | bigint | null, column?: string): this;
 
     /**
      * Constrain the query to the next "page" of results after a given ID.
      */
-    public abstract forPageAfterId(perPage?: number, lastId?: number | bigint | null, column?: Stringable): this;
+    public abstract forPageAfterId(perPage?: number, lastId?: number | bigint | null, column?: string): this;
 
     /**
      * Remove all existing orders and optionally add a new order.
@@ -1531,7 +1546,7 @@ abstract class BuilderContract {
     /**
      * Chunk the results of the query.
      */
-    public abstract chunk<T>(
+    public abstract chunk<T = Dictionary>(
         count: number,
         callback: (items: Collection<T>, page: number) => Promise<void | false> | void | false
     ): Promise<boolean>;
@@ -1539,12 +1554,15 @@ abstract class BuilderContract {
     /**
      * Run a map over each item while chunking.
      */
-    public abstract chunkMap<T>(callback: (item: T) => Promise<T> | T, count?: number): Promise<Collection<T>>;
+    public abstract chunkMap<U, T = Dictionary>(
+        callback: (item: T) => Promise<U> | U,
+        count?: number
+    ): Promise<Collection<U>>;
 
     /**
      * Execute a callback over each item while chunking.
      */
-    public abstract each<T>(
+    public abstract each<T = Dictionary>(
         callback: (item: T, index: number) => Promise<void | false> | void | false,
         count?: number
     ): Promise<boolean>;
@@ -1552,21 +1570,21 @@ abstract class BuilderContract {
     /**
      * Chunk the results of a query by comparing IDs.
      */
-    public abstract chunkById<T>(
+    public abstract chunkById<T = Dictionary>(
         count: number,
         callback: (items: Collection<T>, page: number) => Promise<void | false> | void | false,
-        column?: Stringable | null,
-        alias?: Stringable | null
+        column?: string | null,
+        alias?: string | null
     ): Promise<boolean>;
 
     /**
      * Execute a callback over each item while chunking by ID.
      */
-    public abstract eachById<T>(
+    public abstract eachById<T = Dictionary>(
         callback: (item: T, index: number) => Promise<false | void> | false | void,
         count?: number,
-        column?: Stringable | null,
-        alias?: Stringable | null
+        column?: string | null,
+        alias?: string | null
     ): Promise<boolean>;
 
     /**
@@ -1577,16 +1595,12 @@ abstract class BuilderContract {
     /**
      * Query lazily, by chunking the results of a query by comparing IDs.
      */
-    public abstract lazyById<T>(
-        chunkSize?: number,
-        column?: Stringable | null,
-        alias?: string | null
-    ): LazyCollection<T>;
+    public abstract lazyById<T>(chunkSize?: number, column?: string | null, alias?: string | null): LazyCollection<T>;
 
     /**
      * Query lazily, by chunking the results of a query by comparing IDs in descending order.
      */
-    public abstract lazyByIdDesc<T>(chunkSize?: number, column?: Stringable, alias?: string | null): LazyCollection<T>;
+    public abstract lazyByIdDesc<T>(chunkSize?: number, column?: string, alias?: string | null): LazyCollection<T>;
 
     /**
      * Execute the query and get the first result.
@@ -1596,7 +1610,7 @@ abstract class BuilderContract {
     /**
      * Execute the query and get the first result if it's the sole matching record.
      */
-    public abstract sole<T>(columns?: Stringable | Stringable[]): Promise<T>;
+    public abstract sole<T = Dictionary>(columns?: Stringable | Stringable[]): Promise<T>;
 
     /**
      * Execute a query for a single record by ID.
@@ -1652,7 +1666,12 @@ abstract class BuilderContract {
     /**
      * Get a collection instance containing the values of a given column.
      */
-    public abstract pluck<T = unknown>(column: Stringable, key?: Stringable | null): Promise<Collection<T>>;
+    public abstract pluck<T>(column: Stringable, key?: null): Promise<Collection<T[]>>;
+    public abstract pluck<T>(column: Stringable, key: Stringable): Promise<Collection<{ [key: string]: T }>>;
+    public abstract pluck<T>(
+        column: Stringable,
+        key?: Stringable | null
+    ): Promise<Collection<{ [key: string]: T }> | Collection<T[]>>;
 
     /**
      * Concatenate values of a given column as a string.

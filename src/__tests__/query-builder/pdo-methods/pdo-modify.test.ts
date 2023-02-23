@@ -228,7 +228,19 @@ describe('Query Builder Pdo Methods Modify', () => {
     });
 
     it('Works Upsert Method', async () => {
-        let builder = getMySqlBuilder();
+        let builder = getBuilder();
+        await expect(
+            builder.from('users').upsert(
+                [
+                    { email: 'foo', name: 'bar', role: 'baz' },
+                    { name: 'bar2', email: 'foo2', role: 'baz2' }
+                ],
+                ['email', 'role'],
+                ['email', 'name']
+            )
+        ).rejects.toThrowError('This database engine does not support upserts.');
+
+        builder = getMySqlBuilder();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(option => {
             expect(option).toBe('use_upsert_alias');
             return false;
@@ -782,7 +794,16 @@ describe('Query Builder Pdo Methods Modify', () => {
     });
 
     it('Works Update From Method With Joins On Postgres', async () => {
-        let builder = getPostgresBuilder();
+        let builder = getBuilder();
+        await expect(
+            builder
+                .from('users')
+                .join('orders', 'users.id', '=', 'orders.user_id')
+                .where('users.id', '=', 1)
+                .updateFrom({ email: 'foo', name: 'bar' })
+        ).rejects.toThrowError('This database engine does not support the updateFrom method.');
+
+        builder = getPostgresBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update "users" set "email" = ?, "name" = ? from "orders" where "users"."id" = ? and "users"."id" = "orders"."user_id"'

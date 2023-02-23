@@ -6,7 +6,7 @@ import MySqlProcessor from '../../query/processors/mysql-processor';
 import Processor from '../../query/processors/processor';
 import BuilderI from '../../types/query/builder';
 import { WhereBasic } from '../../types/query/registry';
-import { getBuilder, getConnection, getMySqlBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getConnection, getJoin, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
 describe('Query Builder Utilities', () => {
     afterAll(async () => {
@@ -449,6 +449,14 @@ describe('Query Builder Utilities', () => {
         expect(builder).not.toEqual(clone);
         expect('select * from "users"').toBe(builder.toSql());
         expect('select * from "users" where "email" = ?').toBe(clone.toSql());
+
+        const join = getJoin();
+        join.select('*').from('users');
+        const clonedJoin = join.clone().where('email', 'foo');
+
+        expect(join).not.toEqual(clonedJoin);
+        expect('select * from "users"').toBe(join.toSql());
+        expect('select * from "users" on "email" = ?').toBe(clonedJoin.toSql());
     });
 
     it('Works Clone Without', () => {
@@ -458,6 +466,13 @@ describe('Query Builder Utilities', () => {
 
         expect('select * from "users" where "email" = ? order by "email" asc').toBe(builder.toSql());
         expect('select * from "users" where "email" = ?').toBe(clone.toSql());
+
+        const join = getJoin();
+        join.select('*').from('users').where('email', 'foo').orderBy('email');
+        const clonedJoin = join.cloneWithout(['orders']);
+
+        expect('select * from "users" on "email" = ? order by "email" asc').toBe(join.toSql());
+        expect('select * from "users" on "email" = ?').toBe(clonedJoin.toSql());
     });
 
     it('Works Clone Without Bindings', () => {
@@ -469,6 +484,15 @@ describe('Query Builder Utilities', () => {
         expect(['foo']).toEqual(builder.getBindings());
 
         expect('select * from "users" order by "email" asc').toBe(clone.toSql());
+        expect([]).toEqual(clone.getBindings());
+
+        const join = getJoin();
+        join.select('*').from('users').where('email', 'foo').orderBy('email');
+        const clonedJoin = join.cloneWithout(['wheres']).cloneWithoutBindings(['where']);
+
+        expect('select * from "users" on "email" = ? order by "email" asc').toBe(join.toSql());
+        expect(['foo']).toEqual(builder.getBindings());
+        expect('select * from "users" order by "email" asc').toBe(clonedJoin.toSql());
         expect([]).toEqual(clone.getBindings());
     });
 

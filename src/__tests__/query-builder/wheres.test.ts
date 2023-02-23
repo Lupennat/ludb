@@ -19,10 +19,59 @@ describe('Query Builder Wheres', () => {
     });
 
     it('Works Basic Where', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder.select('*').from('users').where('id', '=', 1);
         expect(builder.toSql()).toBe('select * from "users" where "id" = ?');
         expect(builder.getBindings()).toEqual([1]);
+
+        builder = getBuilder();
+        expect(() => {
+            builder.select('*').from('users').where('id', '>', null);
+        }).toThrowError('Illegal operator and value combination.');
+    });
+
+    it('Works Where With Queryables', () => {
+        let builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where(
+                query => {
+                    query.from('two').select('baz').where('subkey', '=', 'subval');
+                },
+                '=',
+                'test'
+            );
+        expect(builder.toSql()).toBe('select * from "users" where (select "baz" from "two" where "subkey" = ?) = ?');
+        expect(builder.getBindings()).toEqual(['subval', 'test']);
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .whereNot('id', '=', query => {
+                query.from('two').select('baz').where('subkey', '=', 'subval');
+            });
+        expect(builder.toSql()).toBe(
+            'select * from "users" where not "id" = (select "baz" from "two" where "subkey" = ?)'
+        );
+        expect(builder.getBindings()).toEqual(['subval']);
+
+        builder = getBuilder();
+        expect(() => {
+            builder
+                .select('*')
+                .from('users')
+                .where(
+                    query => {
+                        query.from('one').select('baz').where('subkey', '=', 'subval');
+                    },
+                    '=',
+                    query => {
+                        query.from('two').select('baz').where('subkey', '=', 'subval');
+                    }
+                );
+        }).toThrowError('Value Cannot be a closure when column is instance of Query Builder or closure.');
     });
 
     it('Works Basic Where Not', () => {
@@ -38,6 +87,15 @@ describe('Query Builder Wheres', () => {
         expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').whereDate('created_at', new Date('2023-02-10'));
+        expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['2023-02-10']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereDateNot('created_at', new Date('2023-02-10'));
+        expect(builder.toSql()).toBe('select * from `users` where not date(`created_at`) = ?');
+
+        builder = getMySqlBuilder();
         // @ts-expect-error test wrong array will be flatted
         builder.select('*').from('users').whereDate('created_at', [1, 2]);
         expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
@@ -48,12 +106,57 @@ describe('Query Builder Wheres', () => {
         expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').whereDay('created_at', new Date('2023-01-03'));
+        expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['03']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereDayNot('created_at', new Date('2023-01-03'));
+        expect(builder.toSql()).toBe('select * from `users` where not day(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['03']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereDay('created_at', 'aa');
+        expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['00']);
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereMonth('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ?');
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').whereMonth('created_at', new Date('2023-01-03'));
+        expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['01']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereMonthNot('created_at', new Date('2023-01-03'));
+        expect(builder.toSql()).toBe('select * from `users` where not month(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['01']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereMonth('created_at', 'aa');
+        expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['00']);
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereYear('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ?');
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereYear('created_at', new Date('2023-01-03'));
+        expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['2023']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereYearNot('created_at', new Date('2023-01-03'));
+        expect(builder.toSql()).toBe('select * from `users` where not year(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['2023']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereYear('created_at', 'aa');
+        expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['0000']);
     });
 
     it('Works Date Base Or Wheres Accepts Two Arguments', () => {
@@ -62,16 +165,32 @@ describe('Query Builder Wheres', () => {
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or date(`created_at`) = ?');
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', 1).orWhereDateNot('created_at', '2023-02-10');
+        expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not date(`created_at`) = ?');
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereDay('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or day(`created_at`) = ?');
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', 1).orWhereDayNot('created_at', 1);
+        expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not day(`created_at`) = ?');
 
         builder = getMySqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereMonth('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or month(`created_at`) = ?');
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', 1).orWhereMonthNot('created_at', 1);
+        expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not month(`created_at`) = ?');
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereYear('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or year(`created_at`) = ?');
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', 1).orWhereYearNot('created_at', 1);
+        expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not year(`created_at`) = ?');
     });
 
     it('Works Date Base Wheres Expression Is Not Bound', () => {
@@ -293,10 +412,15 @@ describe('Query Builder Wheres', () => {
     });
 
     it('Works Where Time MySql', () => {
-        const builder = getMySqlBuilder();
+        let builder = getMySqlBuilder();
         builder.select('*').from('users').whereTime('created_at', '>=', '22:00');
         expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) >= ?');
         expect(builder.getBindings()).toEqual(['22:00']);
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereTime('created_at', '>=', new Date('2023-02-12 22:00:00'));
+        expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) >= ?');
+        expect(builder.getBindings()).toEqual(['22:00:00']);
     });
 
     it('Works Where Time Postgres', () => {
@@ -351,14 +475,22 @@ describe('Query Builder Wheres', () => {
     });
 
     it('Works Or Where Time MySql', () => {
-        const builder = getMySqlBuilder();
+        let builder = getMySqlBuilder();
+        builder.select('*').from('users').whereTime('created_at', '<=', '10:00').orWhereTime('created_at', '22:00');
+        expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) <= ? or time(`created_at`) = ?');
+        expect(builder.getBindings()).toEqual(['10:00', '22:00']);
+
+        builder = getMySqlBuilder();
         builder
             .select('*')
             .from('users')
-            .whereTime('created_at', '<=', '10:00')
-            .orWhereTime('created_at', '>=', '22:00');
-        expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) <= ? or time(`created_at`) >= ?');
-        expect(builder.getBindings()).toEqual(['10:00', '22:00']);
+            .whereTimeNot('created_at', '<=', '10:00')
+            .whereTimeNot('updated_at', '10:00')
+            .orWhereTimeNot('created_at', '22:00');
+        expect(builder.toSql()).toBe(
+            'select * from `users` where not time(`created_at`) <= ? and not time(`updated_at`) = ? or not time(`created_at`) = ?'
+        );
+        expect(builder.getBindings()).toEqual(['10:00', '10:00', '22:00']);
     });
 
     it('Works Or Where Time Postgres', () => {
@@ -394,6 +526,28 @@ describe('Query Builder Wheres', () => {
             'select * from [users] where cast([created_at] as time) <= ? or cast([created_at] as time) >= NOW()'
         );
         expect(builder.getBindings()).toEqual(['10:00']);
+    });
+
+    it('Works Where Nested', () => {
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .whereNested(query => {
+                query.where('created_at', '>=', '22:00').orWhere('created_at', '<=', '10:00');
+            });
+        expect(builder.toSql()).toBe('select * from "users" where ("created_at" >= ? or "created_at" <= ?)');
+        expect(builder.getBindings()).toEqual(['22:00', '10:00']);
+    });
+
+    it('Works Add Nested Where Query', () => {
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .addNestedWhereQuery(getBuilder().where('created_at', '>=', '23:00').orWhere('created_at', '<=', '10:00'));
+        expect(builder.toSql()).toBe('select * from "users" where ("created_at" >= ? or "created_at" <= ?)');
+        expect(builder.getBindings()).toEqual(['23:00', '10:00']);
     });
 
     it('Works Where Betweens', () => {
@@ -578,6 +732,16 @@ describe('Query Builder Wheres', () => {
         builder.select('*').from('users').where('id', '=', 1).orWhereIn('id', [1, 2, 3]);
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? or "id" in (?, ?, ?)');
         expect(builder.getBindings()).toEqual([1, 1, 2, 3]);
+
+        builder = getBuilder();
+        expect(() => {
+            builder
+                .select('*')
+                .from('users')
+                .where('id', '=', 1)
+                // @ts-expect-error test wrong parameter
+                .orWhereIn('id', [1, [1, 2, 3]]);
+        }).toThrowError('Nested arrays may not be passed to whereIn method.');
     });
 
     it('Works Basic Where Not Ins', () => {
@@ -722,6 +886,11 @@ describe('Query Builder Wheres', () => {
         builder.select('*').from('users').whereColumn('updated_at', '>', 'created_at');
         expect(builder.toSql()).toBe('select * from "users" where "updated_at" > "created_at"');
         expect(builder.getBindings()).toEqual([]);
+
+        builder = getBuilder();
+        expect(() => {
+            builder.select('*').from('users').whereColumn('updated_at', '=');
+        }).toThrowError('Second Parameter must be string or Expression.');
     });
 
     it('Works Array Where Column', () => {
@@ -729,14 +898,56 @@ describe('Query Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereColumn([
-                ['first_name', 'last_name'],
-                ['updated_at', '>', 'created_at']
-            ]);
+            .whereColumn([['first_name', 'last_name']])
+            .orWhereColumn([['updated_at', '>', 'created_at']]);
         expect(builder.toSql()).toBe(
-            'select * from "users" where ("first_name" = "last_name" and "updated_at" > "created_at")'
+            'select * from "users" where ("first_name" = "last_name") or ("updated_at" > "created_at")'
         );
         expect(builder.getBindings()).toEqual([]);
+    });
+
+    it('Works Basic Where Column Not', () => {
+        let builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .whereColumnNot('first_name', 'last_name')
+            .orWhereColumnNot('first_name', 'middle_name');
+        expect(builder.toSql()).toBe(
+            'select * from "users" where not "first_name" = "last_name" or not "first_name" = "middle_name"'
+        );
+        expect(builder.getBindings()).toEqual([]);
+
+        builder = getBuilder();
+        builder.select('*').from('users').whereColumnNot('updated_at', '>', 'created_at');
+        expect(builder.toSql()).toBe('select * from "users" where not "updated_at" > "created_at"');
+        expect(builder.getBindings()).toEqual([]);
+
+        builder = getBuilder();
+        expect(() => {
+            builder.select('*').from('users').whereColumnNot('updated_at', '=');
+        }).toThrowError('Second Parameter must be string or Expression.');
+    });
+
+    it('Works Array Where Column Noy', () => {
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .whereColumnNot([['first_name', 'last_name']])
+            .orWhereColumnNot([['updated_at', '>', 'created_at']]);
+        expect(builder.toSql()).toBe(
+            'select * from "users" where not ("first_name" = "last_name") or not ("updated_at" > "created_at")'
+        );
+        expect(builder.getBindings()).toEqual([]);
+    });
+
+    it('Works Where Fulltext', () => {
+        const builder = getBuilder();
+        builder.select('*').from('users').whereFulltext('body', 'Hello World');
+        expect(() => {
+            builder.toSql();
+        }).toThrowError('This database engine does not support fulltext search operations.');
     });
 
     it('Works Where Fulltext MySql', () => {
@@ -746,11 +957,61 @@ describe('Query Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['Hello World']);
 
         builder = getMySqlBuilderWithProcessor();
+        builder.select('*').from('users').whereFulltextNot('body', 'Hello World');
+        expect(builder.toSql()).toBe(
+            'select * from `users` where not match (`body`) against (? in natural language mode)'
+        );
+        expect(builder.getBindings()).toEqual(['Hello World']);
+
+        builder = getMySqlBuilderWithProcessor();
+        builder.select('*').from('users').where('name', 'Claudio').orWhereFulltext('body', 'Hello World');
+        expect(builder.toSql()).toBe(
+            'select * from `users` where `name` = ? or match (`body`) against (? in natural language mode)'
+        );
+        expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
+
+        builder = getMySqlBuilderWithProcessor();
+        builder.select('*').from('users').where('name', 'Claudio').orWhereFulltextNot('body', 'Hello World');
+        expect(builder.toSql()).toBe(
+            'select * from `users` where `name` = ? or not match (`body`) against (? in natural language mode)'
+        );
+        expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
+
+        builder = getMySqlBuilderWithProcessor();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { expanded: true });
         expect(builder.toSql()).toBe(
             'select * from `users` where match (`body`) against (? in natural language mode with query expansion)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
+
+        builder = getMySqlBuilderWithProcessor();
+        builder.select('*').from('users').whereFulltextNot('body', 'Hello World', { expanded: true });
+        expect(builder.toSql()).toBe(
+            'select * from `users` where not match (`body`) against (? in natural language mode with query expansion)'
+        );
+        expect(builder.getBindings()).toEqual(['Hello World']);
+
+        builder = getMySqlBuilderWithProcessor();
+        builder
+            .select('*')
+            .from('users')
+            .where('name', 'Claudio')
+            .orWhereFulltext('body', 'Hello World', { expanded: true });
+        expect(builder.toSql()).toBe(
+            'select * from `users` where `name` = ? or match (`body`) against (? in natural language mode with query expansion)'
+        );
+        expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
+
+        builder = getMySqlBuilderWithProcessor();
+        builder
+            .select('*')
+            .from('users')
+            .where('name', 'Claudio')
+            .orWhereFulltextNot('body', 'Hello World', { expanded: true });
+        expect(builder.toSql()).toBe(
+            'select * from `users` where `name` = ? or not match (`body`) against (? in natural language mode with query expansion)'
+        );
+        expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
         builder = getMySqlBuilderWithProcessor();
         builder.select('*').from('users').whereFulltext('body', '+Hello -World', { mode: 'boolean' });
@@ -887,11 +1148,15 @@ describe('Query Builder Wheres', () => {
     });
 
     it('Works Json Where Null MySql', () => {
-        const builder = getMySqlBuilder();
+        let builder = getMySqlBuilder();
         builder.select('*').from('users').whereNull('items->id');
         expect(
             "select * from `users` where (json_extract(`items`, '$.\"id\"') is null OR json_type(json_extract(`items`, '$.\"id\"')) = 'NULL')"
         ).toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereNull('id');
+        expect('select * from `users` where `id` is null').toBe(builder.toSql());
     });
 
     it('Works Json Where Not Null MySql', () => {
@@ -1153,6 +1418,19 @@ describe('Query Builder Wheres', () => {
         ).toBe(builder.toSql());
     });
 
+    it('Works Add Where Exists Query', () => {
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('orders')
+            .addWhereExistsQuery(
+                getBuilder().select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'))
+            );
+        expect(
+            'select * from "orders" where exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(builder.toSql());
+    });
+
     it('Works Prepare Value And Operator', () => {
         let builder = getBuilder();
         builder.where('foo', '>', '20');
@@ -1230,6 +1508,10 @@ describe('Query Builder Wheres', () => {
         expect('select * from "orders" where ("last_update", "order_number") < (?, ?)').toBe(builder.toSql());
 
         builder = getBuilder();
+        builder.select('*').from('orders').whereRowValuesNot(['last_update', 'order_number'], '<', [1, 2]);
+        expect('select * from "orders" where not ("last_update", "order_number") < (?, ?)').toBe(builder.toSql());
+
+        builder = getBuilder();
         builder
             .select('*')
             .from('orders')
@@ -1243,9 +1525,12 @@ describe('Query Builder Wheres', () => {
         builder
             .select('*')
             .from('orders')
-            .whereRowValues(['last_update', 'order_number'], '<', [1, new Raw('2')]);
-        expect('select * from "orders" where ("last_update", "order_number") < (?, 2)').toBe(builder.toSql());
-        expect([1]).toEqual(builder.getBindings());
+            .whereRowValues(['last_update', 'order_number'], '<', [1, new Raw('2')])
+            .orWhereRowValuesNot(['last_update', 'order_number'], '<', [1, 2]);
+        expect(
+            'select * from "orders" where ("last_update", "order_number") < (?, 2) or not ("last_update", "order_number") < (?, ?)'
+        ).toBe(builder.toSql());
+        expect([1, 1, 2]).toEqual(builder.getBindings());
     });
 
     it('Works Where Row Values Varity Mismatch', () => {
@@ -1397,6 +1682,14 @@ describe('Query Builder Wheres', () => {
             "select * from [users] where [id] = ? or not 'en' in (select [value] from openjson([options], '$.\"languages\"'))"
         ).toBe(builder.toSql());
         expect([1]).toEqual(builder.getBindings());
+    });
+
+    it('Works Where Json Contains Key', () => {
+        const builder = getBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
+        expect(() => {
+            builder.toSql();
+        }).toThrowError('This database engine does not support JSON contains key operations.');
     });
 
     it('Works Where Json Contains Key MySql', () => {
@@ -1595,6 +1888,14 @@ describe('Query Builder Wheres', () => {
         ).toBe(builder.toSql());
     });
 
+    it('Works Where Json Length', () => {
+        const builder = getBuilder();
+        builder.select('*').from('users').whereJsonLength('options', 0);
+        expect(() => {
+            builder.toSql();
+        }).toThrowError('This database engine does not support JSON length operations.');
+    });
+
     it('Works Where Json Length MySql', () => {
         let builder = getMySqlBuilder();
         builder.select('*').from('users').whereJsonLength('options', 0);
@@ -1602,8 +1903,20 @@ describe('Query Builder Wheres', () => {
         expect([0]).toEqual(builder.getBindings());
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonLengthNot('options', 0);
+        expect('select * from `users` where not json_length(`options`) = ?').toBe(builder.toSql());
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
         expect('select * from `users` where json_length(`users`.`options`, \'$."languages"\') > ?').toBe(
+            builder.toSql()
+        );
+        expect([0]).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonLengthNot('users.options->languages', '>', 0);
+        expect('select * from `users` where not json_length(`users`.`options`, \'$."languages"\') > ?').toBe(
             builder.toSql()
         );
         expect([0]).toEqual(builder.getBindings());
@@ -1616,12 +1929,30 @@ describe('Query Builder Wheres', () => {
         expect([1]).toEqual(builder.getBindings());
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').where('id', '=', 1).orWhereJsonLengthNot('options->languages', new Raw('0'));
+        expect('select * from `users` where `id` = ? or not json_length(`options`, \'$."languages"\') = 0').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
         builder
             .select('*')
             .from('users')
             .where('id', '=', 1)
             .orWhereJsonLength('options->languages', '>', new Raw('0'));
         expect('select * from `users` where `id` = ? or json_length(`options`, \'$."languages"\') > 0').toBe(
+            builder.toSql()
+        );
+        expect([1]).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .orWhereJsonLengthNot('options->languages', '>', new Raw('0'));
+        expect('select * from `users` where `id` = ? or not json_length(`options`, \'$."languages"\') > 0').toBe(
             builder.toSql()
         );
         expect([1]).toEqual(builder.getBindings());

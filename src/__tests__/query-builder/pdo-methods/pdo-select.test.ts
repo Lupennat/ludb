@@ -45,11 +45,20 @@ describe('Query Builder Pdo Methods Select', () => {
             })
             .mockImplementationOnce(async () => {
                 return null;
+            })
+            .mockImplementationOnce(async () => {
+                return null;
+            })
+            .mockImplementationOnce(async columns => {
+                expect(columns).toEqual(['*']);
+                return data;
             });
 
         expect(data).toEqual(await builder.findOr(1, () => 'callback result'));
         expect(data).toEqual(await builder.findOr(1, ['column'], () => 'callback result'));
         expect('callback result').toBe(await builder.findOr(1, () => 'callback result'));
+        expect(await builder.findOr(1)).toBeNull();
+        expect(data).toBe(await builder.findOr(1));
     });
 
     it('Works First Method Returns First Result', async () => {
@@ -74,6 +83,90 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(spiedConnection).toBeCalledWith('select * from "users" where "id" = ? limit 1', [1], true);
         expect(spiedProcessor).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledWith(builder, [{ foo: 'bar' }]);
+    });
+
+    it('Works Sole Method Returns Only If Sole', async () => {
+        let builder = getBuilder();
+        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([{ foo: 'bar' }]);
+            return results;
+        });
+
+        let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
+            expect(bindings).toEqual([1]);
+            expect(useReadPdo).toBeTruthy();
+            return [{ foo: 'bar' }];
+        });
+
+        const results = await builder.from('users').where('id', '=', 1).sole('foo');
+        expect({ foo: 'bar' }).toEqual(results);
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([{ foo: 'bar' }]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select * from "users" where "id" = ? limit 2');
+            expect(bindings).toEqual([1]);
+            expect(useReadPdo).toBeTruthy();
+            return [{ foo: 'bar' }];
+        });
+
+        const results2 = await builder.from('users').where('id', '=', 1).sole();
+        expect({ foo: 'bar' }).toEqual(results2);
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
+            expect(bindings).toEqual([1]);
+            expect(useReadPdo).toBeTruthy();
+            return [];
+        });
+
+        await expect(builder.from('users').where('id', '=', 1).sole<string>('foo')).rejects.toThrowError(
+            'no records were found.'
+        );
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([{ foo: 'bar' }, { foo: 'baz' }]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
+            expect(bindings).toEqual([1]);
+            expect(useReadPdo).toBeTruthy();
+            return [{ foo: 'bar' }, { foo: 'baz' }];
+        });
+
+        await expect(builder.from('users').where('id', '=', 1).sole<string>('foo')).rejects.toThrowError(
+            '2 records were found.'
+        );
     });
 
     it('Works Pluck Method Gets Collection Of Column Values', async () => {
@@ -103,7 +196,7 @@ describe('Query Builder Pdo Methods Select', () => {
             expect(query).toEqual(builder);
             expect(results).toEqual([
                 { id: 1, foo: 'bar' },
-                { id: 10, foo: 'baz' }
+                { id: null, foo: 'baz' }
             ]);
             return results;
         });
@@ -112,12 +205,142 @@ describe('Query Builder Pdo Methods Select', () => {
         spiedConnection.mockImplementationOnce(async () => {
             return [
                 { id: 1, foo: 'bar' },
-                { id: 10, foo: 'baz' }
+                { id: null, foo: 'baz' }
             ];
         });
 
-        const results2 = await builder.from('users').where('id', '=', 1).pluck<{ [key: string]: string }>('foo', 'id');
-        expect({ 1: 'bar', 10: 'baz' }).toEqual(results2.all());
+        const results2 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
+        expect({ 1: 'bar', null: 'baz' }).toEqual(results2.all());
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([
+                { id: Buffer.from('1'), foo: 'bar' },
+                { id: Buffer.from('10'), foo: 'baz' }
+            ]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
+            return [
+                { id: Buffer.from('1'), foo: 'bar' },
+                { id: Buffer.from('10'), foo: 'baz' }
+            ];
+        });
+
+        await expect(builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id')).rejects.toThrowError(
+            'key value [Buffer] is not stringable'
+        );
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([
+                { id: [1, 2], foo: 'bar' },
+                { id: [3, 4], foo: 'baz' }
+            ]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
+            return [
+                { id: [1, 2], foo: 'bar' },
+                { id: [3, 4], foo: 'baz' }
+            ];
+        });
+
+        await expect(builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id')).rejects.toThrowError(
+            'key value [Array] is not stringable'
+        );
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
+            return [];
+        });
+
+        const results3 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
+        expect({}).toEqual(results3.all());
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
+            return [];
+        });
+
+        const results4 = await builder.from('users').where('id', '=', 1).pluck<string>('foo');
+        expect([]).toEqual(results4.all());
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([
+                { id: 1, foo: 'bar' },
+                { id: null, foo: 'baz' }
+            ]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
+            return [
+                { id: 1, foo: 'bar' },
+                { id: null, foo: 'baz' }
+            ];
+        });
+
+        const results5 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', new Raw('baz as id'));
+        expect({ 1: 'bar', null: 'baz' }).toEqual(results5.all());
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([
+                { id: 1, foo: 'bar' },
+                { id: null, foo: 'baz' }
+            ]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async () => {
+            return [
+                { id: 1, foo: 'bar' },
+                { id: null, foo: 'baz' }
+            ];
+        });
+
+        const results6 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'table.id');
+        expect({ 1: 'bar', null: 'baz' }).toEqual(results6.all());
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
     });
@@ -164,15 +387,15 @@ describe('Query Builder Pdo Methods Select', () => {
     });
 
     it('Works Value Method Returns Single Column', async () => {
-        const builder = getBuilder();
-        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        let builder = getBuilder();
+        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
         spiedProcessor.mockImplementation((query, results) => {
             expect(query).toEqual(builder);
             expect(results).toEqual([{ foo: 'bar' }]);
             return results;
         });
 
-        const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 1');
             expect(bindings).toEqual([1]);
@@ -184,18 +407,62 @@ describe('Query Builder Pdo Methods Select', () => {
         expect('bar').toBe(results);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select "foo" from "users" where "id" = ? limit 1');
+            expect(bindings).toEqual([1]);
+            expect(useReadPdo).toBeTruthy();
+            return [];
+        });
+
+        const results2 = await builder.from('users').where('id', '=', 1).value<string>('foo');
+        expect(results2).toBeNull();
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+    });
+
+    it('Works Sole Value Method Returns Single Column', async () => {
+        const builder = getBuilder();
+        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([{ foo: 'bar' }]);
+            return results;
+        });
+
+        const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
+            expect(bindings).toEqual([1]);
+            expect(useReadPdo).toBeTruthy();
+            return [{ foo: 'bar' }];
+        });
+
+        const results = await builder.from('users').where('id', '=', 1).soleValue<string>('foo');
+        expect('bar').toBe(results);
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works RawValue Method Returns Single Column', async () => {
-        const builder = getBuilder();
-        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        let builder = getBuilder();
+        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
         spiedProcessor.mockImplementation((query, results) => {
             expect(query).toEqual(builder);
             expect(results).toEqual([{ 'UPPER("foo")': 'BAR' }]);
             return results;
         });
 
-        const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select UPPER("foo") from "users" where "id" = ? limit 1');
             expect(bindings).toEqual([1]);
@@ -205,6 +472,27 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').where('id', '=', 1).rawValue<string>('UPPER("foo")');
         expect('BAR').toBe(results);
+        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedProcessor).toBeCalledTimes(1);
+
+        builder = getBuilder();
+        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
+        spiedProcessor.mockImplementation((query, results) => {
+            expect(query).toEqual(builder);
+            expect(results).toEqual([]);
+            return results;
+        });
+
+        spiedConnection = jest.spyOn(builder.getConnection(), 'select');
+        spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
+            expect(query).toBe('select "foo" from "users" where "id" = ? limit 1');
+            expect(bindings).toEqual([1]);
+            expect(useReadPdo).toBeTruthy();
+            return [];
+        });
+
+        const results2 = await builder.from('users').where('id', '=', 1).rawValue<string>('"foo"');
+        expect(results2).toBeNull();
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
     });
@@ -692,6 +980,14 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
 
+    it('Works Chunk With Orders Throw Error', async () => {
+        const builder = getBuilder();
+
+        await expect(builder.chunk(2, () => {})).rejects.toThrowError(
+            'You must specify an orderBy clause when using this function.'
+        );
+    });
+
     it('Works Chunk With Last Chunk Partial', async () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
@@ -796,6 +1092,103 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(callback).toBeCalledTimes(0);
     });
 
+    it('Works Each', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
+        const chunk2 = new Collection(['foo3', 'foo4']) as Collection<unknown>;
+        const chunk3 = new Collection() as Collection<unknown>;
+        const spiedChunk = jest.spyOn(builder, 'chunk');
+        const spiedGet = jest
+            .spyOn(builder, 'get')
+            .mockImplementationOnce(async () => {
+                return chunk1;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk2;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk3;
+            });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        await builder.each(async item => {
+            callback(item);
+        }, 2);
+        expect(spiedChunk).toBeCalledTimes(1);
+        expect(spiedChunk).toBeCalledWith(2, expect.any(Function));
+        expect(spiedGet).toBeCalledTimes(3);
+        expect(spiedForPage).toBeCalledTimes(3);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(3, 3, 2);
+        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenNthCalledWith(1, 'foo1');
+        expect(callback).toHaveBeenNthCalledWith(2, 'foo2');
+        expect(callback).toHaveBeenNthCalledWith(3, 'foo3');
+        expect(callback).toHaveBeenNthCalledWith(4, 'foo4');
+    });
+
+    it('Works Chunk Map', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection(['foo1', 'foo2', 'foo5', 'foo7']) as Collection<unknown>;
+
+        const spiedChunk = jest.spyOn(builder, 'chunk');
+        const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+            return chunk1;
+        });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        expect(
+            (
+                await builder.chunkMap<number, string>(async item => {
+                    return Number(item.replace('foo', ''));
+                })
+            ).all()
+        ).toEqual([1, 2, 5, 7]);
+        expect(spiedChunk).toBeCalledTimes(1);
+        expect(spiedChunk).toBeCalledWith(1000, expect.any(Function));
+        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toBeCalledTimes(1);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 1000);
+    });
+
+    it('Works Each Can Be Stopped By Returning False', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection(['foo1', 'foo2', 'foo3', 'foo4']) as Collection<unknown>;
+        const spiedChunk = jest.spyOn(builder, 'chunk');
+        const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+            return chunk1;
+        });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        await builder.each(async (item, index) => {
+            callback(item);
+            if (index === 2) {
+                return false;
+            }
+            return;
+        });
+        expect(spiedChunk).toBeCalledTimes(1);
+        expect(spiedChunk).toBeCalledWith(1000, expect.any(Function));
+        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toBeCalledTimes(1);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 1000);
+        expect(callback).toBeCalledTimes(3);
+        expect(callback).toHaveBeenNthCalledWith(1, 'foo1');
+        expect(callback).toHaveBeenNthCalledWith(2, 'foo2');
+        expect(callback).toHaveBeenNthCalledWith(3, 'foo3');
+    });
+
     it('Works Chunk Paginates Using Id With Last Chunk Complete', async () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
@@ -848,6 +1241,105 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(callback).toBeCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
+    });
+
+    it('Works Chunk Paginates Using Id Can Be Stopped By Returning False', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = new Collection([{ id: 1 }, { id: 2 }]) as Collection<unknown>;
+        const chunk2 = new Collection([{ id: 10 }, { id: 11 }]) as Collection<unknown>;
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.chunkById(2, results => {
+            callback(results);
+            return false;
+        });
+        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
+        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk Paginates Using Id Throw Error When Column Is Null Or Does Not Exists', async () => {
+        let builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        let chunk1 = new Collection([{ id: 1 }, { notId: 2 }]) as Collection<unknown>;
+        let spiedForPage: jest.SpyInstance[] = [];
+        let spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+            return builder;
+        });
+
+        let callback = jest.fn();
+
+        await expect(
+            builder.chunkById(2, results => {
+                callback(results);
+            })
+        ).rejects.toThrowError(
+            'The chunkById operation was aborted because the [id] column is not present in the query result.'
+        );
+        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
+        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+
+        builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        chunk1 = new Collection([{ id: 1 }, { id: null }]) as Collection<unknown>;
+        spiedForPage = [];
+        spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+            return builder;
+        });
+
+        callback = jest.fn();
+
+        await expect(
+            builder.chunkById(2, results => {
+                callback(results);
+            })
+        ).rejects.toThrowError(
+            'The chunkById operation was aborted because the [id] column is not present in the query result.'
+        );
+        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
+        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
     it('Works Chunk Paginates Using Id With Last Chunk Partial', async () => {

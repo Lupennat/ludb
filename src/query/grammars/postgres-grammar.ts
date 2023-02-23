@@ -98,9 +98,9 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
-     * Compile a "where fulltext" clause.
+     * Compile a "fulltext" statement into SQL.
      */
-    public compilewhereFulltext(_query: BuilderContract, where: whereFulltext): string {
+    public compileFulltext(_query: BuilderContract, where: whereFulltext): string {
         let language = where.options.language ?? 'english';
 
         if (!this.validFulltextLanguages().includes(language)) {

@@ -1,6 +1,13 @@
 import Raw from '../../query/expression';
 import BuilderI from '../../types/query/builder';
-import { getBuilder, getPostgresBuilder, getSQLiteBuilder, getSqlServerBuilder, pdo } from '../fixtures/mocked';
+import {
+    getBuilder,
+    getMySqlBuilder,
+    getPostgresBuilder,
+    getSQLiteBuilder,
+    getSqlServerBuilder,
+    pdo
+} from '../fixtures/mocked';
 
 describe('Query Builder Order-Group', () => {
     afterAll(async () => {
@@ -28,6 +35,11 @@ describe('Query Builder Order-Group', () => {
         builder.select('*').from('users').groupByRaw('DATE(created_at), ? DESC', ['foo']);
         expect('select * from "users" group by DATE(created_at), ? DESC').toBe(builder.toSql());
         expect(['foo']).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder.select('*').from('users').groupByRaw('DATE(created_at) DESC');
+        expect('select * from "users" group by DATE(created_at) DESC').toBe(builder.toSql());
+        expect([]).toEqual(builder.getBindings());
 
         builder = getBuilder();
         builder
@@ -95,10 +107,16 @@ describe('Query Builder Order-Group', () => {
         expect('select * from "users" order by "updated_at" asc').toBe(builder.toSql());
     });
 
-    it('Works In Random Order MySql', () => {
+    it('Works In Random Order', () => {
         const builder = getBuilder();
         builder.select('*').from('users').inRandomOrder();
         expect('select * from "users" order by RANDOM()').toBe(builder.toSql());
+    });
+
+    it('Works In Random Order MySql', () => {
+        const builder = getMySqlBuilder();
+        builder.select('*').from('users').inRandomOrder();
+        expect('select * from `users` order by RAND()').toBe(builder.toSql());
     });
 
     it('Works In Random Order Postgres', () => {

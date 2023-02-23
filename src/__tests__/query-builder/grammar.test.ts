@@ -123,6 +123,13 @@ describe('Query Builder Select-From', () => {
         );
     });
 
+    it('Works Prepares Bindings For Update From', () => {
+        const builder = getBuilder();
+        expect(() => {
+            builder.getGrammar().prepareBindingsForUpdateFrom(builder.getRegistry().bindings, {});
+        }).toThrowError('This database engine does not support the updateFrom method.');
+    });
+
     it('Works MySql Update With Json Prepares Bindings Correctly', async () => {
         let builder = getMySqlBuilder();
         let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
@@ -323,12 +330,25 @@ describe('Query Builder Select-From', () => {
 
     it('Works MySql Wrapping Json With Boolean', () => {
         let builder = getMySqlBuilder();
+        builder.select('*').from('users').whereNot('items->available', '=', true);
+        expect('select * from `users` where not json_extract(`items`, \'$."available"\') = true').toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').where('items->available', '=', true);
         expect('select * from `users` where json_extract(`items`, \'$."available"\') = true').toBe(builder.toSql());
 
         builder = getMySqlBuilder();
         builder.select('*').from('users').where(new Raw("items->'$.available'"), '=', true);
         expect("select * from `users` where items->'$.available' = true").toBe(builder.toSql());
+    });
+
+    it('Works Aggrate', () => {
+        let builder = getBuilder();
+        builder.select('*').from('users').distinct().setAggregate('count', ['id']);
+        expect('select count(distinct "id") as aggregate from "users"').toBe(builder.toSql());
+        builder = getBuilder();
+        builder.select('*').from('users').distinct('id', 'name').setAggregate('count', ['id']);
+        expect('select count(distinct "id", "name") as aggregate from "users"').toBe(builder.toSql());
     });
 
     it('Works MySql Wrapping Json With Boolean And Integer That Looks Like One', () => {

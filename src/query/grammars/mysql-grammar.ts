@@ -26,9 +26,9 @@ class MySqlGrammar extends Grammar {
     }
 
     /**
-     * Compile a "where fulltext" clause.
+     * Compile a "fulltext" statement into SQL.
      */
-    public compilewhereFulltext(_query: BuilderContract, where: whereFulltext): string {
+    public compileFulltext(_query: BuilderContract, where: whereFulltext): string {
         const columns = this.columnize(where.columns);
 
         const value = this.parameter(where.value);

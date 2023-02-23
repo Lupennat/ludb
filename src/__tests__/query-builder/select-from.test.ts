@@ -176,13 +176,33 @@ describe('Query Builder Select-From', () => {
     });
 
     it('Works MySqlLock', () => {
-        let builder = getMySqlBuilder();
+        let builder = getBuilder();
+        builder.select('*').from('foo').where('bar', '=', 'baz').lock();
+        expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
+        expect(['baz']).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder.select('*').from('foo').where('bar', '=', 'baz').lock('lock in share mode');
+        expect('select * from "foo" where "bar" = ? lock in share mode').toBe(builder.toSql());
+        expect(['baz']).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from `foo` where `bar` = ? for update').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
         builder = getMySqlBuilder();
+        builder.select('*').from('foo').where('bar', '=', 'baz').lockForUpdate();
+        expect('select * from `foo` where `bar` = ? for update').toBe(builder.toSql());
+        expect(['baz']).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock(false);
+        expect('select * from `foo` where `bar` = ? lock in share mode').toBe(builder.toSql());
+        expect(['baz']).toEqual(builder.getBindings());
+
+        builder = getMySqlBuilder();
+        builder.select('*').from('foo').where('bar', '=', 'baz').sharedLock();
         expect('select * from `foo` where `bar` = ? lock in share mode').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 

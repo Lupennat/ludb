@@ -1,3 +1,4 @@
+import Collection from '../../collections/collection';
 import Raw from '../../query/expression';
 import { getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
@@ -26,8 +27,8 @@ describe('Query Builder Havings', () => {
             .having('videos_count', '>', 1);
         await builder.count();
 
-        expect(spyConnectionDatabase).toBeCalledWith();
-        expect(spyConnection).toBeCalledWith(expected, [1], true);
+        expect(spyConnectionDatabase).toHaveBeenCalledWith();
+        expect(spyConnection).toHaveBeenCalledWith(expected, [1], true);
     });
 
     it('Works Havings', () => {
@@ -36,12 +37,32 @@ describe('Query Builder Havings', () => {
         expect('select * from "users" having "email" > ?').toBe(builder.toSql());
 
         builder = getBuilder();
+        builder.select('*').from('users').having('email', 10);
+        expect('select * from "users" having "email" = ?').toBe(builder.toSql());
+
+        builder = getBuilder();
         builder
             .select('*')
             .from('users')
             .orHaving('email', '=', 'test@example.com')
             .orHaving('email', '=', 'test2@example.com');
         expect('select * from "users" having "email" = ? or "email" = ?').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').havingNot('email', '>', 1);
+        expect('select * from "users" having not "email" > ?').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').havingNot('email', 10);
+        expect('select * from "users" having not "email" = ?').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .orHavingNot('email', '=', 'test@example.com')
+            .orHavingNot('email', '=', 'test2@example.com');
+        expect('select * from "users" having not "email" = ? or not "email" = ?').toBe(builder.toSql());
 
         builder = getBuilder();
         builder.select('*').from('users').groupBy('email').having('email', '>', 1);
@@ -72,10 +93,26 @@ describe('Query Builder Havings', () => {
         expect(
             'select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > ?'
         ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        expect(() => {
+            builder.having(
+                query => {
+                    query.selectRaw('?', ['ignore']).having('name', '=', 'bar');
+                },
+                '=',
+                'test'
+            );
+        }).toThrowError('Value must be null when column is a callback.');
+
+        builder = getBuilder();
+        expect(() => {
+            builder.select('*').from('users').having('id', '>', null);
+        }).toThrowError('Illegal operator and value combination.');
     });
 
     it('Works Nested Havings', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder
             .select('*')
             .from('users')
@@ -86,28 +123,96 @@ describe('Query Builder Havings', () => {
 
         expect('select * from "users" having "email" = ? or ("name" = ? and "age" = ?)').toBe(builder.toSql());
         expect(['foo', 'bar', 25]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .havingNot('email', '=', 'foo')
+            .orHavingNot(query => {
+                query.havingNot('name', '=', 'bar').havingNot('age', '=', 25);
+            });
+
+        expect('select * from "users" having not "email" = ? or (not "name" = ? and not "age" = ?)').toBe(
+            builder.toSql()
+        );
+        expect(['foo', 'bar', 25]).toEqual(builder.getBindings());
     });
 
     it('Works Nested Having Bindings', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder.having('email', '=', 'foo').having(query => {
             query.selectRaw('?', ['ignore']).having('name', '=', 'bar');
         });
+        expect('select * having "email" = ? and ("name" = ?)').toBe(builder.toSql());
+        expect(['foo', 'bar']).toEqual(builder.getBindings());
 
+        builder = getBuilder();
+        builder.havingNot('email', '=', 'foo').havingNot(query => {
+            query.selectRaw('?', ['ignore']).havingNot('name', '=', 'bar');
+        });
+        expect('select * having not "email" = ? and (not "name" = ?)').toBe(builder.toSql());
         expect(['foo', 'bar']).toEqual(builder.getBindings());
     });
 
     it('Works Having Betweens', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder.select('*').from('users').havingBetween('id', [1, 2]);
         expect('select * from "users" having "id" between ? and ?').toBe(builder.toSql());
         expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .havingBetween('id', new Collection([1, 2]));
+        expect('select * from "users" having "id" between ? and ?').toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .havingBetween('id', [1, 2])
+            .orHavingBetween('id', new Collection([1, 2]));
+
+        expect('select * from "users" having "id" between ? and ? or "id" between ? and ?').toBe(builder.toSql());
+
+        expect([1, 2, 1, 2]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder.select('*').from('users').havingBetweenNot('id', [1, 2]);
+        expect('select * from "users" having "id" not between ? and ?').toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .havingBetweenNot('id', new Collection([1, 2]));
+        expect('select * from "users" having "id" not between ? and ?').toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .havingBetweenNot('id', [1, 2])
+            .orHavingBetweenNot('id', new Collection([1, 2]));
+        expect('select * from "users" having "id" not between ? and ? or "id" not between ? and ?').toBe(
+            builder.toSql()
+        );
+        expect([1, 2, 1, 2]).toEqual(builder.getBindings());
     });
 
     it('Works Having Null', () => {
         let builder = getBuilder();
         builder.select('*').from('users').havingNull('email');
         expect('select * from "users" having "email" is null').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').havingNull(['email', 'phone']);
+        expect('select * from "users" having "email" is null and "phone" is null').toBe(builder.toSql());
 
         builder = getBuilder();
         builder.select('*').from('users').havingNull('email').havingNull('phone');
@@ -192,6 +297,39 @@ describe('Query Builder Havings', () => {
         ).toBe(builder.toSql());
     });
 
+    it('Works Having Nested', () => {
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .havingNested(query => {
+                query.having('created_at', '>=', '22:00').orHaving('created_at', '<=', '10:00');
+            })
+            .havingNested(
+                query => {
+                    query.having('created_at', '>=', '22:00').orHaving('created_at', '<=', '10:00');
+                },
+                'or',
+                true
+            );
+        expect(builder.toSql()).toBe(
+            'select * from "users" having ("created_at" >= ? or "created_at" <= ?) or not ("created_at" >= ? or "created_at" <= ?)'
+        );
+        expect(builder.getBindings()).toEqual(['22:00', '10:00', '22:00', '10:00']);
+    });
+
+    it('Works Add Nested Having Query', () => {
+        const builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .addNestedHavingQuery(
+                getBuilder().having('created_at', '>=', '23:00').orHaving('created_at', '<=', '10:00')
+            );
+        expect(builder.toSql()).toBe('select * from "users" having ("created_at" >= ? or "created_at" <= ?)');
+        expect(builder.getBindings()).toEqual(['23:00', '10:00']);
+    });
+
     it('Works Having Shortcut', () => {
         const builder = getBuilder();
         builder.select('*').from('users').having('email', 1).orHaving('email', 2);
@@ -226,7 +364,7 @@ describe('Query Builder Havings', () => {
             .having('total', '>', 3)
             .get();
 
-        expect(spiedConnection).toBeCalledWith(executedQuery, ['popular', 3], true);
+        expect(spiedConnection).toHaveBeenCalledWith(executedQuery, ['popular', 3], true);
         expect([{ category: 'rock', total: 5 }]).toEqual(result.all());
 
         // Using \Raw value
@@ -255,7 +393,7 @@ describe('Query Builder Havings', () => {
             .groupBy('category')
             .having('total', '>', new Raw('3'))
             .get();
-        expect(spiedConnection).toBeCalledWith(executedQuery, ['popular'], true);
+        expect(spiedConnection).toHaveBeenCalledWith(executedQuery, ['popular'], true);
         expect([{ category: 'rock', total: 5 }]).toEqual(result.all());
     });
 

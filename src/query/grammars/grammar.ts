@@ -488,7 +488,6 @@ class Grammar extends BaseGrammar implements GrammarI {
     protected compileWhereSub(_query: BuilderContract, where: WhereSub): string {
         const select = this.compileSelect(where.query);
         const not = where.not ? 'not ' : '';
-
         return `${not}${this.wrap(where.column)} ${where.operator} (${select})`;
     }
 
@@ -565,7 +564,9 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile a "where JSON length" clause.
      */
     protected compileWhereJsonLength(_query: BuilderContract, where: WhereLength): string {
-        return this.compileJsonLength(where.column, where.operator, this.parameter(where.value));
+        const not = where.not ? 'not ' : '';
+
+        return `${not}${this.compileJsonLength(where.column, where.operator, this.parameter(where.value))}`;
     }
 
     /**
@@ -585,7 +586,16 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where fulltext" clause.
      */
-    protected compilewhereFulltext(_query: BuilderContract, _where: whereFulltext): string {
+    protected compilewhereFulltext(query: BuilderContract, where: whereFulltext): string {
+        const not = where.not ? 'not ' : '';
+
+        return `${not}${this.compileFulltext(query, where)}`;
+    }
+
+    /**
+     * Compile a "fulltext" statement into SQL.
+     */
+    protected compileFulltext(_query: BuilderContract, _where: whereFulltext): string {
         throw new Error('This database engine does not support fulltext search operations.');
     }
 
@@ -869,7 +879,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     public compileUpdateFrom(_query: BuilderContract, _values: RowValues): string {
-        throw new Error('his database engine does not support the updateFrom method.');
+        throw new Error('This database engine does not support the updateFrom method.');
     }
 
     /**
@@ -931,7 +941,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdateFrom(_bindings: BindingTypes, _values: RowValues): Binding[] {
-        throw new Error('his database engine does not support the updateFrom method.');
+        throw new Error('This database engine does not support the updateFrom method.');
     }
 
     /**
@@ -1043,7 +1053,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Wrap the given JSON path.
      */
-    protected wrapJsonPath(value: string, delimiter = '->'): string {
+    protected wrapJsonPath(value: string, delimiter: string): string {
         value = value.replace(new RegExp("([\\\\]+)?\\'", 'g'), "''");
 
         const jsonPath = value
@@ -1099,13 +1109,6 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected mustBeJsonStringified(value: any): boolean {
         return Array.isArray(value) || !isPrimitiveBinding(value);
-    }
-
-    /**
-     * is RowValues
-     */
-    protected isRowValues(value: any): value is RowValues {
-        return !isPrimitiveBinding(value);
     }
 }
 

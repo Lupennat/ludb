@@ -39,6 +39,47 @@ describe('Query Builder Joins', () => {
             'select * from "users" left join "photos" on "users"."id" = ? inner join "photos" on "users"."id" = ?'
         ).toBe(builder.toSql());
         expect(['bar', 'foo']).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .leftJoinWhere('photos', join => {
+                join.on('users.id', '=', 'bar');
+            });
+        expect('select * from "users" left join "photos" on "users"."id" = "bar"').toBe(builder.toSql());
+        expect([]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .join('contacts', 'users.id', '=', 'contacts.id')
+            .rightJoin('photos', 'users.id', '=', 'photos.id');
+        expect(
+            'select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" right join "photos" on "users"."id" = "photos"."id"'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .rightJoinWhere('photos', 'users.id', '=', 'bar')
+            .joinWhere('photos', 'users.id', '=', 'foo');
+        expect(
+            'select * from "users" right join "photos" on "users"."id" = ? inner join "photos" on "users"."id" = ?'
+        ).toBe(builder.toSql());
+        expect(['bar', 'foo']).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder
+            .select('*')
+            .from('users')
+            .rightJoinWhere('photos', join => {
+                join.on('users.id', '=', 'bar');
+            });
+        expect('select * from "users" right join "photos" on "users"."id" = "bar"').toBe(builder.toSql());
+        expect([]).toEqual(builder.getBindings());
     });
 
     it('Works Cross Joins', () => {
@@ -194,7 +235,7 @@ describe('Query Builder Joins', () => {
         builder
             .select('*')
             .from('users')
-            .join('contacts', join => {
+            .joinWhere('contacts', join => {
                 const query = getBuilder();
                 query.select('name').from('contacts').where('name', 'baz');
                 join.on('users.id', '=', 'contacts.id').orWhereIn('contacts.name', query);
@@ -250,19 +291,21 @@ describe('Query Builder Joins', () => {
         builder
             .select('*')
             .from('users')
-            .leftJoin('contacts', join => {
-                join.on('users.id', '=', 'contacts.id')
-                    .where('contacts.is_active', '=', 1)
-                    .orOn(join => {
-                        join.orWhere(join => {
-                            join.where('contacts.country', '=', 'UK').orOn('contacts.type', '=', 'users.type');
-                        }).where(join => {
-                            join.where('contacts.country', '=', 'US').orWhereNull('contacts.is_partner');
+            .rightJoin('contacts', join => {
+                join.on(join => {
+                    join.on('users.id', '=', 'contacts.id')
+                        .where('contacts.is_active', '=', 1)
+                        .orOn(join => {
+                            join.orWhere(join => {
+                                join.where('contacts.country', '=', 'UK').orOn('contacts.type', '=', 'users.type');
+                            }).where(join => {
+                                join.where('contacts.country', '=', 'US').orWhereNull('contacts.is_partner');
+                            });
                         });
-                    });
+                });
             });
         expect(
-            'select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and "contacts"."is_active" = ? or (("contacts"."country" = ? or "contacts"."type" = "users"."type") and ("contacts"."country" = ? or "contacts"."is_partner" is null))'
+            'select * from "users" right join "contacts" on ("users"."id" = "contacts"."id" and "contacts"."is_active" = ? or (("contacts"."country" = ? or "contacts"."type" = "users"."type") and ("contacts"."country" = ? or "contacts"."is_partner" is null)))'
         ).toBe(builder.toSql());
         expect([1, 'UK', 'US']).toEqual(builder.getBindings());
     });
@@ -432,13 +475,51 @@ describe('Query Builder Joins', () => {
         ).toBe(builder.toSql());
 
         builder = getBuilder();
-        const sub1 = getBuilder().from('contacts').where('name', 'foo');
-        const sub2 = getBuilder().from('contacts').where('name', 'bar');
+        builder.from('users').joinSub('select * from "contacts"', 'sub', 'users.id', '=', 'sub.id');
+        expect(
+            'select * from "users" inner join (select * from "contacts") as "sub" on "users"."id" = "sub"."id"'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.from('users').joinSub(
+            query => {
+                query.from('contacts');
+            },
+            'sub',
+            [
+                ['users.email', '=', 'sub.email'],
+                ['users.name', '=', 'sub.name']
+            ]
+        );
+        expect(
+            'select * from "users" inner join (select * from "contacts") as "sub" on ("users"."email" = "sub"."email" and "users"."name" = "sub"."name")'
+        ).toBe(builder.toSql());
+        expect([]).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        let sub1 = getBuilder().from('contacts').where('name', 'foo');
+        let sub2 = getBuilder().from('contacts').where('name', 'bar');
         builder
             .from('users')
             .joinWhereSub(sub1, 'sub1', 'users.id', '=', 1, 'inner')
             .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
         let expected = 'select * from "users" ';
+        expected += 'inner join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
+        expected +=
+            'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
+        expect(expected).toEqual(builder.toSql());
+        expect(['foo', 1, 'bar']).toEqual(builder.getRawBindings().join);
+
+        builder = getBuilder();
+        sub1 = getBuilder().from('contacts').where('name', 'foo');
+        sub2 = getBuilder().from('contacts').where('name', 'bar');
+        builder
+            .from('users')
+            .joinWhereSub(sub1, 'sub1', join => {
+                join.where('users.id', '=', 1);
+            })
+            .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
+        expected = 'select * from "users" ';
         expected += 'inner join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
         expected +=
             'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
@@ -469,6 +550,44 @@ describe('Query Builder Joins', () => {
         );
 
         builder = getBuilder();
+        builder.from('users').leftJoinSub(getBuilder().from('contacts'), 'sub', join => {
+            join.on('users.id', '=', 'sub.id');
+        });
+        expect('select * from "users" left join (select * from "contacts") as "sub" on "users"."id" = "sub"."id"').toBe(
+            builder.toSql()
+        );
+
+        builder = getBuilder();
+        let sub1 = getBuilder().from('contacts').where('name', 'foo');
+        let sub2 = getBuilder().from('contacts').where('name', 'bar');
+        builder
+            .from('users')
+            .leftJoinWhereSub(sub1, 'sub1', 'users.id', '=', 1)
+            .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
+        let expected = 'select * from "users" ';
+        expected += 'left join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
+        expected +=
+            'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
+        expect(expected).toEqual(builder.toSql());
+        expect(['foo', 1, 'bar']).toEqual(builder.getRawBindings().join);
+
+        builder = getBuilder();
+        sub1 = getBuilder().from('contacts').where('name', 'foo');
+        sub2 = getBuilder().from('contacts').where('name', 'bar');
+        builder
+            .from('users')
+            .leftJoinWhereSub(sub1, 'sub1', join => {
+                join.where('users.id', '=', 1);
+            })
+            .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
+        expected = 'select * from "users" ';
+        expected += 'left join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
+        expected +=
+            'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
+        expect(expected).toEqual(builder.toSql());
+        expect(['foo', 1, 'bar']).toEqual(builder.getRawBindings().join);
+
+        builder = getBuilder();
         expect(() => {
             // @ts-expect-error test wrong argument
             builder.from('users').leftJoinSub(['foo'], 'sub', 'users.id', '=', 'sub.id');
@@ -481,6 +600,44 @@ describe('Query Builder Joins', () => {
         expect(
             'select * from "users" right join (select * from "contacts") as "sub" on "users"."id" = "sub"."id"'
         ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.from('users').rightJoinSub(getBuilder().from('contacts'), 'sub', join => {
+            join.on('users.id', '=', 'sub.id');
+        });
+        expect(
+            'select * from "users" right join (select * from "contacts") as "sub" on "users"."id" = "sub"."id"'
+        ).toBe(builder.toSql());
+
+        builder = getBuilder();
+        let sub1 = getBuilder().from('contacts').where('name', 'foo');
+        let sub2 = getBuilder().from('contacts').where('name', 'bar');
+        builder
+            .from('users')
+            .rightJoinWhereSub(sub1, 'sub1', 'users.id', '=', 1)
+            .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
+        let expected = 'select * from "users" ';
+        expected += 'right join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
+        expected +=
+            'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
+        expect(expected).toEqual(builder.toSql());
+        expect(['foo', 1, 'bar']).toEqual(builder.getRawBindings().join);
+
+        builder = getBuilder();
+        sub1 = getBuilder().from('contacts').where('name', 'foo');
+        sub2 = getBuilder().from('contacts').where('name', 'bar');
+        builder
+            .from('users')
+            .rightJoinWhereSub(sub1, 'sub1', join => {
+                join.where('users.id', '=', 1);
+            })
+            .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
+        expected = 'select * from "users" ';
+        expected += 'right join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
+        expected +=
+            'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
+        expect(expected).toEqual(builder.toSql());
+        expect(['foo', 1, 'bar']).toEqual(builder.getRawBindings().join);
 
         builder = getBuilder();
         expect(() => {

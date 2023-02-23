@@ -9,6 +9,7 @@ import MySqlGrammar from '../../query/grammars/mysql-grammar';
 import PostgresGrammar from '../../query/grammars/postgres-grammar';
 import SQLiteGrammar from '../../query/grammars/sqlite-grammar';
 import SqlServerGrammar from '../../query/grammars/sqlserver-grammar';
+import JoinClause from '../../query/join-clause';
 import MySqlProcessor from '../../query/processors/mysql-processor';
 import PostgresProcessor from '../../query/processors/postgres-processor';
 import Processor from '../../query/processors/processor';
@@ -16,6 +17,7 @@ import { DriverFLattedConfig } from '../../types/config';
 import DriverConnectionI from '../../types/connection';
 import { ConnectorI } from '../../types/connector';
 import BuilderI, { Binding } from '../../types/query/builder';
+import JoinClauseI from '../../types/query/join-clause';
 import FakePdo from './fake-pdo';
 export { FakeConnection } from './fake-pdo';
 
@@ -44,6 +46,10 @@ const connection = getConnection();
 
 export function getBuilder(): BuilderI {
     return new Builder(connection.session(), new Grammar(), new Processor());
+}
+
+export function getJoin(table?: string): JoinClauseI {
+    return new JoinClause(getBuilder(), 'inner', table ?? 'table');
 }
 
 export function getBuilderAlternative(): BuilderI {

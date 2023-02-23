@@ -22,6 +22,20 @@ describe('Query Builder Unions', () => {
         );
         expect([1, 2]).toEqual(builder.getBindings());
 
+        builder = getBuilder();
+
+        builder
+            .select('*')
+            .from('users')
+            .where('id', '=', 1)
+            .union(query => {
+                query.select('*').from('users').where('id', '=', 2);
+            });
+        expect('(select * from "users" where "id" = ?) union (select * from "users" where "id" = ?)').toBe(
+            builder.toSql()
+        );
+        expect([1, 2]).toEqual(builder.getBindings());
+
         builder = getMySqlBuilder();
         builder.select('*').from('users').where('id', '=', 1);
         builder.union(getMySqlBuilder().select('*').from('users').where('id', '=', 2));

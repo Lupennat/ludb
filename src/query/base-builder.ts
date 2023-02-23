@@ -1006,7 +1006,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Assign the value and operator for a where clause.
      */
-    protected assignValueAndOperator<T>(value: T, operator: string | T, useDefault = false): [T, string] {
+    protected assignValueAndOperator<T>(value: T, operator: string | T, useDefault: boolean): [T, string] {
         if (useDefault) {
             return [operator as T, '='];
         } else if (this.isValidOperatorAndValue(operator, value)) {
@@ -1027,7 +1027,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Prepare the value and operator to proxy call another method.
      */
-    protected prepareValueAndOperator<T, U>(value: T, operator: string | U, useDefault = false): [T, U | string] {
+    protected prepareValueAndOperator<T, U>(value: T, operator: string | U, useDefault: boolean): [T, U | string] {
         if (useDefault) {
             return [operator as T, '='];
         } else if (this.invalidOperatorAndValue(operator, value)) {
@@ -1685,10 +1685,10 @@ abstract class BaseBuilder extends BuilderContract {
         value = this.flattenValue(value);
 
         if (value instanceof Date) {
-            value = `${value.getHours().toString().padStart(2, '0')}-${value
+            value = `${value.getHours().toString().padStart(2, '0')}:${value
                 .getMinutes()
                 .toString()
-                .padStart(2, '0')}-${value.getSeconds().toString().padStart(2, '0')}`;
+                .padStart(2, '0')}:${value.getSeconds().toString().padStart(2, '0')}`;
         }
 
         return this.addDateBasedWhere('Time', column, operatorOrValue, value, boolean, not);
@@ -2090,8 +2090,8 @@ abstract class BaseBuilder extends BuilderContract {
         column: Stringable,
         operator: string,
         value: Stringable | number | null,
-        boolean: ConditionBoolean = 'and',
-        not = false
+        boolean: ConditionBoolean,
+        not: boolean
     ): this {
         this.registry.wheres.push({ type: type, column, operator, value, boolean, not });
 
@@ -2258,6 +2258,25 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public orWhereRowValues(columns: Stringable[], operator: string, values: Binding[]): this {
         return this.whereRowValues(columns, operator, values, 'or');
+    }
+
+    /**
+     * Adds a where not condition using row values.
+     */
+    public whereRowValuesNot(
+        columns: Stringable[],
+        operator: string,
+        values: Binding[],
+        boolean: ConditionBoolean = 'and'
+    ): this {
+        return this.whereRowValues(columns, operator, values, boolean, true);
+    }
+
+    /**
+     * Adds an or where not condition using row values.
+     */
+    public orWhereRowValuesNot(columns: Stringable[], operator: string, values: Binding[]): this {
+        return this.whereRowValuesNot(columns, operator, values, 'or');
     }
 
     /**
@@ -2469,7 +2488,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "or where fulltext" clause to the query.
      */
-    public orwhereFulltext(columns: Stringable | Stringable[], value: string, options: FulltextOptions = {}): this {
+    public orWhereFulltext(columns: Stringable | Stringable[], value: string, options: FulltextOptions = {}): this {
         return this.whereFulltext(columns, value, options, 'or');
     }
 
@@ -2488,7 +2507,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "or where not fulltext" clause to the query.
      */
-    public orwhereFulltextNot(columns: Stringable | Stringable[], value: string, options: FulltextOptions = {}): this {
+    public orWhereFulltextNot(columns: Stringable | Stringable[], value: string, options: FulltextOptions = {}): this {
         return this.whereFulltextNot(columns, value, options, 'or');
     }
 
@@ -2552,9 +2571,7 @@ abstract class BaseBuilder extends BuilderContract {
         // If the given operator is not found in the list of valid operators we will
         // assume that the developer is just short-cutting the '=' operators and
         // we will set the operators to '=' and set the values appropriately.
-        if (!this.isValidOperator(operator)) {
-            [val, operator] = [operator, '='];
-        }
+        [val, operator] = this.assignValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
         if (this.isBitwiseOperator(operator)) {
             type = 'Bitwise';
@@ -2728,7 +2745,7 @@ abstract class BaseBuilder extends BuilderContract {
      * Add a "or having between " clause to the query.
      */
     public orHavingBetween(column: Stringable, values: BetweenTuple | Arrayable): this {
-        return this.whereBetween(column, values, 'or');
+        return this.havingBetween(column, values, 'or');
     }
 
     /**
@@ -2739,7 +2756,7 @@ abstract class BaseBuilder extends BuilderContract {
         values: BetweenTuple | Arrayable,
         boolean: ConditionBoolean = 'and'
     ): this {
-        return this.whereBetween(column, values, boolean, true);
+        return this.havingBetween(column, values, boolean, true);
     }
 
     /**
@@ -2880,7 +2897,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Constrain the query to the previous "page" of results before a given ID.
      */
-    public forPageBeforeId(perPage = 15, lastId: number | bigint | null = 0, column: Stringable = 'id'): this {
+    public forPageBeforeId(perPage = 15, lastId: number | bigint | null = 0, column = 'id'): this {
         this.registry.orders = this.removeExistingOrdersFor(column);
 
         if (lastId !== null) {
@@ -2893,7 +2910,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Constrain the query to the next "page" of results after a given ID.
      */
-    public forPageAfterId(perPage = 15, lastId: number | bigint | null = 0, column: Stringable = 'id'): this {
+    public forPageAfterId(perPage = 15, lastId: number | bigint | null = 0, column = 'id'): this {
         this.registry.orders = this.removeExistingOrdersFor(column);
 
         if (lastId !== null) {
@@ -2922,13 +2939,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Get an array with all orders with a given column removed.
      */
-    protected removeExistingOrdersFor(column: Stringable): Order[] {
+    protected removeExistingOrdersFor(column: string): Order[] {
         return this.registry.orders.filter((order: Order) => {
             if ('column' in order) {
-                return (
-                    this.getGrammar().getValue(order.column).toString() !==
-                    this.getGrammar().getValue(column).toString()
-                );
+                return this.getGrammar().getValue(order.column).toString() !== column;
             }
             return true;
         });
@@ -3017,7 +3031,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Chunk the results of the query.
      */
-    public async chunk<T>(
+    public async chunk<T = Dictionary>(
         count: number,
         callback: (items: Collection<T>, page: number) => Promise<false | void> | false | void
     ): Promise<boolean> {
@@ -3057,10 +3071,13 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Run a map over each item while chunking.
      */
-    public async chunkMap<T>(callback: (item: T) => Promise<T> | T, count = 1000): Promise<Collection<T>> {
-        const collection = new Collection<T>();
+    public async chunkMap<U, T = Dictionary>(
+        callback: (item: T) => Promise<U> | U,
+        count = 1000
+    ): Promise<Collection<U>> {
+        const collection = new Collection<U>();
 
-        this.chunk<T>(count, async items => {
+        await this.chunk<T>(count, async items => {
             for (const item of items.all()) {
                 collection.push(await callback(item));
             }
@@ -3072,7 +3089,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Execute a callback over each item while chunking.
      */
-    public async each<T>(
+    public async each<T = Dictionary>(
         callback: (item: T, index: number) => Promise<false | void> | false | void,
         count = 1000
     ): Promise<boolean> {
@@ -3090,11 +3107,11 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Chunk the results of a query by comparing IDs.
      */
-    public async chunkById<T>(
+    public async chunkById<T = Dictionary>(
         count: number,
         callback: (items: Collection<T>, page: number) => Promise<false | void> | false | void,
-        column: Stringable | null = null,
-        alias: Stringable | null = null
+        column: string | null = null,
+        alias: string | null = null
     ): Promise<boolean> {
         column = column === null ? this.defaultKeyName() : column;
         alias = this.getGrammar()
@@ -3146,11 +3163,11 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Execute a callback over each item while chunking by ID.
      */
-    public async eachById<T>(
+    public async eachById<T = Dictionary>(
         callback: (item: T, index: number) => Promise<false | void> | false | void,
         count = 1000,
-        column: Stringable | null = null,
-        alias: Stringable | null = null
+        column: string | null = null,
+        alias: string | null = null
     ): Promise<boolean> {
         return this.chunkById<T>(
             count,
@@ -3200,11 +3217,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Query lazily, by chunking the results of a query by comparing IDs.
      */
-    public lazyById<T>(
-        chunkSize = 1000,
-        column: Stringable | null = null,
-        alias: string | null = null
-    ): LazyCollection<T> {
+    public lazyById<T>(chunkSize = 1000, column: string | null = null, alias: string | null = null): LazyCollection<T> {
         return this.orderedLazyById<T>(chunkSize, column, alias);
     }
 
@@ -3213,7 +3226,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public lazyByIdDesc<T>(
         chunkSize = 1000,
-        column: Stringable | null = null,
+        column: string | null = null,
         alias: string | null = null
     ): LazyCollection<T> {
         return this.orderedLazyById<T>(chunkSize, column, alias, true);
@@ -3224,18 +3237,16 @@ abstract class BaseBuilder extends BuilderContract {
      */
     protected orderedLazyById<T>(
         chunkSize = 1000,
-        column: Stringable | null = null,
-        alias: Stringable | null = null,
+        column: string | null = null,
+        alias: string | null = null,
         descending = false
     ): LazyCollection<T> {
         if (chunkSize < 1) {
             throw new Error('The chunk size should be at least 1');
         }
 
-        column = column === null ? this.defaultKeyName() : column;
-        alias = this.getGrammar()
-            .getValue(alias === null ? column : alias)
-            .toString();
+        const columnString = column === null ? this.defaultKeyName() : column;
+        const aliasString = alias === null ? columnString : alias;
 
         return new LazyCollection<T>(
             async function* (this: BuilderContract) {
@@ -3246,8 +3257,8 @@ abstract class BaseBuilder extends BuilderContract {
 
                     const results = (
                         descending
-                            ? await clone.forPageBeforeId(chunkSize, lastId, column as Stringable).get()
-                            : await clone.forPageAfterId(chunkSize, lastId, column as Stringable).get()
+                            ? await clone.forPageBeforeId(chunkSize, lastId, columnString).get()
+                            : await clone.forPageAfterId(chunkSize, lastId, columnString).get()
                     ) as Collection<T>;
 
                     for (const result of results.all()) {
@@ -3258,11 +3269,11 @@ abstract class BaseBuilder extends BuilderContract {
                         return;
                     }
 
-                    lastId = results.last()[alias as keyof T] as number | bigint | null | undefined;
+                    lastId = results.last()[aliasString as keyof T] as number | bigint | null | undefined;
 
                     if (lastId == null) {
                         throw new Error(
-                            `The lazyById operation was aborted because the [${alias}] column is not present in the query result.`
+                            `The lazyById operation was aborted because the [${aliasString}] column is not present in the query result.`
                         );
                     }
                 }
@@ -3274,13 +3285,13 @@ abstract class BaseBuilder extends BuilderContract {
      * Execute the query and get the first result.
      */
     public async first<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<T | null> {
-        return (await this.limit(1).get<T>(columns)).first();
+        return (await this.limit(1).get<T>(columns)).first() ?? null;
     }
 
     /**
      * Execute the query and get the first result if it's the sole matching record.
      */
-    public async sole<T>(columns: Stringable | Stringable[] = ['*']): Promise<T> {
+    public async sole<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<T> {
         const result = await this.limit(2).get<T>(columns);
 
         const count = result.count();
@@ -3415,7 +3426,16 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Get a collection instance containing the values of a given column.
      */
-    public async pluck<T>(column: Stringable, key: Stringable | null = null): Promise<Collection<T>> {
+    public async pluck<T>(column: Stringable, key?: null): Promise<Collection<T[]>>;
+    public async pluck<T>(column: Stringable, key: Stringable): Promise<Collection<{ [key: string]: T }>>;
+    public async pluck<T>(
+        column: Stringable,
+        key?: Stringable | null
+    ): Promise<Collection<{ [key: string]: T }> | Collection<T[]>>;
+    public async pluck<T>(
+        column: Stringable,
+        key: Stringable | null = null
+    ): Promise<Collection<{ [key: string]: T }> | Collection<T[]>> {
         // First, we will need to select the results of the query accounting for the
         // given columns / key. Once we have the results, we will be able to take
         // the results and get the exact data that was requested for the query.
@@ -3424,7 +3444,10 @@ abstract class BaseBuilder extends BuilderContract {
         });
 
         if (queryResult.length === 0) {
-            return new Collection<T>();
+            if (key === null) {
+                return new Collection<T[]>([]);
+            }
+            return new Collection<{ [key: string]: T }>({});
         }
 
         // If the columns are qualified with a table or have an alias, we cannot use
@@ -3433,14 +3456,14 @@ abstract class BaseBuilder extends BuilderContract {
         column = this.stripTableForPluck(column);
 
         if (key === null) {
-            return new Collection<T>(queryResult.map(item => item[column as keyof Dictionary]));
+            return new Collection<T[]>(queryResult.map(item => item[column as keyof Dictionary]));
         } else {
             key = this.stripTableForPluck(key);
-            return new Collection<T>(
+            return new Collection<{ [key: string]: T }>(
                 queryResult.reduce((carry, item) => {
                     const newKey = item[key as keyof Dictionary];
                     if (Array.isArray(newKey) || Buffer.isBuffer(newKey)) {
-                        throw new Error('key value is not stringable');
+                        throw new Error(`key value [${Array.isArray(newKey) ? 'Array' : 'Buffer'}] is not stringable`);
                     }
                     carry[newKey === null ? 'null' : newKey.toString()] = item[column as keyof Dictionary];
                     return carry;
