@@ -284,15 +284,15 @@ class SqlServerGrammar extends Grammar {
      */
     public compileUpsert(
         query: BuilderContract,
-        values: RowValues[] | RowValues,
+        values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
     ): string {
-        const columns = this.columnize(Object.keys(Array.isArray(values) ? values[0] : values));
+        const columns = this.columnize(Object.keys(values[0]));
 
         let sql = `merge ${this.wrapTable(query.getRegistry().from)} `;
 
-        const parameters = (Array.isArray(values) ? values : [values])
+        const parameters = values
             .map(value => {
                 return `(${this.parameterize(Object.values(value))})`;
             })

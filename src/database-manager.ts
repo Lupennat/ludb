@@ -2,9 +2,9 @@ import { Pdo } from 'lupdo';
 import EventEmitter from 'node:events';
 import ConnectionFactory from './connectors/connection-factory';
 import ExpressionContract from './query/expression-contract';
-import { ConnectionConfig, DatabaseConfig, DriverConfig, ReadWriteType } from './types/config';
+import DatabaseConfig, { ConnectionConfig, DriverConfig, ReadWriteType } from './types/config';
 import DriverConnectionI from './types/connection';
-import { DatabaseI, Extension } from './types/database';
+import DatabaseI, { Extension } from './types/database';
 import { raw } from './utils';
 
 class DatabaseManager implements DatabaseI {

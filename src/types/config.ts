@@ -381,7 +381,7 @@ export type DriverFLattedConfig =
     | SQLiteFlattedConfig
     | FlattedConnectionConfig;
 
-export interface DatabaseConfig {
+export default interface DatabaseConfig {
     default: string;
     connections: {
         [key: string]: DriverConfig;

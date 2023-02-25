@@ -8,7 +8,7 @@ export type UsingConnectionCallback<T> = (connection: DriverConnectionI) => Prom
 
 export type ReconnectorCallback = (connection: DriverConnectionI) => Promise<void>;
 
-export interface DatabaseI {
+export default interface DatabaseI {
     /**
      * Get a database connection instance.
      */

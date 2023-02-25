@@ -13,7 +13,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [18.x, 16.x, 14.x]
-        database-type: [sqlite3, mysql8, postgres15, mssql22]
 
     steps:
       - uses: actions/checkout@v3
@@ -23,46 +22,12 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Start Database(s)
-        if: ${{ matrix.database-type != 'sqlite3'}}
-        run: |
-            docker-compose \
-              --file "docker-compose.yml" \
-              up \
-                --detach \
-                --build \
-                "${{ matrix.database-type }}"
-      
-      - name: Start Database(s)
-        if: ${{ matrix.database-type == 'sqlite3'}}
-        run: sqlite3 .${{ matrix.database-type }}.db < src/__tests__/data/sqlite.sql
-
       - name: Run npm install
         run: npm install
-
-      - name: Initialize Database
-        if: ${{ matrix.database-type != 'sqlite3'}}
-        run: |
-            docker-compose \
-              --file "docker-compose.yml" \
-              up \
-                "wait${{ matrix.database-type }}"
 
       - name: Build and test
         run: |
           npm run build
-          npm run test:${{ matrix.database-type }}
+          npm run test:all
         env:
           CI: true
-          DB: ${{ matrix.database-type }}
-
-      - name: Stop Database(s)
-        if: ${{ matrix.database-type != 'sqlite3'}}
-        run: |
-          docker-compose \
-            --file "docker-compose.yml" \
-            down
-      
-      - name: Stop Database(s)
-        if: ${{ matrix.database-type == 'sqlite3'}}
-        run: rm .${{ matrix.database-type }}.db

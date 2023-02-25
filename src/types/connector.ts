@@ -5,7 +5,7 @@ import { ConnectionConfig } from './config';
 
 export type ConnectorResolver = () => ConnectorI;
 
-export interface ConnectorI {
+export default interface ConnectorI {
     /**
      * Establish a database connection.
      *

@@ -1,6 +1,6 @@
 import { Pdo } from 'lupdo';
 import { EventEmitter } from 'stream';
-import { bindTo } from '../../binding';
+import { bindTo } from '../../bindings';
 import Connection from '../../connections/connection';
 import ConnectionSession from '../../connections/connection-session';
 import QueryExecuted from '../../events/query-executed';

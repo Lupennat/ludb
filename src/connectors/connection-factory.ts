@@ -18,7 +18,7 @@ import {
     SqlServerConfig
 } from '../types/config';
 import DriverConnectionI from '../types/connection';
-import { ConnectorI } from '../types/connector';
+import ConnectorI from '../types/connector';
 import Connector from './connector';
 import MySqlConnector from './mysql-connectors';
 import PostgresConnector from './postgres-connector';

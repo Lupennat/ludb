@@ -850,7 +850,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile an insert and get ID statement into SQL.
      */
-    public compileInsertGetId(query: BuilderContract, values: RowValues): string {
+    public compileInsertGetId(query: BuilderContract, values: RowValues, _sequence: string | null): string {
         return this.compileInsert(query, values);
     }
 
@@ -919,7 +919,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     public compileUpsert(
         _query: BuilderContract,
-        _values: RowValues[] | RowValues,
+        _values: RowValues[],
         _uniqueBy: string[],
         _update: Array<string | RowValues>
     ): string {

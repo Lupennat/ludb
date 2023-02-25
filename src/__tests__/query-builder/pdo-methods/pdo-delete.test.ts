@@ -30,6 +30,11 @@ describe('Query Builder Pdo Methods', () => {
 
         builder = getSQLiteBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
+        expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
+        expect(spiedDelete).toBeCalledWith('delete from "users" where "email" = ?', ['foo']);
+
+        builder = getSQLiteBuilder();
+        spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
         expect(spiedDelete).toBeCalledWith(
             'delete from "users" where "rowid" in (select "users"."rowid" from "users" where "email" = ? order by "id" asc limit 1)',
@@ -40,6 +45,11 @@ describe('Query Builder Pdo Methods', () => {
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
         expect(spiedDelete).toBeCalledWith('delete from `users` where `email` = ? order by `id` asc limit 1', ['foo']);
+
+        builder = getPostgresBuilder();
+        spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
+        expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
+        expect(spiedDelete).toBeCalledWith('delete from "users" where "email" = ?', ['foo']);
 
         builder = getPostgresBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);

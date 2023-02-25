@@ -272,7 +272,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile an insert and get ID statement into SQL.
      */
-    public compileInsertGetId(query: BuilderContract, values: RowValues, sequence: Stringable | null = null): string {
+    public compileInsertGetId(query: BuilderContract, values: RowValues, sequence: string | null): string {
         return `${this.compileInsert(query, values)} returning ${this.wrap(sequence || 'id')}`;
     }
 
@@ -309,7 +309,7 @@ class PostgresGrammar extends Grammar {
      */
     public compileUpsert(
         query: BuilderContract,
-        values: RowValues[] | RowValues,
+        values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
     ): string {
@@ -571,11 +571,7 @@ class PostgresGrammar extends Grammar {
             }
             const keyRegex = new RegExp(/\[([^\]]+)\]/, 'g');
             const keys = [...parts[0].matchAll(keyRegex)];
-            if (keys.length > 0) {
-                return (key !== '' ? [key] : []).concat(keys.map(key => key[1]));
-            }
-
-            return key !== '' ? [key] : [];
+            return (key !== '' ? [key] : []).concat(keys.map(key => key[1]));
         }
 
         return [attribute];

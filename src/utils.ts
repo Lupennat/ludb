@@ -1,6 +1,7 @@
 import { TypedBinding } from 'lupdo';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
+import { Arrayable } from './types/query/builder';
 import GrammarI from './types/query/grammar';
 
 export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) => any {
@@ -156,4 +157,11 @@ export function isPrimitiveObject(value: any): boolean {
         typeof value === 'object' &&
         (value instanceof TypedBinding || value instanceof ExpressionContract || value instanceof Date)
     );
+}
+
+/**
+ * Determine if the value is Arrayable.
+ */
+export function isArrayable<T>(value: any): value is Arrayable<T> {
+    return typeof value === 'object' && 'toArray' in value && typeof value.toArray === 'function';
 }

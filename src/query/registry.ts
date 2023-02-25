@@ -1,6 +1,6 @@
 import { BetweenColumnsTuple, BetweenTuple } from '../types/query/builder';
 import JoinClauseI from '../types/query/join-clause';
-import Registry, {
+import RegistryI, {
     Aggregate,
     BindingTypes,
     Having,
@@ -14,11 +14,10 @@ import Registry, {
     WhereIn,
     WhereInRaw,
     WhereMultiColumn,
-    default as registry,
     whereFulltext
 } from '../types/query/registry';
 
-export default function createRegistry(): registry {
+export default function createRegistry(): RegistryI {
     return {
         useWritePdo: false,
         bindings: {
@@ -151,11 +150,11 @@ function cloneBindings(bindings: BindingTypes, bindingsToExclude: (keyof Binding
 }
 
 function cloneBase(
-    cloned: Registry,
-    registry: Registry,
-    propertiesToExclude: (keyof Registry)[] = [],
+    cloned: RegistryI,
+    registry: RegistryI,
+    propertiesToExclude: (keyof RegistryI)[] = [],
     bindingsToExclude: (keyof BindingTypes)[] = []
-): Registry {
+): RegistryI {
     if (!propertiesToExclude.includes('useWritePdo')) {
         cloned.useWritePdo = registry.useWritePdo;
     }
@@ -239,14 +238,20 @@ function cloneBase(
     return cloned;
 }
 
-export function cloneRegistry(registry: Registry): Registry {
+export function cloneRegistry(registry: RegistryI): RegistryI {
     return cloneBase(createRegistry(), registry);
 }
 
-export function cloneRegistryWithoutProperties(registry: Registry, propertiesToExclude: (keyof Registry)[]): Registry {
+export function cloneRegistryWithoutProperties(
+    registry: RegistryI,
+    propertiesToExclude: (keyof RegistryI)[]
+): RegistryI {
     return cloneBase(createRegistry(), registry, propertiesToExclude);
 }
 
-export function cloneRegistryWithoutBindings(registry: Registry, bindingsToExclude: (keyof BindingTypes)[]): Registry {
+export function cloneRegistryWithoutBindings(
+    registry: RegistryI,
+    bindingsToExclude: (keyof BindingTypes)[]
+): RegistryI {
     return cloneBase(createRegistry(), registry, [], bindingsToExclude);
 }

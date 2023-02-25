@@ -10,7 +10,7 @@ import BuilderI, {
 
 import GrammarI from '../types/query/grammar';
 import JoinClauseI, { JoinClauseConstructor } from '../types/query/join-clause';
-import Registry, { BindingTypes } from '../types/query/registry';
+import RegistryI, { BindingTypes } from '../types/query/registry';
 import BaseBuilder from './base-builder';
 import BuilderContract from './builder-contract';
 import ExpressionContract from './expression-contract';
@@ -113,7 +113,7 @@ class JoinClause extends BaseBuilder implements JoinClauseI {
         return this.newQuery().setRegistry(cloneRegistry(this.registry));
     }
 
-    public cloneWithout(properties: (keyof Registry)[]): JoinClauseI {
+    public cloneWithout(properties: (keyof RegistryI)[]): JoinClauseI {
         return this.newQuery().setRegistry(cloneRegistryWithoutProperties(this.registry, properties));
     }
 

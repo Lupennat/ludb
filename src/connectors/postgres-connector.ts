@@ -4,7 +4,7 @@ import 'lupdo-postgres';
 import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
 import { PostgresConfig } from '../types/config';
-import { ConnectorI } from '../types/connector';
+import ConnectorI from '../types/connector';
 import { trimChar } from '../utils';
 import Connector from './connector';
 

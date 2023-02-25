@@ -15,8 +15,8 @@ import PostgresProcessor from '../../query/processors/postgres-processor';
 import Processor from '../../query/processors/processor';
 import { DriverFLattedConfig } from '../../types/config';
 import DriverConnectionI from '../../types/connection';
-import { ConnectorI } from '../../types/connector';
-import BuilderI, { Binding } from '../../types/query/builder';
+import ConnectorI from '../../types/connector';
+import BuilderI, { Arrayable, Binding } from '../../types/query/builder';
 import JoinClauseI from '../../types/query/join-clause';
 import FakePdo from './fake-pdo';
 export { FakeConnection } from './fake-pdo';
@@ -203,4 +203,11 @@ export function mockedSessionWithResults(connection: Connection, results: Dictio
         }
     }
     return new MockedConnectionSessionWithResults(connection);
+}
+
+export class ObjectArrayable<Item> implements Arrayable<Item> {
+    constructor(protected items: Item[]) {}
+    toArray(): Item[] {
+        return this.items;
+    }
 }

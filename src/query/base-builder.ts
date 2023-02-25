@@ -1,6 +1,6 @@
 import deepmerge from 'deepmerge';
+import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { snakeCase } from 'snake-case';
-import LazyCollection from '../collections/lazy-collection';
 import { ConnectionSessionI } from '../types/connection';
 import ProcessorI from '../types/processor';
 import {
@@ -27,11 +27,8 @@ import {
 } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
-
-import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
-import Collection from '../collections/collection';
-import Registry, { BindingTypes, Order, Where } from '../types/query/registry';
-import { isPrimitiveBinding, raw } from '../utils';
+import RegistryI, { BindingTypes, Order, Where } from '../types/query/registry';
+import { isArrayable, isPrimitiveBinding, raw } from '../utils';
 import BuilderContract from './builder-contract';
 import ExpressionContract from './expression-contract';
 import IndexHint from './index-hint';
@@ -41,7 +38,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * The Builder registry.
      */
-    protected registry: Registry;
+    protected registry: RegistryI;
 
     /**
      * All of the available clause operators.
@@ -102,14 +99,14 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Get Query Builder Registry
      */
-    public getRegistry(): Registry {
+    public getRegistry(): RegistryI {
         return this.registry;
     }
 
     /**
      * Set Query Builder Registry
      */
-    public setRegistry(registry: Registry): this {
+    public setRegistry(registry: RegistryI): this {
         this.registry = registry;
 
         return this;
@@ -1303,7 +1300,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Arrayable | Binding[],
+        values: BuilderContract | QueryAbleCallback<this> | Arrayable<Binding> | Binding[],
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1323,8 +1320,8 @@ abstract class BaseBuilder extends BuilderContract {
         // Next, if the value is Arrayable we need to cast it to its raw array form so we
         // have the underlying array value instead of an Arrayable object which is not
         // able to be added as a binding, etc. We will then add to the wheres array.
-        if (this.isArrayable(values)) {
-            values = values.toArray<Binding>();
+        if (isArrayable<Binding>(values)) {
+            values = values.toArray();
         }
 
         this.registry.wheres.push({ type, column, values, boolean, not });
@@ -1345,7 +1342,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public orWhereIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
     ): this {
         return this.whereIn(column, values, 'or');
     }
@@ -1355,7 +1352,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereNotIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable,
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>,
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.whereIn(column, values, boolean, true);
@@ -1366,7 +1363,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public orWhereNotIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
     ): this {
         return this.whereNotIn(column, values, 'or');
     }
@@ -1376,7 +1373,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereIntegerInRaw(
         column: Stringable,
-        values: Arrayable | Binding[],
+        values: Arrayable<Binding> | Binding[],
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1385,7 +1382,7 @@ abstract class BaseBuilder extends BuilderContract {
         this.registry.wheres.push({
             type,
             column,
-            values: (this.isArrayable(values) ? values.toArray<Binding>() : values).map((value: any): bigint => {
+            values: (isArrayable<Binding>(values) ? values.toArray() : values).map((value: any): bigint => {
                 try {
                     return BigInt(value);
                 } catch (error) {
@@ -1402,7 +1399,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or where in raw" clause for integer values to the query.
      */
-    public orWhereIntegerInRaw(column: Stringable, values: Arrayable | Binding[]): this {
+    public orWhereIntegerInRaw(column: Stringable, values: Arrayable<Binding> | Binding[]): this {
         return this.whereIntegerInRaw(column, values, 'or');
     }
 
@@ -1411,7 +1408,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereIntegerNotInRaw(
         column: Stringable,
-        values: Arrayable | Binding[],
+        values: Arrayable<Binding> | Binding[],
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.whereIntegerInRaw(column, values, boolean, true);
@@ -1420,7 +1417,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an "or where not in raw" clause for integer values to the query.
      */
-    public orWhereIntegerNotInRaw(column: Stringable, values: Arrayable | Binding[]): this {
+    public orWhereIntegerNotInRaw(column: Stringable, values: Arrayable<Binding> | Binding[]): this {
         return this.whereIntegerNotInRaw(column, values, 'or');
     }
 
@@ -1463,14 +1460,14 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereBetween(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         const type = 'Between';
 
-        if (this.isArrayable(values)) {
-            values = values.toArray<Stringable | number | bigint | Date>().slice(0, 2) as BetweenTuple;
+        if (isArrayable<number | bigint | Stringable | Date>(values)) {
+            values = values.toArray().slice(0, 2) as BetweenTuple;
         }
 
         this.registry.wheres.push({ type, column, values, boolean, not });
@@ -1485,14 +1482,14 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereBetweenColumns(
         column: Stringable,
-        values: BetweenColumnsTuple | Arrayable,
+        values: BetweenColumnsTuple | Arrayable<Stringable>,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         const type = 'BetweenColumns';
 
-        if (this.isArrayable(values)) {
-            values = values.toArray<Stringable>().slice(0, 2) as BetweenColumnsTuple;
+        if (isArrayable<Stringable>(values)) {
+            values = values.toArray().slice(0, 2) as BetweenColumnsTuple;
         }
 
         this.registry.wheres.push({ type, column, values, boolean, not });
@@ -1503,14 +1500,17 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an or where between statement to the query.
      */
-    public orWhereBetween(column: Stringable, values: BetweenTuple | Arrayable): this {
+    public orWhereBetween(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this {
         return this.whereBetween(column, values, 'or');
     }
 
     /**
      * Add an or where between statement using columns to the query.
      */
-    public orWhereBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable): this {
+    public orWhereBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable<Stringable>): this {
         return this.whereBetweenColumns(column, values, 'or');
     }
 
@@ -1519,7 +1519,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereNotBetween(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.whereBetween(column, values, boolean, true);
@@ -1530,7 +1530,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public whereNotBetweenColumns(
         column: Stringable,
-        values: BetweenColumnsTuple | Arrayable,
+        values: BetweenColumnsTuple | Arrayable<Stringable>,
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.whereBetweenColumns(column, values, boolean, true);
@@ -1539,14 +1539,17 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add an or where not between statement to the query.
      */
-    public orWhereNotBetween(column: Stringable, values: BetweenTuple | Arrayable): this {
+    public orWhereNotBetween(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this {
         return this.whereNotBetween(column, values, 'or');
     }
 
     /**
      * Add an or where not between statement using columns to the query.
      */
-    public orWhereNotBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable): this {
+    public orWhereNotBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable<Stringable>): this {
         return this.whereNotBetweenColumns(column, values, 'or');
     }
 
@@ -2724,14 +2727,14 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public havingBetween(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
         const type = 'Between';
 
-        if (this.isArrayable(values)) {
-            values = values.toArray<Stringable | number | bigint | Date>().slice(0, 2) as BetweenTuple;
+        if (isArrayable<number | bigint | Stringable | Date>(values)) {
+            values = values.toArray().slice(0, 2) as BetweenTuple;
         }
 
         this.registry.havings.push({ type, column, values, boolean, not });
@@ -2744,7 +2747,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "or having between " clause to the query.
      */
-    public orHavingBetween(column: Stringable, values: BetweenTuple | Arrayable): this {
+    public orHavingBetween(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this {
         return this.havingBetween(column, values, 'or');
     }
 
@@ -2753,7 +2759,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public havingBetweenNot(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.havingBetween(column, values, boolean, true);
@@ -2762,7 +2768,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Add a "or having not between " clause to the query.
      */
-    public orHavingBetweenNot(column: Stringable, values: BetweenTuple | Arrayable): this {
+    public orHavingBetweenNot(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this {
         return this.havingBetweenNot(column, values, 'or');
     }
 
@@ -3033,7 +3042,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public async chunk<T = Dictionary>(
         count: number,
-        callback: (items: Collection<T>, page: number) => Promise<false | void> | false | void
+        callback: (items: T[], page: number) => Promise<false | void> | false | void
     ): Promise<boolean> {
         this.enforceOrderBy();
 
@@ -3046,7 +3055,7 @@ abstract class BaseBuilder extends BuilderContract {
             // we will call the callback with the current chunk of these results here.
             let results = await this.forPage(page, count).get<T>();
 
-            countResults = results.count();
+            countResults = results.length;
 
             if (countResults === 0) {
                 break;
@@ -3071,19 +3080,16 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Run a map over each item while chunking.
      */
-    public async chunkMap<U, T = Dictionary>(
-        callback: (item: T) => Promise<U> | U,
-        count = 1000
-    ): Promise<Collection<U>> {
-        const collection = new Collection<U>();
+    public async chunkMap<U, T = Dictionary>(callback: (item: T) => Promise<U> | U, count = 1000): Promise<U[]> {
+        const results: U[] = [];
 
         await this.chunk<T>(count, async items => {
-            for (const item of items.all()) {
-                collection.push(await callback(item));
+            for (const item of items) {
+                results.push(await callback(item));
             }
         });
 
-        return collection;
+        return results;
     }
 
     /**
@@ -3094,9 +3100,8 @@ abstract class BaseBuilder extends BuilderContract {
         count = 1000
     ): Promise<boolean> {
         return this.chunk<T>(count, async (items, page) => {
-            const results = items.all();
-            for (let x = 0; x < results.length; x++) {
-                if ((await callback(results[x], (page - 1) * count + x)) === false) {
+            for (let x = 0; x < items.length; x++) {
+                if ((await callback(items[x], (page - 1) * count + x)) === false) {
                     return false;
                 }
             }
@@ -3109,7 +3114,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public async chunkById<T = Dictionary>(
         count: number,
-        callback: (items: Collection<T>, page: number) => Promise<false | void> | false | void,
+        callback: (items: T[], page: number) => Promise<false | void> | false | void,
         column: string | null = null,
         alias: string | null = null
     ): Promise<boolean> {
@@ -3130,7 +3135,7 @@ abstract class BaseBuilder extends BuilderContract {
             // we will call the callback with the current chunk of these results here.
             let results = await clone.forPageAfterId(count, lastId, column).get<T>();
 
-            countResults = results.count();
+            countResults = results.length;
 
             if (countResults === 0) {
                 break;
@@ -3143,7 +3148,7 @@ abstract class BaseBuilder extends BuilderContract {
                 return false;
             }
 
-            lastId = results.last()[alias as keyof T] as number | bigint | null | undefined;
+            lastId = results[results.length - 1][alias as keyof T] as number | bigint | null | undefined;
 
             if (lastId == null) {
                 throw new Error(
@@ -3172,9 +3177,8 @@ abstract class BaseBuilder extends BuilderContract {
         return this.chunkById<T>(
             count,
             async (items, page) => {
-                const results = items.all();
-                for (let x = 0; x < results.length; x++) {
-                    if ((await callback(results[x], (page - 1) * count + x)) === false) {
+                for (let x = 0; x < items.length; x++) {
+                    if ((await callback(items[x], (page - 1) * count + x)) === false) {
                         return false;
                     }
                 }
@@ -3188,36 +3192,34 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Query lazily, by chunks of the given size.
      */
-    public lazy<T>(chunkSize = 1000): LazyCollection<T> {
+    public lazy<T = Dictionary>(chunkSize = 1000): AsyncGenerator<T> {
         if (chunkSize < 1) {
             throw new Error('The chunk size should be at least 1');
         }
 
         this.enforceOrderBy();
 
-        return new LazyCollection<T>(
-            async function* (this: BuilderContract) {
-                let page = 1;
+        return async function* (this: BuilderContract) {
+            let page = 1;
 
-                while (true) {
-                    const results = await this.forPage(page++, chunkSize).get<T>();
+            while (true) {
+                const results = await this.forPage(page++, chunkSize).get<T>();
 
-                    for (const result of results.all()) {
-                        yield result;
-                    }
-
-                    if (results.count() < chunkSize) {
-                        return;
-                    }
+                for (const result of results) {
+                    yield result;
                 }
-            }.bind(this)
-        );
+
+                if (results.length < chunkSize) {
+                    return;
+                }
+            }
+        }.bind(this)();
     }
 
     /**
      * Query lazily, by chunking the results of a query by comparing IDs.
      */
-    public lazyById<T>(chunkSize = 1000, column: string | null = null, alias: string | null = null): LazyCollection<T> {
+    public lazyById<T>(chunkSize = 1000, column: string | null = null, alias: string | null = null): AsyncGenerator<T> {
         return this.orderedLazyById<T>(chunkSize, column, alias);
     }
 
@@ -3228,7 +3230,7 @@ abstract class BaseBuilder extends BuilderContract {
         chunkSize = 1000,
         column: string | null = null,
         alias: string | null = null
-    ): LazyCollection<T> {
+    ): AsyncGenerator<T> {
         return this.orderedLazyById<T>(chunkSize, column, alias, true);
     }
 
@@ -3236,11 +3238,11 @@ abstract class BaseBuilder extends BuilderContract {
      * Query lazily, by chunking the results of a query by comparing IDs in a given order.
      */
     protected orderedLazyById<T>(
-        chunkSize = 1000,
-        column: string | null = null,
-        alias: string | null = null,
+        chunkSize: number,
+        column: string | null,
+        alias: string | null,
         descending = false
-    ): LazyCollection<T> {
+    ): AsyncGenerator<T> {
         if (chunkSize < 1) {
             throw new Error('The chunk size should be at least 1');
         }
@@ -3248,44 +3250,39 @@ abstract class BaseBuilder extends BuilderContract {
         const columnString = column === null ? this.defaultKeyName() : column;
         const aliasString = alias === null ? columnString : alias;
 
-        return new LazyCollection<T>(
-            async function* (this: BuilderContract) {
-                let lastId: number | bigint | null | undefined = null;
+        return async function* (this: BuilderContract) {
+            let lastId: number | bigint | null | undefined = null;
 
-                while (true) {
-                    const clone = this.clone();
+            while (true) {
+                const clone = this.clone();
+                const results = descending
+                    ? await clone.forPageBeforeId(chunkSize, lastId, columnString).get<T>()
+                    : await clone.forPageAfterId(chunkSize, lastId, columnString).get<T>();
 
-                    const results = (
-                        descending
-                            ? await clone.forPageBeforeId(chunkSize, lastId, columnString).get()
-                            : await clone.forPageAfterId(chunkSize, lastId, columnString).get()
-                    ) as Collection<T>;
-
-                    for (const result of results.all()) {
-                        yield result;
-                    }
-
-                    if (results.count() < chunkSize) {
-                        return;
-                    }
-
-                    lastId = results.last()[aliasString as keyof T] as number | bigint | null | undefined;
-
-                    if (lastId == null) {
-                        throw new Error(
-                            `The lazyById operation was aborted because the [${aliasString}] column is not present in the query result.`
-                        );
-                    }
+                for (const result of results) {
+                    yield result;
                 }
-            }.bind(this)
-        );
+
+                if (results.length < chunkSize) {
+                    return;
+                }
+
+                lastId = results[results.length - 1][aliasString as keyof T] as number | bigint | null | undefined;
+
+                if (lastId == null) {
+                    throw new Error(
+                        `The lazyById operation was aborted because the [${aliasString}] column is not present in the query result.`
+                    );
+                }
+            }
+        }.bind(this)();
     }
 
     /**
      * Execute the query and get the first result.
      */
     public async first<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<T | null> {
-        return (await this.limit(1).get<T>(columns)).first() ?? null;
+        return (await this.limit(1).get<T>(columns))[0] ?? null;
     }
 
     /**
@@ -3294,7 +3291,7 @@ abstract class BaseBuilder extends BuilderContract {
     public async sole<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<T> {
         const result = await this.limit(2).get<T>(columns);
 
-        const count = result.count();
+        const count = result.length;
 
         if (count === 0) {
             throw new Error(`no records were found.`);
@@ -3304,7 +3301,7 @@ abstract class BaseBuilder extends BuilderContract {
             throw new Error(`${count} records were found.`);
         }
 
-        return result.first();
+        return result[0];
     }
 
     /**
@@ -3380,12 +3377,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Execute the query as a "select" statement.
      */
-    public async get<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<Collection<T>> {
-        return new Collection<T>(
-            await this.onceWithColumns<T>(Array.isArray(columns) ? columns : [columns], async () => {
-                return this.getProcessor().processSelect<T>(this, await this.runSelect<T>());
-            })
-        );
+    public async get<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<T[]> {
+        return await this.onceWithColumns<T>(Array.isArray(columns) ? columns : [columns], async () => {
+            return this.getProcessor().processSelect<T>(this, await this.runSelect<T>());
+        });
     }
 
     /**
@@ -3396,22 +3391,20 @@ abstract class BaseBuilder extends BuilderContract {
     }
 
     /**
-     * Get a lazy collection for the given query.
+     * Get an async generator for the given query.
      */
-    public cursor<T>(): LazyCollection<T> {
+    public cursor<T>(): AsyncGenerator<T> {
         if (this.registry.columns === null) {
             this.registry.columns = ['*'];
         }
 
-        return new LazyCollection<T>(
-            async function* (this: BuilderContract) {
-                yield* await this.getConnection().cursor<T>(
-                    this.toSql(),
-                    this.getBindings(),
-                    !this.getRegistry().useWritePdo
-                );
-            }.bind(this)
-        );
+        return async function* (this: BuilderContract) {
+            yield* await this.getConnection().cursor<T>(
+                this.toSql(),
+                this.getBindings(),
+                !this.getRegistry().useWritePdo
+            );
+        }.bind(this)();
     }
 
     /**
@@ -3424,18 +3417,12 @@ abstract class BaseBuilder extends BuilderContract {
     }
 
     /**
-     * Get a collection instance containing the values of a given column.
+     * Get an object or an array instance containing the values of a given column.
      */
-    public async pluck<T>(column: Stringable, key?: null): Promise<Collection<T[]>>;
-    public async pluck<T>(column: Stringable, key: Stringable): Promise<Collection<{ [key: string]: T }>>;
-    public async pluck<T>(
-        column: Stringable,
-        key?: Stringable | null
-    ): Promise<Collection<{ [key: string]: T }> | Collection<T[]>>;
-    public async pluck<T>(
-        column: Stringable,
-        key: Stringable | null = null
-    ): Promise<Collection<{ [key: string]: T }> | Collection<T[]>> {
+    public async pluck<T>(column: Stringable, key?: null): Promise<T[]>;
+    public async pluck<T>(column: Stringable, key: Stringable): Promise<{ [key: string]: T }>;
+    public async pluck<T>(column: Stringable, key?: Stringable | null): Promise<{ [key: string]: T } | T[]>;
+    public async pluck<T>(column: Stringable, key: Stringable | null = null): Promise<{ [key: string]: T } | T[]> {
         // First, we will need to select the results of the query accounting for the
         // given columns / key. Once we have the results, we will be able to take
         // the results and get the exact data that was requested for the query.
@@ -3445,9 +3432,9 @@ abstract class BaseBuilder extends BuilderContract {
 
         if (queryResult.length === 0) {
             if (key === null) {
-                return new Collection<T[]>([]);
+                return [];
             }
-            return new Collection<{ [key: string]: T }>({});
+            return {};
         }
 
         // If the columns are qualified with a table or have an alias, we cannot use
@@ -3456,19 +3443,17 @@ abstract class BaseBuilder extends BuilderContract {
         column = this.stripTableForPluck(column);
 
         if (key === null) {
-            return new Collection<T[]>(queryResult.map(item => item[column as keyof Dictionary]));
+            return queryResult.map(item => item[column as keyof Dictionary]) as T[];
         } else {
             key = this.stripTableForPluck(key);
-            return new Collection<{ [key: string]: T }>(
-                queryResult.reduce((carry, item) => {
-                    const newKey = item[key as keyof Dictionary];
-                    if (Array.isArray(newKey) || Buffer.isBuffer(newKey)) {
-                        throw new Error(`key value [${Array.isArray(newKey) ? 'Array' : 'Buffer'}] is not stringable`);
-                    }
-                    carry[newKey === null ? 'null' : newKey.toString()] = item[column as keyof Dictionary];
-                    return carry;
-                }, {})
-            );
+            return queryResult.reduce((carry, item) => {
+                const newKey = item[key as keyof Dictionary];
+                if (Array.isArray(newKey) || Buffer.isBuffer(newKey)) {
+                    throw new Error(`key value [${Array.isArray(newKey) ? 'Array' : 'Buffer'}] is not stringable`);
+                }
+                carry[newKey === null ? 'null' : newKey.toString()] = item[column as keyof Dictionary];
+                return carry;
+            }, {}) as { [key: string]: T };
         }
     }
 
@@ -3487,7 +3472,7 @@ abstract class BaseBuilder extends BuilderContract {
      * Concatenate values of a given column as a string.
      */
     public async implode<T>(column: Stringable, glue = ''): Promise<string> {
-        return (await this.pluck<T>(column)).implode(glue);
+        return (await this.pluck<T>(column)).join(glue);
     }
 
     /**
@@ -3597,8 +3582,8 @@ abstract class BaseBuilder extends BuilderContract {
             .setAggregate(fnName, columns)
             .get<{ aggregate: string | number | bigint | null }>(columns);
 
-        if (!results.isEmpty()) {
-            return results.first().aggregate;
+        if (results.length > 0) {
+            return results[0].aggregate;
         }
 
         return null;
@@ -3951,13 +3936,11 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Explains the query.
      */
-    public async explain(): Promise<Collection<string>> {
+    public async explain(): Promise<string[]> {
         const sql = this.toSql();
         const bindings = this.getBindings();
 
-        const explanation = await this.getConnection().select<string>(`EXPLAIN ${sql}`, bindings);
-
-        return new Collection(explanation);
+        return await this.getConnection().select<string>(`EXPLAIN ${sql}`, bindings);
     }
 
     /**
@@ -4174,13 +4157,6 @@ abstract class BaseBuilder extends BuilderContract {
     }
 
     /**
-     * Determine if the value is Arrayable.
-     */
-    protected isArrayable(value: any): value is Arrayable {
-        return typeof value === 'object' && 'toArray' in value && typeof value.toArray === 'function';
-    }
-
-    /**
      * Determine if the value is Stringable
      */
     protected isStringable(parameter: any): parameter is Stringable {
@@ -4203,7 +4179,7 @@ abstract class BaseBuilder extends BuilderContract {
 
     public abstract clone(): BuilderContract;
 
-    public abstract cloneWithout(properties: (keyof Registry)[]): BuilderContract;
+    public abstract cloneWithout(properties: (keyof RegistryI)[]): BuilderContract;
 
     public abstract cloneWithoutBindings(except: (keyof BindingTypes)[]): BuilderContract;
 }

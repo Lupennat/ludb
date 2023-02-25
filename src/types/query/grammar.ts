@@ -47,7 +47,7 @@ export default interface GrammarI extends BaseGrammarI {
     /**
      * Compile an insert and get ID statement into SQL.
      */
-    compileInsertGetId(query: BuilderContract, values: RowValues, sequence?: string | null): string;
+    compileInsertGetId(query: BuilderContract, values: RowValues, sequence: string | null): string;
 
     /**
      * Compile an insert statement using a subquery into SQL.
@@ -69,7 +69,7 @@ export default interface GrammarI extends BaseGrammarI {
      */
     compileUpsert(
         query: BuilderContract,
-        values: RowValues[] | RowValues,
+        values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
     ): string;

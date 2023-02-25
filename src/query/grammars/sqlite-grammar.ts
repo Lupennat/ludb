@@ -161,7 +161,7 @@ class SQLiteGrammar extends Grammar {
      */
     public compileUpsert(
         query: BuilderContract,
-        values: RowValues[] | RowValues,
+        values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
     ): string {

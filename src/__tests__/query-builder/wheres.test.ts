@@ -1,8 +1,8 @@
-import Collection from '../../collections/collection';
 import Raw from '../../query/expression';
 import BuilderI from '../../types/query/builder';
 import { WhereBasic } from '../../types/query/registry';
 import {
+    ObjectArrayable,
     getBuilder,
     getMySqlBuilder,
     getMySqlBuilderWithProcessor,
@@ -573,7 +573,7 @@ describe('Query Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereBetween('id', new Collection([1, 2]));
+            .whereBetween('id', new ObjectArrayable([1, 2]));
         expect(builder.toSql()).toBe('select * from "users" where "id" between ? and ?');
         expect(builder.getBindings()).toEqual([1, 2]);
     });
@@ -603,7 +603,7 @@ describe('Query Builder Wheres', () => {
             .select('*')
             .from('users')
             .where('id', '=', 1)
-            .orWhereBetween('id', new Collection([3, 4]));
+            .orWhereBetween('id', new ObjectArrayable([3, 4]));
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? or "id" between ? and ?');
         expect(builder.getBindings()).toEqual([1, 3, 4]);
     });
@@ -635,7 +635,7 @@ describe('Query Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereBetweenColumns('id', new Collection(['users.created_at', 'users.updated_at']));
+            .whereBetweenColumns('id', new ObjectArrayable(['users.created_at', 'users.updated_at']));
         expect(builder.toSql()).toBe(
             'select * from "users" where "id" between "users"."created_at" and "users"."updated_at"'
         );
@@ -679,7 +679,7 @@ describe('Query Builder Wheres', () => {
             .select('*')
             .from('users')
             .where('id', 2)
-            .orWhereBetweenColumns('id', new Collection(['users.created_at', 'users.updated_at']));
+            .orWhereBetweenColumns('id', new ObjectArrayable(['users.created_at', 'users.updated_at']));
         expect(builder.toSql()).toBe(
             'select * from "users" where "id" = ? or "id" between "users"."created_at" and "users"."updated_at"'
         );
@@ -724,7 +724,7 @@ describe('Query Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereIn('id', new Collection([1, 2, 3]));
+            .whereIn('id', new ObjectArrayable([1, 2, 3]));
         expect(builder.toSql()).toBe('select * from "users" where "id" in (?, ?, ?)');
         expect(builder.getBindings()).toEqual([1, 2, 3]);
 
@@ -754,7 +754,7 @@ describe('Query Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereNotIn('id', new Collection([1, 2, 3]));
+            .whereNotIn('id', new ObjectArrayable([1, 2, 3]));
         expect(builder.toSql()).toBe('select * from "users" where "id" not in (?, ?, ?)');
         expect(builder.getBindings()).toEqual([1, 2, 3]);
 
@@ -790,7 +790,7 @@ describe('Query Builder Wheres', () => {
         expect(builder.getBindings()).toEqual([]);
 
         builder = getBuilder();
-        builder.select('*').from('users').where('id', '=', 1).orWhereIn('id', new Collection());
+        builder.select('*').from('users').where('id', '=', 1).orWhereIn('id', new ObjectArrayable([]));
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? or 0 = 1');
         expect(builder.getBindings()).toEqual([1]);
 
@@ -807,7 +807,7 @@ describe('Query Builder Wheres', () => {
         expect(builder.getBindings()).toEqual([]);
 
         builder = getBuilder();
-        builder.select('*').from('users').where('id', '=', 1).orWhereNotIn('id', new Collection());
+        builder.select('*').from('users').where('id', '=', 1).orWhereNotIn('id', new ObjectArrayable([]));
         expect(builder.toSql()).toBe('select * from "users" where "id" = ? or 1 = 1');
         expect(builder.getBindings()).toEqual([1]);
 
@@ -830,7 +830,7 @@ describe('Query Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereIntegerInRaw('id', new Collection(['1', BigInt(2), 3, '0x1f', '0b11', '0o12', 'a']));
+            .whereIntegerInRaw('id', new ObjectArrayable(['1', BigInt(2), 3, '0x1f', '0b11', '0o12', 'a']));
         expect(builder.toSql()).toBe('select * from "users" where "id" in (1, 2, 3, 31, 3, 10, 0)');
         expect(builder.getBindings()).toEqual([]);
     });
@@ -1068,9 +1068,9 @@ describe('Query Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['Hello World']);
 
         builder = getPostgresBuilderWithProcessor();
-        builder.select('*').from('users').whereFulltext('body', 'Hello World', { language: 'simple', mode: 'plain' });
+        builder.select('*').from('users').whereFulltext('body', 'Hello World', { language: 'notexist', mode: 'plain' });
         expect(builder.toSql()).toBe(
-            'select * from "users" where (to_tsvector(\'simple\', "body")) @@ plainto_tsquery(\'simple\', ?)'
+            'select * from "users" where (to_tsvector(\'english\', "body")) @@ plainto_tsquery(\'english\', ?)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
@@ -1741,6 +1741,12 @@ describe('Query Builder Wheres', () => {
         builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
         expect(
             'select * from "users" where case when jsonb_typeof(("options"->\'languages\'->0)::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\'->0)::jsonb) >= 2 else false end'
+        ).toBe(builder.toSql());
+
+        builder = getPostgresBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
+        expect(
+            'select * from "users" where case when jsonb_typeof(("options"->\'languages\')::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\')::jsonb) >= 1 else false end'
         ).toBe(builder.toSql());
 
         builder = getPostgresBuilder();

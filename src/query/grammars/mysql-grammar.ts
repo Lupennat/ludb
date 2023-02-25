@@ -143,7 +143,7 @@ class MySqlGrammar extends Grammar {
      */
     public compileUpsert(
         query: BuilderContract,
-        values: RowValues[] | RowValues,
+        values: RowValues[],
         _uniqueBy: string[],
         update: Array<string | RowValues>
     ): string {

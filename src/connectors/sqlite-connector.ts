@@ -4,7 +4,7 @@ import 'lupdo-sqlite';
 import { SqliteOptions } from 'lupdo-sqlite';
 import { existsSync } from 'node:fs';
 import { SQLiteConfig } from '../types/config';
-import { ConnectorI } from '../types/connector';
+import ConnectorI from '../types/connector';
 import Connector from './connector';
 
 class SQLiteConnector extends Connector implements ConnectorI {

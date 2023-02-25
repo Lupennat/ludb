@@ -270,9 +270,9 @@ describe('Query Builder Pdo Methods Modify', () => {
         });
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
-                'insert into `users` (`email`, `name`) values (?, ?), (?, ?) as laravel_upsert_alias on duplicate key update `email` = `laravel_upsert_alias`.`email`, `name` = `laravel_upsert_alias`.`name`'
+                'insert into `users` (`email`, `name`) values (?, ?), (?, ?) as laravel_upsert_alias on duplicate key update `name` = `laravel_upsert_alias`.`name`, `role` = ?'
             );
-            expect(bindings).toEqual(['foo', 'bar', 'foo2', 'bar2']);
+            expect(bindings).toEqual(['foo', 'bar', 'foo2', 'bar2', 'fake']);
             return 2;
         });
         expect(
@@ -281,7 +281,8 @@ describe('Query Builder Pdo Methods Modify', () => {
                     { email: 'foo', name: 'bar' },
                     { name: 'bar2', email: 'foo2' }
                 ],
-                'email'
+                'email',
+                ['name', { role: 'fake' }]
             )
         ).toBe(2);
 
@@ -322,6 +323,18 @@ describe('Query Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
+        builder = getSQLiteBuilder();
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'insert into "users" ("email", "name") values (?, ?) on conflict ("email") do update set "name" = "excluded"."name", "role" = ?'
+            );
+            expect(bindings).toEqual(['foo', 'bar', 'fake']);
+            return 2;
+        });
+        expect(
+            await builder.from('users').upsert({ email: 'foo', name: 'bar' }, 'email', ['name', { role: 'fake' }])
+        ).toBe(2);
+
         builder = getSqlServerBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
@@ -337,6 +350,35 @@ describe('Query Builder Pdo Methods Modify', () => {
                     { name: 'bar2', email: 'foo2' }
                 ],
                 'email'
+            )
+        ).toBe(2);
+
+        builder = getSqlServerBuilder();
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'merge [users] using (values (?, ?)) [laravel_source] ([email], [name]) on [laravel_source].[email] = [users].[email] when matched then update set [email] = [laravel_source].[email], [name] = [laravel_source].[name] when not matched then insert ([email], [name]) values ([email], [name])'
+            );
+            expect(bindings).toEqual(['foo', 'bar']);
+            return 2;
+        });
+        expect(await builder.from('users').upsert({ email: 'foo', name: 'bar' }, 'email')).toBe(2);
+
+        builder = getSqlServerBuilder();
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'merge [users] using (values (?, ?), (?, ?)) [laravel_source] ([email], [name]) on [laravel_source].[email] = [users].[email] when matched then update set [name] = [laravel_source].[name], [role] = ? when not matched then insert ([email], [name]) values ([email], [name])'
+            );
+            expect(bindings).toEqual(['foo', 'bar', 'foo2', 'bar2', 'fake']);
+            return 2;
+        });
+        expect(
+            await builder.from('users').upsert(
+                [
+                    { email: 'foo', name: 'bar' },
+                    { name: 'bar2', email: 'foo2' }
+                ],
+                'email',
+                ['name', { role: 'fake' }]
             )
         ).toBe(2);
     });
@@ -805,6 +847,14 @@ describe('Query Builder Pdo Methods Modify', () => {
 
         builder = getPostgresBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe('update "users" set "email" = ?, "name" = ? where "name" = ?');
+            expect(bindings).toEqual(['foo', 'bar', 'baz']);
+            return 1;
+        });
+        expect(await builder.from('users').where('name', 'baz').updateFrom({ email: 'foo', name: 'bar' })).toBe(1);
+
+        builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update "users" set "email" = ?, "name" = ? from "orders" where "users"."id" = ? and "users"."id" = "orders"."user_id"'
             );
@@ -852,6 +902,24 @@ describe('Query Builder Pdo Methods Modify', () => {
                 })
                 .where('name', 'baz')
                 .updateFrom({ email: 'foo', name: 'bar' })
+        ).toBe(1);
+
+        builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'update "users" set "options" = jsonb_set("options"::jsonb, \'{"language"}\', ?), "options" = jsonb_set("options"::jsonb, \'{"size"}\', \'full\') from "orders" where "name" = ? and "users"."id" = "orders"."user_id" and "users"."id" = ?'
+            );
+            expect(bindings).toEqual(['["english","italian"]', 'baz', 1]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('users')
+                .join('orders', join => {
+                    join.on('users.id', '=', 'orders.user_id').where('users.id', '=', 1);
+                })
+                .where('name', 'baz')
+                .updateFrom({ 'options->language': ['english', 'italian'], 'options->size': new Raw("'full'") })
         ).toBe(1);
     });
 

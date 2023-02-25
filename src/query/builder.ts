@@ -1,7 +1,7 @@
 import BuilderI, { BuilderConstructor, Stringable } from '../types/query/builder';
 
 import JoinClauseI from '../types/query/join-clause';
-import Registry, { BindingTypes } from '../types/query/registry';
+import RegistryI, { BindingTypes } from '../types/query/registry';
 import BaseBuilder from './base-builder';
 import BuilderContract from './builder-contract';
 
@@ -38,7 +38,7 @@ class Builder extends BaseBuilder implements BuilderI {
         return this.newQuery().setRegistry(cloneRegistry(this.registry));
     }
 
-    public cloneWithout(properties: (keyof Registry)[]): BuilderI {
+    public cloneWithout(properties: (keyof RegistryI)[]): BuilderI {
         return this.newQuery().setRegistry(cloneRegistryWithoutProperties(this.registry, properties));
     }
 

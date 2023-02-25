@@ -1,6 +1,4 @@
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
-import Collection from '../collections/collection';
-import LazyCollection from '../collections/lazy-collection';
 import { ConnectionSessionI } from '../types/connection';
 import ProcessorI from '../types/processor';
 import {
@@ -26,7 +24,7 @@ import {
 } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
-import Registry, { BindingTypes, Where } from '../types/query/registry';
+import RegistryI, { BindingTypes, Where } from '../types/query/registry';
 
 import ExpressionContract from './expression-contract';
 
@@ -34,12 +32,12 @@ abstract class BuilderContract {
     /**
      * Get Query Builder Registry
      */
-    public abstract getRegistry(): Registry;
+    public abstract getRegistry(): RegistryI;
 
     /**
      * Set Query Builder Registry
      */
-    public abstract setRegistry(registry: Registry): this;
+    public abstract setRegistry(registry: RegistryI): this;
 
     /**
      * Set the columns to be selected.
@@ -643,7 +641,7 @@ abstract class BuilderContract {
      */
     public abstract whereIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable,
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
@@ -653,7 +651,7 @@ abstract class BuilderContract {
      */
     public abstract orWhereIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
     ): this;
 
     /**
@@ -661,7 +659,7 @@ abstract class BuilderContract {
      */
     public abstract whereNotIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable,
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>,
         boolean?: ConditionBoolean
     ): this;
 
@@ -670,7 +668,7 @@ abstract class BuilderContract {
      */
     public abstract orWhereNotIn(
         column: Stringable,
-        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable
+        values: BuilderContract | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
     ): this;
 
     /**
@@ -678,7 +676,7 @@ abstract class BuilderContract {
      */
     public abstract whereIntegerInRaw(
         column: Stringable,
-        values: Binding[] | Arrayable,
+        values: Binding[] | Arrayable<Binding>,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
@@ -686,21 +684,21 @@ abstract class BuilderContract {
     /**
      * Add an "or where in raw" clause for integer values to the query.
      */
-    public abstract orWhereIntegerInRaw(column: Stringable, values: Binding[] | Arrayable): this;
+    public abstract orWhereIntegerInRaw(column: Stringable, values: Binding[] | Arrayable<Binding>): this;
 
     /**
      * Add a "where not in raw" clause for integer values to the query.
      */
     public abstract whereIntegerNotInRaw(
         column: Stringable,
-        values: Binding[] | Arrayable,
+        values: Binding[] | Arrayable<Binding>,
         boolean?: ConditionBoolean
     ): this;
 
     /**
      * Add an "or where not in raw" clause for integer values to the query.
      */
-    public abstract orWhereIntegerNotInRaw(column: Stringable, values: Binding[] | Arrayable): this;
+    public abstract orWhereIntegerNotInRaw(column: Stringable, values: Binding[] | Arrayable<Binding>): this;
 
     /**
      * Add a "where null" clause to the query.
@@ -727,7 +725,7 @@ abstract class BuilderContract {
      */
     public abstract whereBetween(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
@@ -737,7 +735,7 @@ abstract class BuilderContract {
      */
     public abstract whereBetweenColumns(
         column: Stringable,
-        values: BetweenColumnsTuple | Arrayable,
+        values: BetweenColumnsTuple | Arrayable<Stringable>,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
@@ -745,19 +743,25 @@ abstract class BuilderContract {
     /**
      * Add an or where between statement to the query.
      */
-    public abstract orWhereBetween(column: Stringable, values: BetweenTuple | Arrayable): this;
+    public abstract orWhereBetween(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this;
 
     /**
      * Add an or where between statement using columns to the query.
      */
-    public abstract orWhereBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable): this;
+    public abstract orWhereBetweenColumns(
+        column: Stringable,
+        values: BetweenColumnsTuple | Arrayable<Stringable>
+    ): this;
 
     /**
      * Add a where not between statement to the query.
      */
     public abstract whereNotBetween(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean?: ConditionBoolean
     ): this;
 
@@ -766,19 +770,25 @@ abstract class BuilderContract {
      */
     public abstract whereNotBetweenColumns(
         column: Stringable,
-        values: BetweenColumnsTuple | Arrayable,
+        values: BetweenColumnsTuple | Arrayable<Stringable>,
         boolean?: ConditionBoolean
     ): this;
 
     /**
      * Add an or where not between statement to the query.
      */
-    public abstract orWhereNotBetween(column: Stringable, values: BetweenTuple | Arrayable): this;
+    public abstract orWhereNotBetween(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this;
 
     /**
      * Add an or where not between statement using columns to the query.
      */
-    public abstract orWhereNotBetweenColumns(column: Stringable, values: BetweenColumnsTuple | Arrayable): this;
+    public abstract orWhereNotBetweenColumns(
+        column: Stringable,
+        values: BetweenColumnsTuple | Arrayable<Stringable>
+    ): this;
 
     /**
      * Add a "where date" statement to the query.
@@ -1399,7 +1409,7 @@ abstract class BuilderContract {
      */
     public abstract havingBetween(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
@@ -1407,21 +1417,27 @@ abstract class BuilderContract {
     /**
      * Add a "or having between " clause to the query.
      */
-    public abstract orHavingBetween(column: Stringable, values: BetweenTuple | Arrayable): this;
+    public abstract orHavingBetween(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this;
 
     /**
      * Add a "having not between" clause to the query.
      */
     public abstract havingBetweenNot(
         column: Stringable,
-        values: BetweenTuple | Arrayable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>,
         boolean?: ConditionBoolean
     ): this;
 
     /**
      * Add a "or having not between " clause to the query.
      */
-    public abstract orHavingBetweenNot(column: Stringable, values: BetweenTuple | Arrayable): this;
+    public abstract orHavingBetweenNot(
+        column: Stringable,
+        values: BetweenTuple | Arrayable<number | bigint | Stringable | Date>
+    ): this;
 
     /**
      * Add a raw having clause to the query.
@@ -1548,16 +1564,13 @@ abstract class BuilderContract {
      */
     public abstract chunk<T = Dictionary>(
         count: number,
-        callback: (items: Collection<T>, page: number) => Promise<void | false> | void | false
+        callback: (items: T[], page: number) => Promise<void | false> | void | false
     ): Promise<boolean>;
 
     /**
      * Run a map over each item while chunking.
      */
-    public abstract chunkMap<U, T = Dictionary>(
-        callback: (item: T) => Promise<U> | U,
-        count?: number
-    ): Promise<Collection<U>>;
+    public abstract chunkMap<U, T = Dictionary>(callback: (item: T) => Promise<U> | U, count?: number): Promise<U[]>;
 
     /**
      * Execute a callback over each item while chunking.
@@ -1572,7 +1585,7 @@ abstract class BuilderContract {
      */
     public abstract chunkById<T = Dictionary>(
         count: number,
-        callback: (items: Collection<T>, page: number) => Promise<void | false> | void | false,
+        callback: (items: T[], page: number) => Promise<void | false> | void | false,
         column?: string | null,
         alias?: string | null
     ): Promise<boolean>;
@@ -1590,17 +1603,17 @@ abstract class BuilderContract {
     /**
      * Query lazily, by chunks of the given size.
      */
-    public abstract lazy<T>(chunkSize?: number): LazyCollection<T>;
+    public abstract lazy<T = Dictionary>(chunkSize?: number): AsyncGenerator<T>;
 
     /**
      * Query lazily, by chunking the results of a query by comparing IDs.
      */
-    public abstract lazyById<T>(chunkSize?: number, column?: string | null, alias?: string | null): LazyCollection<T>;
+    public abstract lazyById<T>(chunkSize?: number, column?: string | null, alias?: string | null): AsyncGenerator<T>;
 
     /**
      * Query lazily, by chunking the results of a query by comparing IDs in descending order.
      */
-    public abstract lazyByIdDesc<T>(chunkSize?: number, column?: string, alias?: string | null): LazyCollection<T>;
+    public abstract lazyByIdDesc<T>(chunkSize?: number, column?: string, alias?: string | null): AsyncGenerator<T>;
 
     /**
      * Execute the query and get the first result.
@@ -1656,22 +1669,19 @@ abstract class BuilderContract {
     /**
      * Execute the query as a "select" statement.
      */
-    public abstract get<T = Dictionary>(columns?: Stringable | Stringable[]): Promise<Collection<T>>;
+    public abstract get<T = Dictionary>(columns?: Stringable | Stringable[]): Promise<T[]>;
 
     /**
-     * Get a lazy collection for the given query.
+     * Get an async Generator for the given query.
      */
-    public abstract cursor<T>(): LazyCollection<T>;
+    public abstract cursor<T>(): AsyncGenerator<T>;
 
     /**
-     * Get a collection instance containing the values of a given column.
+     * Get an object or an array containing the values of a given column.
      */
-    public abstract pluck<T>(column: Stringable, key?: null): Promise<Collection<T[]>>;
-    public abstract pluck<T>(column: Stringable, key: Stringable): Promise<Collection<{ [key: string]: T }>>;
-    public abstract pluck<T>(
-        column: Stringable,
-        key?: Stringable | null
-    ): Promise<Collection<{ [key: string]: T }> | Collection<T[]>>;
+    public abstract pluck<T>(column: Stringable, key?: null): Promise<T[]>;
+    public abstract pluck<T>(column: Stringable, key: Stringable): Promise<{ [key: string]: T }>;
+    public abstract pluck<T>(column: Stringable, key?: Stringable | null): Promise<{ [key: string]: T } | T[]>;
 
     /**
      * Concatenate values of a given column as a string.
@@ -1823,7 +1833,7 @@ abstract class BuilderContract {
     /**
      * Explains the query.
      */
-    public abstract explain(): Promise<Collection<string>>;
+    public abstract explain(): Promise<string[]>;
 
     /**
      * Pass the query to a given callback.
@@ -1926,7 +1936,7 @@ abstract class BuilderContract {
     /**
      * Clone the query without the given registry properties.
      */
-    public abstract cloneWithout(properties: (keyof Registry)[]): BuilderContract;
+    public abstract cloneWithout(properties: (keyof RegistryI)[]): BuilderContract;
 
     /**
      * Clone the query without the given bindings.

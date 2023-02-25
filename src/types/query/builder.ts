@@ -6,7 +6,7 @@ import { ConnectionSessionI } from '../connection';
 import ProcessorI from '../processor';
 
 import ExpressionContract from '../../query/expression-contract';
-import Registry, { BindingTypes } from './registry';
+import RegistryI, { BindingTypes } from './registry';
 
 export type Stringable = string | ExpressionContract;
 export type PrimitiveBinding = string | number | bigint | Date | boolean | Buffer | TypedBinding;
@@ -52,11 +52,11 @@ export interface FulltextOptions {
     language?: string;
 }
 
-export interface Arrayable {
+export interface Arrayable<Item> {
     /**
      * Get the instance as an array.
      */
-    toArray: <T>() => T[];
+    toArray(): Item[];
 }
 
 export type BuilderConstructor = new (
@@ -79,7 +79,7 @@ export default interface BuilderI extends BuilderContract {
     /**
      * Clone the query without the given registry properties.
      */
-    cloneWithout(properties: (keyof Registry)[]): BuilderI;
+    cloneWithout(properties: (keyof RegistryI)[]): BuilderI;
 
     /**
      * Clone the query without the given bindings.

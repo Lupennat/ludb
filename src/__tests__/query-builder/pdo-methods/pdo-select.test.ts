@@ -1,4 +1,3 @@
-import Collection from '../../../collections/collection';
 import Raw from '../../../query/expression';
 import { getBuilder, getSqlServerBuilder, pdo } from '../../fixtures/mocked';
 
@@ -169,7 +168,7 @@ describe('Query Builder Pdo Methods Select', () => {
         );
     });
 
-    it('Works Pluck Method Gets Collection Of Column Values', async () => {
+    it('Works Pluck Method Gets An Array Or Object Of Column Values', async () => {
         let builder = getBuilder();
 
         let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
@@ -186,7 +185,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').where('id', '=', 1).pluck<string>('foo');
 
-        expect(['bar', 'baz']).toEqual(results.all());
+        expect(['bar', 'baz']).toEqual(results);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
 
@@ -210,7 +209,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         const results2 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
-        expect({ 1: 'bar', null: 'baz' }).toEqual(results2.all());
+        expect({ 1: 'bar', null: 'baz' }).toEqual(results2);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
 
@@ -274,7 +273,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         const results3 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
-        expect({}).toEqual(results3.all());
+        expect({}).toEqual(results3);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
 
@@ -292,7 +291,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         const results4 = await builder.from('users').where('id', '=', 1).pluck<string>('foo');
-        expect([]).toEqual(results4.all());
+        expect([]).toEqual(results4);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
 
@@ -316,7 +315,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         const results5 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', new Raw('baz as id'));
-        expect({ 1: 'bar', null: 'baz' }).toEqual(results5.all());
+        expect({ 1: 'bar', null: 'baz' }).toEqual(results5);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
 
@@ -340,7 +339,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         const results6 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'table.id');
-        expect({ 1: 'bar', null: 'baz' }).toEqual(results6.all());
+        expect({ 1: 'bar', null: 'baz' }).toEqual(results6);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedProcessor).toBeCalledTimes(1);
     });
@@ -822,7 +821,7 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(await builder.count()).toBe(1);
         expect(await builder.sum('id')).toBe(2);
         const res = await builder.get();
-        expect(res.all()).toEqual([{ column1: 'foo', column2: 'bar' }]);
+        expect(res).toEqual([{ column1: 'foo', column2: 'bar' }]);
     });
 
     it('Works Aggregate Reset Followed By Select Get', async () => {
@@ -848,7 +847,7 @@ describe('Query Builder Pdo Methods Select', () => {
         builder.from('users');
         expect(await builder.count('column1')).toBe(1);
         const res = await builder.select('column2', 'column3').get();
-        expect(res.all()).toEqual([{ column2: 'foo', column3: 'bar' }]);
+        expect(res).toEqual([{ column2: 'foo', column3: 'bar' }]);
     });
 
     it('Works Aggregate Reset Followed By Get With Columns', async () => {
@@ -874,7 +873,7 @@ describe('Query Builder Pdo Methods Select', () => {
         builder.from('users');
         expect(await builder.count('column1')).toBe(1);
         const res = await builder.get(['column2', 'column3']);
-        expect(res.all()).toEqual([{ column2: 'foo', column3: 'bar' }]);
+        expect(res).toEqual([{ column2: 'foo', column3: 'bar' }]);
     });
 
     it('Works Aggregate With SubSelect', async () => {
@@ -931,8 +930,7 @@ describe('Query Builder Pdo Methods Select', () => {
             query.from('posts').select('foo', 'bar').where('title', 'foo');
         }, 'post');
         const explain = await builder.explain();
-        expect(explain).toBeInstanceOf(Collection);
-        expect(explain.first()).toEqual({
+        expect(explain[0]).toEqual({
             id: 1,
             select_type: 'SIMPLE',
             type: 'index',
@@ -945,13 +943,319 @@ describe('Query Builder Pdo Methods Select', () => {
         });
     });
 
+    it('Works Lazy Throw Error', () => {
+        let builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+        expect(() => {
+            builder.lazy(0);
+        }).toThrowError('The chunk size should be at least 1');
+
+        expect(() => {
+            builder.lazyById(0);
+        }).toThrowError('The chunk size should be at least 1');
+
+        expect(() => {
+            builder.lazyByIdDesc(0);
+        }).toThrowError('The chunk size should be at least 1');
+
+        builder = getBuilder();
+        expect(() => {
+            builder.lazy(10);
+        }).toThrowError('You must specify an orderBy clause when using this function.');
+    });
+
+    it('Works Lazy Methods Return Async Generator', () => {
+        let builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+        expect(Symbol.asyncIterator in builder.lazy()).toBeTruthy();
+        builder = getBuilder();
+        expect(Symbol.asyncIterator in builder.lazyById()).toBeTruthy();
+        builder = getBuilder();
+        expect(Symbol.asyncIterator in builder.lazyByIdDesc()).toBeTruthy();
+    });
+
+    it('Works Lazy Last Chunk Complete', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = ['foo1', 'foo2'];
+        const chunk2 = ['foo3', 'foo4'];
+        const chunk3: any[] = [];
+        const spiedGet = jest
+            .spyOn(builder, 'get')
+            .mockImplementationOnce(async () => {
+                return chunk1;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk2;
+            })
+            .mockImplementationOnce(async () => {
+                return chunk3;
+            });
+        const spiedForPage = jest.spyOn(builder, 'forPage');
+
+        const callback = jest.fn();
+
+        for await (const item of builder.lazy(2)) {
+            callback(item);
+        }
+
+        expect(spiedGet).toBeCalledTimes(3);
+        expect(spiedForPage).toBeCalledTimes(3);
+        expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
+        expect(spiedForPage).toHaveBeenNthCalledWith(3, 3, 2);
+        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenNthCalledWith(1, 'foo1');
+        expect(callback).toHaveBeenNthCalledWith(2, 'foo2');
+        expect(callback).toHaveBeenNthCalledWith(3, 'foo3');
+        expect(callback).toHaveBeenNthCalledWith(4, 'foo4');
+    });
+
+    it('Works Lazy By Id With Last Chunk Complete', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = [{ someIdField: 1 }, { someIdField: 2 }];
+        const chunk2 = [{ someIdField: 10 }, { someIdField: 11 }];
+        const chunk3: any[] = [];
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk3;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        for await (const item of builder.lazyById(2, 'someIdField')) {
+            callback(item);
+        }
+
+        expect(spiedClone).toBeCalledTimes(3);
+        expect(spiedForPage.length).toBe(3);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
+        expect(spiedForPage[2]).toBeCalledWith(2, 11, 'someIdField');
+        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 1 });
+        expect(callback).toHaveBeenNthCalledWith(2, { someIdField: 2 });
+        expect(callback).toHaveBeenNthCalledWith(3, { someIdField: 10 });
+        expect(callback).toHaveBeenNthCalledWith(4, { someIdField: 11 });
+    });
+
+    it('Works Lazy By Id Desc With Last Chunk Complete', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'desc' }];
+
+        const chunk1 = [{ someIdField: 11 }, { someIdField: 10 }];
+        const chunk2 = [{ someIdField: 2 }, { someIdField: 1 }];
+        const chunk3: any[] = [];
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk3;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        for await (const item of builder.lazyByIdDesc(2, 'someIdField')) {
+            callback(item);
+        }
+
+        expect(spiedClone).toBeCalledTimes(3);
+        expect(spiedForPage.length).toBe(3);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toBeCalledWith(2, 10, 'someIdField');
+        expect(spiedForPage[2]).toBeCalledWith(2, 1, 'someIdField');
+        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 11 });
+        expect(callback).toHaveBeenNthCalledWith(2, { someIdField: 10 });
+        expect(callback).toHaveBeenNthCalledWith(3, { someIdField: 2 });
+        expect(callback).toHaveBeenNthCalledWith(4, { someIdField: 1 });
+    });
+
+    it('Works Lazy Paginates Using Id Throw Error When Column Is Null Or Does Not Exists', async () => {
+        let builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        let chunk1: Array<{ [key: string]: number | null }> = [{ someIdField: 1 }, { notId: 2 }];
+        let spiedForPage: jest.SpyInstance[] = [];
+        let spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+            return builder;
+        });
+
+        let callback = jest.fn();
+
+        try {
+            for await (const item of builder.lazyById(2, 'id', 'someIdField')) {
+                callback(item);
+            }
+        } catch (error: any) {
+            expect(error.message).toBe(
+                'The lazyById operation was aborted because the [someIdField] column is not present in the query result.'
+            );
+        }
+
+        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
+        expect(callback).toBeCalledTimes(2);
+        expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 1 });
+        expect(callback).toHaveBeenNthCalledWith(2, { notId: 2 });
+
+        builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'desc' }];
+
+        chunk1 = [{ id: 10 }, { id: null }];
+        spiedForPage = [];
+        spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+            return builder;
+        });
+
+        callback = jest.fn();
+
+        try {
+            for await (const item of builder.lazyByIdDesc(2, 'id')) {
+                callback(item);
+            }
+        } catch (error: any) {
+            expect(error.message).toBe(
+                'The lazyById operation was aborted because the [id] column is not present in the query result.'
+            );
+        }
+        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
+        expect(callback).toBeCalledTimes(2);
+        expect(callback).toHaveBeenNthCalledWith(1, { id: 10 });
+        expect(callback).toHaveBeenNthCalledWith(2, { id: null });
+    });
+
+    it('Works Cursor Return Async Generator', async () => {
+        const builder = getBuilder();
+        builder.from('users');
+        expect(Symbol.asyncIterator in builder.cursor()).toBeTruthy();
+    });
+
+    it('Works Cursor Can Be Iterate', async () => {
+        let builder = getBuilder();
+        builder.from('users');
+        jest.spyOn(builder.getConnection(), 'cursor').mockImplementationOnce((sql, bindings, useReadPdo) => {
+            expect(sql).toBe('select * from "users"');
+            expect(bindings).toEqual([]);
+            expect(useReadPdo).toBeTruthy();
+            return Promise.resolve(
+                (function* () {
+                    yield { id: 1 };
+                    yield { id: 2 };
+                    yield { id: 3 };
+                    yield { id: 4 };
+                })()
+            );
+        });
+
+        let callback = jest.fn();
+
+        for await (const item of builder.cursor()) {
+            callback(item);
+        }
+
+        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenNthCalledWith(1, { id: 1 });
+        expect(callback).toHaveBeenNthCalledWith(2, { id: 2 });
+        expect(callback).toHaveBeenNthCalledWith(3, { id: 3 });
+        expect(callback).toHaveBeenNthCalledWith(4, { id: 4 });
+
+        builder = getBuilder();
+        builder.from('users').select('id');
+        jest.spyOn(builder.getConnection(), 'cursor').mockImplementationOnce((sql, bindings, useReadPdo) => {
+            expect(sql).toBe('select "id" from "users"');
+            expect(bindings).toEqual([]);
+            expect(useReadPdo).toBeTruthy();
+            return Promise.resolve(
+                (function* () {
+                    yield { id: 1 };
+                    yield { id: 2 };
+                    yield { id: 3 };
+                    yield { id: 4 };
+                })()
+            );
+        });
+
+        callback = jest.fn();
+
+        for await (const item of builder.cursor()) {
+            callback(item);
+        }
+
+        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenNthCalledWith(1, { id: 1 });
+        expect(callback).toHaveBeenNthCalledWith(2, { id: 2 });
+        expect(callback).toHaveBeenNthCalledWith(3, { id: 3 });
+        expect(callback).toHaveBeenNthCalledWith(4, { id: 4 });
+    });
+
     it('Works Chunk With Last Chunk Complete', async () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
-        const chunk2 = new Collection(['foo3', 'foo4']) as Collection<unknown>;
-        const chunk3 = new Collection() as Collection<unknown>;
+        const chunk1 = ['foo1', 'foo2'];
+        const chunk2 = ['foo3', 'foo4'];
+        const chunk3: any[] = [];
         const spiedGet = jest
             .spyOn(builder, 'get')
             .mockImplementationOnce(async () => {
@@ -992,8 +1296,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
-        const chunk2 = new Collection(['foo3']) as Collection<unknown>;
+        const chunk1 = ['foo1', 'foo2'];
+        const chunk2 = ['foo3'];
         const spiedGet = jest
             .spyOn(builder, 'get')
             .mockImplementationOnce(async () => {
@@ -1022,8 +1326,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
-        const chunk2 = new Collection(['foo3']) as Collection<unknown>;
+        const chunk1 = ['foo1', 'foo2'];
+        const chunk2 = ['foo3'];
         const spiedGet = jest
             .spyOn(builder, 'get')
             .mockImplementationOnce(async () => {
@@ -1051,7 +1355,7 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
+        const chunk1 = ['foo1', 'foo2'];
 
         const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
             return chunk1;
@@ -1074,7 +1378,7 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection() as Collection<unknown>;
+        const chunk1: any[] = [];
 
         const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
             return chunk1;
@@ -1096,9 +1400,9 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection(['foo1', 'foo2']) as Collection<unknown>;
-        const chunk2 = new Collection(['foo3', 'foo4']) as Collection<unknown>;
-        const chunk3 = new Collection() as Collection<unknown>;
+        const chunk1 = ['foo1', 'foo2'];
+        const chunk2 = ['foo3', 'foo4'];
+        const chunk3: any[] = [];
         const spiedChunk = jest.spyOn(builder, 'chunk');
         const spiedGet = jest
             .spyOn(builder, 'get')
@@ -1132,11 +1436,99 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(callback).toHaveBeenNthCalledWith(4, 'foo4');
     });
 
+    it('Works Each By Id', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = [{ someIdField: 1 }, { someIdField: 2 }];
+        const chunk2 = [{ someIdField: 10 }, { someIdField: 11 }];
+        const chunk3: any[] = [];
+        const spiedChunk = jest.spyOn(builder, 'chunkById');
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk3;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.eachById(
+            result => {
+                callback(result);
+            },
+            2,
+            'someIdField'
+        );
+        expect(spiedChunk).toBeCalledTimes(1);
+        expect(spiedClone).toBeCalledTimes(3);
+        expect(spiedForPage.length).toBe(3);
+        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
+        expect(spiedForPage[2]).toBeCalledWith(2, 11, 'someIdField');
+        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 1 });
+        expect(callback).toHaveBeenNthCalledWith(2, { someIdField: 2 });
+        expect(callback).toHaveBeenNthCalledWith(3, { someIdField: 10 });
+        expect(callback).toHaveBeenNthCalledWith(4, { someIdField: 11 });
+    });
+
+    it('Works Each By Id Can Be Stopped By Returning False', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = [{ id: 1 }, { id: 2 }];
+        const spiedChunk = jest.spyOn(builder, 'chunkById');
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageAfterId'));
+            return builder;
+        });
+
+        const callback = jest.fn();
+
+        await builder.eachById(result => {
+            callback(result);
+            return false;
+        });
+        expect(spiedChunk).toBeCalledTimes(1);
+        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toBeCalledWith(1000, null, 'id');
+        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, { id: 1 });
+    });
+
     it('Works Chunk Map', async () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection(['foo1', 'foo2', 'foo5', 'foo7']) as Collection<unknown>;
+        const chunk1 = ['foo1', 'foo2', 'foo5', 'foo7'];
 
         const spiedChunk = jest.spyOn(builder, 'chunk');
         const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
@@ -1145,11 +1537,9 @@ describe('Query Builder Pdo Methods Select', () => {
         const spiedForPage = jest.spyOn(builder, 'forPage');
 
         expect(
-            (
-                await builder.chunkMap<number, string>(async item => {
-                    return Number(item.replace('foo', ''));
-                })
-            ).all()
+            await builder.chunkMap<number, string>(async item => {
+                return Number(item.replace('foo', ''));
+            })
         ).toEqual([1, 2, 5, 7]);
         expect(spiedChunk).toBeCalledTimes(1);
         expect(spiedChunk).toBeCalledWith(1000, expect.any(Function));
@@ -1162,7 +1552,7 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection(['foo1', 'foo2', 'foo3', 'foo4']) as Collection<unknown>;
+        const chunk1 = ['foo1', 'foo2', 'foo3', 'foo4'];
         const spiedChunk = jest.spyOn(builder, 'chunk');
         const spiedGet = jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
             return chunk1;
@@ -1193,9 +1583,9 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection([{ someIdField: 1 }, { someIdField: 2 }]) as Collection<unknown>;
-        const chunk2 = new Collection([{ someIdField: 10 }, { someIdField: 11 }]) as Collection<unknown>;
-        const chunk3 = new Collection() as Collection<unknown>;
+        const chunk1 = [{ someIdField: 1 }, { someIdField: 2 }];
+        const chunk2 = [{ someIdField: 10 }, { someIdField: 11 }];
+        const chunk3: any[] = [];
         const spiedForPage: jest.SpyInstance[] = [];
         const spiedClone = jest
             .spyOn(builder, 'clone')
@@ -1247,8 +1637,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection([{ id: 1 }, { id: 2 }]) as Collection<unknown>;
-        const chunk2 = new Collection([{ id: 10 }, { id: 11 }]) as Collection<unknown>;
+        const chunk1 = [{ id: 1 }, { id: 2 }];
+        const chunk2 = [{ id: 10 }, { id: 11 }];
         const spiedForPage: jest.SpyInstance[] = [];
         const spiedClone = jest
             .spyOn(builder, 'clone')
@@ -1286,7 +1676,7 @@ describe('Query Builder Pdo Methods Select', () => {
         let builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        let chunk1 = new Collection([{ id: 1 }, { notId: 2 }]) as Collection<unknown>;
+        let chunk1: Array<{ [key: string]: number | null }> = [{ id: 1 }, { notId: 2 }];
         let spiedForPage: jest.SpyInstance[] = [];
         let spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
             const builder = getBuilder();
@@ -1315,7 +1705,7 @@ describe('Query Builder Pdo Methods Select', () => {
         builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        chunk1 = new Collection([{ id: 1 }, { id: null }]) as Collection<unknown>;
+        chunk1 = [{ id: 1 }, { id: null }];
         spiedForPage = [];
         spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
             const builder = getBuilder();
@@ -1346,8 +1736,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection([{ someIdField: 1 }, { someIdField: 2 }]) as Collection<unknown>;
-        const chunk2 = new Collection([{ someIdField: 10 }]) as Collection<unknown>;
+        const chunk1 = [{ someIdField: 1 }, { someIdField: 2 }];
+        const chunk2 = [{ someIdField: 10 }];
         const spiedForPage: jest.SpyInstance[] = [];
         const spiedClone = jest
             .spyOn(builder, 'clone')
@@ -1392,7 +1782,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection([{ someIdField: 1 }, { someIdField: 2 }]) as Collection<unknown>;
+        const chunk1 = [{ someIdField: 1 }, { someIdField: 2 }];
         const spiedForPage: jest.SpyInstance[] = [];
         const spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
             const builder = getBuilder();
@@ -1425,7 +1815,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection() as Collection<unknown>;
+        const chunk1: any[] = [];
         const spiedForPage: jest.SpyInstance[] = [];
         const spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
             const builder = getBuilder();
@@ -1455,8 +1845,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const builder = getBuilder();
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
 
-        const chunk1 = new Collection([{ table_id: 1 }, { table_id: 2 }]) as Collection<unknown>;
-        const chunk2 = new Collection() as Collection<unknown>;
+        const chunk1 = [{ table_id: 1 }, { table_id: 2 }];
+        const chunk2: any[] = [];
         const spiedForPage: jest.SpyInstance[] = [];
         const spiedClone = jest
             .spyOn(builder, 'clone')

@@ -175,7 +175,7 @@ describe('Query Builder Select-From', () => {
         expect('select substr(foo, 6) from "users"').toBe(builder.toSql());
     });
 
-    it('Works MySqlLock', () => {
+    it('Works MySql Lock', () => {
         let builder = getBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
@@ -212,7 +212,24 @@ describe('Query Builder Select-From', () => {
         expect(['baz']).toEqual(builder.getBindings());
     });
 
-    it('Works PostgresLock', () => {
+    it('Works SQLite Lock', () => {
+        let builder = getSQLiteBuilder();
+        builder.select('*').from('foo').where('bar', '=', 'baz').lock();
+        expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
+        expect(['baz']).toEqual(builder.getBindings());
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('foo').where('bar', '=', 'baz').lock(false);
+        expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
+        expect(['baz']).toEqual(builder.getBindings());
+
+        builder = getSQLiteBuilder();
+        builder.select('*').from('foo').where('bar', '=', 'baz').lock('for key share');
+        expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
+        expect(['baz']).toEqual(builder.getBindings());
+    });
+
+    it('Works Postgres Lock', () => {
         let builder = getPostgresBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from "foo" where "bar" = ? for update').toBe(builder.toSql());
@@ -229,7 +246,7 @@ describe('Query Builder Select-From', () => {
         expect(['baz']).toEqual(builder.getBindings());
     });
 
-    it('Works SqlServerLock', () => {
+    it('Works SqlServer Lock', () => {
         let builder = getSqlServerBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from [foo] with(rowlock,updlock,holdlock) where [bar] = ?').toBe(builder.toSql());

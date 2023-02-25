@@ -51,8 +51,8 @@ describe('Query Builder Select-From', () => {
     });
 
     it('Works MySql Update Wrapping Json', async () => {
-        const builder = getMySqlBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        let builder = getMySqlBuilder();
+        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -61,6 +61,18 @@ describe('Query Builder Select-From', () => {
         expect(spiedUpdate).toBeCalledWith(
             'update `users` set `name` = json_set(`name`, \'$."first_name"\', ?), `name` = json_set(`name`, \'$."last_name"\', ?) where `active` = ?',
             ['John', 'Doe', 1]
+        );
+
+        builder = getMySqlBuilder();
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        await builder
+            .from('users')
+            .where('active', '=', 1)
+            .update({ 'name->first_name': true, 'name->last_name': false });
+        expect(spiedUpdate).toBeCalledTimes(1);
+        expect(spiedUpdate).toBeCalledWith(
+            'update `users` set `name` = json_set(`name`, \'$."first_name"\', true), `name` = json_set(`name`, \'$."last_name"\', false) where `active` = ?',
+            [1]
         );
     });
 
@@ -264,7 +276,7 @@ describe('Query Builder Select-From', () => {
         const date = new Date('2019-08-06');
 
         await builder.from('users').update({
-            'options->name': 'Lupennat',
+            'users.options->name': 'Lupennat',
             group_id: new Raw('45'),
             'options->security': { '2fa': false, presets: ['laravel', 'vue'] },
             'options->sharing->twitter': 'username',
@@ -437,6 +449,32 @@ describe('Query Builder Select-From', () => {
         builder = getPostgresBuilder();
         builder.select('*').from('users').where('items->available', '=', true);
         expect('select * from "users" where ("items"->\'available\')::jsonb = \'true\'::jsonb').toBe(builder.toSql());
+    });
+
+    it('Works SqlServer Columns', () => {
+        let builder = getSqlServerBuilder();
+        expect(builder.from('users').select('name').setAggregate('count', ['*']).toSql()).toBe(
+            'select count(*) as aggregate from [users]'
+        );
+
+        builder = getSqlServerBuilder();
+        expect(builder.from('users').select('name').distinct().toSql()).toBe('select distinct [name] from [users]');
+    });
+
+    it('Works Postgress Columns', () => {
+        let builder = getPostgresBuilder();
+        expect(builder.from('users').select('name').setAggregate('count', ['*']).toSql()).toBe(
+            'select count(*) as aggregate from "users"'
+        );
+
+        builder = getPostgresBuilder();
+        expect(builder.from('users').select('name').distinct().toSql()).toBe('select distinct "name" from "users"');
+    });
+
+    it('Works SqlServer Save Points', () => {
+        const builder = getSqlServerBuilder();
+        expect(builder.getGrammar().compileSavepoint('trans1')).toBe('SAVE TRANSACTION trans1');
+        expect(builder.getGrammar().compileSavepointRollBack('trans1')).toBe('ROLLBACK TRANSACTION trans1');
     });
 
     it('Works SqlServer Wrapping Json', () => {

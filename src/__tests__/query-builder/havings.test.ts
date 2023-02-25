@@ -1,6 +1,5 @@
-import Collection from '../../collections/collection';
 import Raw from '../../query/expression';
-import { getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
+import { ObjectArrayable, getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
 describe('Query Builder Havings', () => {
     afterAll(async () => {
@@ -165,7 +164,7 @@ describe('Query Builder Havings', () => {
         builder
             .select('*')
             .from('users')
-            .havingBetween('id', new Collection([1, 2]));
+            .havingBetween('id', new ObjectArrayable([1, 2]));
         expect('select * from "users" having "id" between ? and ?').toBe(builder.toSql());
         expect([1, 2]).toEqual(builder.getBindings());
 
@@ -174,7 +173,7 @@ describe('Query Builder Havings', () => {
             .select('*')
             .from('users')
             .havingBetween('id', [1, 2])
-            .orHavingBetween('id', new Collection([1, 2]));
+            .orHavingBetween('id', new ObjectArrayable([1, 2]));
 
         expect('select * from "users" having "id" between ? and ? or "id" between ? and ?').toBe(builder.toSql());
 
@@ -189,7 +188,7 @@ describe('Query Builder Havings', () => {
         builder
             .select('*')
             .from('users')
-            .havingBetweenNot('id', new Collection([1, 2]));
+            .havingBetweenNot('id', new ObjectArrayable([1, 2]));
         expect('select * from "users" having "id" not between ? and ?').toBe(builder.toSql());
         expect([1, 2]).toEqual(builder.getBindings());
 
@@ -198,7 +197,7 @@ describe('Query Builder Havings', () => {
             .select('*')
             .from('users')
             .havingBetweenNot('id', [1, 2])
-            .orHavingBetweenNot('id', new Collection([1, 2]));
+            .orHavingBetweenNot('id', new ObjectArrayable([1, 2]));
         expect('select * from "users" having "id" not between ? and ? or "id" not between ? and ?').toBe(
             builder.toSql()
         );
@@ -365,7 +364,7 @@ describe('Query Builder Havings', () => {
             .get();
 
         expect(spiedConnection).toHaveBeenCalledWith(executedQuery, ['popular', 3], true);
-        expect([{ category: 'rock', total: 5 }]).toEqual(result.all());
+        expect([{ category: 'rock', total: 5 }]).toEqual(result);
 
         // Using \Raw value
         builder = getBuilder();
@@ -394,7 +393,7 @@ describe('Query Builder Havings', () => {
             .having('total', '>', new Raw('3'))
             .get();
         expect(spiedConnection).toHaveBeenCalledWith(executedQuery, ['popular'], true);
-        expect([{ category: 'rock', total: 5 }]).toEqual(result.all());
+        expect([{ category: 'rock', total: 5 }]).toEqual(result);
     });
 
     it('Works Raw Havings', () => {

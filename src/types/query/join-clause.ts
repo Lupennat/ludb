@@ -1,6 +1,6 @@
 import ExpressionContract from '../../query/expression-contract';
 import BuilderI, { ConditionBoolean, QueryAbleCallback, Stringable, WhereColumnTuple } from './builder';
-import Registry, { BindingTypes } from './registry';
+import RegistryI, { BindingTypes } from './registry';
 
 export type JoinClauseConstructor = new (parentQuery: BuilderI, type: string, table: Stringable) => JoinClauseI;
 
@@ -55,7 +55,7 @@ export default interface JoinClauseI extends BuilderI {
     /**
      * Clone the query without the given registry properties.
      */
-    cloneWithout(properties: (keyof Registry)[]): JoinClauseI;
+    cloneWithout(properties: (keyof RegistryI)[]): JoinClauseI;
 
     /**
      * Clone the query without the given bindings.
