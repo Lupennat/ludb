@@ -1,11 +1,13 @@
 import get from 'get-value';
 import { Pdo, PdoPreparedStatementI, PdoTransactionPreparedStatementI } from 'lupdo';
+import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import QueryExecuted from '../events/query-executed';
 import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
-import Processor from '../query/processors/processor';
+import SchemaBuilder from '../schema/builders/builder';
+import SchemaGrammar from '../schema/grammars/grammar';
 import { DriverFLattedConfig, FlattedConnectionConfig, ReadWriteType } from '../types/config';
 import DriverConnectionI, {
     BeforeExecutingCallback,
@@ -16,9 +18,10 @@ import DriverConnectionI, {
     QueryExecutedCallback,
     TransactionCallback
 } from '../types/connection';
-import ProcessorI from '../types/processor';
 import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
+import SchemaBuilderI from '../types/schema/builder';
+import SchemaGrammarI from '../types/schema/grammar';
 import ConnectionSession from './connection-session';
 
 class Connection implements DriverConnectionI {
@@ -37,17 +40,10 @@ class Connection implements DriverConnectionI {
      */
     protected queryGrammar!: GrammarI;
 
-    // /**
-    //  * The schema grammar implementation.
-    //  *
-    //  * @var \Illuminate\Database\Schema\Grammars\Grammar
-    //  */
-    // protected schemaGrammar;
-
     /**
-     * The query post processor implementation.
+     * The schema grammar implementation.
      */
-    protected postProcessor!: ProcessorI;
+    protected schemaGrammar!: SchemaGrammarI;
 
     /**
      * The event dispatcher instance.
@@ -69,18 +65,29 @@ class Connection implements DriverConnectionI {
      */
     public constructor(
         protected pdo: Pdo,
+        protected schemaPdo: Pdo,
         protected config: DriverFLattedConfig,
         protected database: string,
         protected tablePrefix: string
     ) {
-        // We need to initialize a query grammar and the query post processors
+        // We need to initialize a query grammar and the schema grammar
         // which are both very important parts of the database abstractions
         // so we initialize these to their default values while starting.
-        this.useDefaultQueryGrammar().useDefaultPostProcessor();
+        this.useDefaultQueryGrammar().useDefaultSchemaGrammar();
     }
 
+    /**
+     * Start Connection session for Builder
+     */
     public session(): ConnectionSessionI {
         return new ConnectionSession(this);
+    }
+
+    /**
+     * Start Connection session for SchemaBuilder
+     */
+    public sessionSchema(): ConnectionSessionI {
+        return new ConnectionSession(this, true);
     }
 
     /**
@@ -98,54 +105,27 @@ class Connection implements DriverConnectionI {
         return new Grammar();
     }
 
-    //  /**
-    //   * Set the schema grammar to the default implementation.
-    //   *
-    //   * @return void
-    //   */
-    //  public function useDefaultSchemaGrammar()
-    //  {
-    //      $this->schemaGrammar = $this->getDefaultSchemaGrammar();
-    //  }
-
-    //  /**
-    //   * Get the default schema grammar instance.
-    //   *
-    //   * @return \Illuminate\Database\Schema\Grammars\Grammar|null
-    //   */
-    //  protected function getDefaultSchemaGrammar()
-    //  {
-    //      //
-    //  }
-
     /**
-     * Set the query post processor to the default implementation.
+     * Set the schema grammar to the default implementation.
      */
-    public useDefaultPostProcessor(): this {
-        this.postProcessor = this.getDefaultPostProcessor();
+    public useDefaultSchemaGrammar(): this {
+        this.schemaGrammar = this.getDefaultSchemaGrammar();
         return this;
     }
 
     /**
-     * Get the default post processor instance.
+     * Get the default schema grammar instance.
      */
-    protected getDefaultPostProcessor(): ProcessorI {
-        return new Processor();
+    protected getDefaultSchemaGrammar(): SchemaGrammarI {
+        return new SchemaGrammar();
     }
 
-    //  /**
-    //   * Get a schema builder instance for the connection.
-    //   *
-    //   * @return \Illuminate\Database\Schema\Builder
-    //   */
-    //  public function getSchemaBuilder()
-    //  {
-    //      if (is_null($this->schemaGrammar)) {
-    //          $this->useDefaultSchemaGrammar();
-    //      }
-
-    //      return new SchemaBuilder($this);
-    //  }
+    /**
+     * Get a schema builder instance for the connection.
+     */
+    public getSchemaBuilder(): SchemaBuilderI {
+        return new SchemaBuilder(this.sessionSchema());
+    }
 
     /**
      * Bind values to their parameters in the given statement.
@@ -180,7 +160,7 @@ class Connection implements DriverConnectionI {
      * Reconnect to the database.
      */
     public async reconnect(): Promise<this> {
-        const promises = [this.pdo.reconnect()];
+        const promises = [this.pdo.reconnect(), this.schemaPdo.reconnect()];
         if (this.readPdo !== null) {
             promises.push(this.readPdo.reconnect());
         }
@@ -192,7 +172,7 @@ class Connection implements DriverConnectionI {
      * Disconnect from the underlying PDO connection.
      */
     public async disconnect(): Promise<void> {
-        const promises = [this.pdo.disconnect()];
+        const promises = [this.pdo.disconnect(), this.schemaPdo.disconnect()];
         if (this.readPdo !== null) {
             promises.push(this.readPdo.disconnect());
         }
@@ -223,6 +203,13 @@ class Connection implements DriverConnectionI {
     }
 
     /**
+     * Get the current Schema PDO connection.
+     */
+    public getSchemaPdo(): Pdo {
+        return this.schemaPdo;
+    }
+
+    /**
      * Get the current PDO connection.
      */
     public getPdo(): Pdo {
@@ -241,6 +228,15 @@ class Connection implements DriverConnectionI {
      */
     public setPdo(pdo: Pdo): this {
         this.pdo = pdo;
+
+        return this;
+    }
+
+    /**
+     * Set the Schema PDO connection.
+     */
+    public setSchemaPdo(pdo: Pdo): this {
+        this.schemaPdo = pdo;
 
         return this;
     }
@@ -305,41 +301,18 @@ class Connection implements DriverConnectionI {
         return this;
     }
 
-    //  /**
-    //   * Get the schema grammar used by the connection.
-    //   *
-    //   * @return \Illuminate\Database\Schema\Grammars\Grammar
-    //   */
-    //  public function getSchemaGrammar()
-    //  {
-    //      return $this->schemaGrammar;
-    //  }
-
-    //  /**
-    //   * Set the schema grammar used by the connection.
-    //   *
-    //   * @param  \Illuminate\Database\Schema\Grammars\Grammar  $grammar
-    //   * @return $this
-    //   */
-    //  public setSchemaGrammar(Schema\Grammars\Grammar $grammar)
-    //  {
-    //      $this->schemaGrammar = $grammar;
-
-    //      return $this;
-    //  }
-
     /**
-     * Get the query post processor used by the connection.
+     * Get the schema grammar used by the connection.
      */
-    public getPostProcessor(): ProcessorI {
-        return this.postProcessor;
+    public getSchemaGrammar(): SchemaGrammarI {
+        return this.schemaGrammar;
     }
 
     /**
-     * Set the query post processor used by the connection.
+     * Set the schema grammar used by the connection.
      */
-    public setPostProcessor(processor: ProcessorI): this {
-        this.postProcessor = processor;
+    public setSchemaGrammar(grammar: SchemaGrammarI): this {
+        this.schemaGrammar = grammar;
 
         return this;
     }
@@ -415,7 +388,7 @@ class Connection implements DriverConnectionI {
     /**
      * Set the table prefix and return the grammar.
      */
-    public withTablePrefix(grammar: GrammarI): GrammarI {
+    public withTablePrefix<T extends GrammarI>(grammar: T): T {
         grammar.setTablePrefix(this.tablePrefix);
 
         return grammar;
@@ -472,6 +445,18 @@ class Connection implements DriverConnectionI {
      */
     public async select<T = Dictionary>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T[]> {
         return this.session().select<T>(query, bindings, useReadPdo);
+    }
+
+    /**
+     * Run a select statement against the database.
+     */
+    public async selectColumn<T extends PdoColumnValue>(
+        column: number,
+        query: string,
+        bindings?: Binding[],
+        useReadPdo?: boolean
+    ): Promise<T[]> {
+        return this.session().selectColumn<T>(column, query, bindings, useReadPdo);
     }
 
     /**

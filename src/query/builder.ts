@@ -20,11 +20,7 @@ class Builder extends BaseBuilder implements BuilderI {
      * Get a new instance of the query builder.
      */
     public newQuery(): BuilderI {
-        return new (this.constructor as BuilderConstructor)(
-            this.getConnection(),
-            this.getGrammar(),
-            this.getProcessor()
-        );
+        return new (this.constructor as BuilderConstructor)(this.getConnection(), this.getGrammar());
     }
 
     /**

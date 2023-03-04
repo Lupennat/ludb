@@ -1,6 +1,8 @@
 import Expression from '../query/expression';
 import Grammar from '../query/grammars/grammar';
 import {
+    addslashes,
+    beforeLast,
     causedByConcurrencyError,
     causedByLostConnection,
     getMessagesFromError,
@@ -75,5 +77,23 @@ describe('Utils', () => {
         // @ts-expect-error simulate aggregate error
         error.errors = [new Error('here deadlock detected go')];
         expect(causedByConcurrencyError(error)).toBeTruthy();
+    });
+
+    it('Works Before Last', () => {
+        expect(beforeLast('test', 'nope')).toBe('test');
+        expect(beforeLast('test', '')).toBe('test');
+        expect(beforeLast('testBeforeSearch', 'Search')).toBe('testBefore');
+        expect(beforeLast('testBeforeLastSearchTerminateHereSearch', 'Search')).toBe(
+            'testBeforeLastSearchTerminateHere'
+        );
+    });
+
+    it('Works Add Slashes', () => {
+        expect(addslashes("kevin's birthday")).toBe("kevin\\'s birthday");
+        expect(addslashes('"quoted"')).toBe('\\"quoted\\"');
+        expect(addslashes('this\\backslash')).toBe('this\\\\backslash');
+        expect(addslashes('\0')).toBe('\\0');
+        expect(addslashes('\u0000')).toBe('\\0');
+        expect(addslashes('\x00')).toBe('\\0');
     });
 });

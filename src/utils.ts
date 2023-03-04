@@ -1,7 +1,7 @@
 import { TypedBinding } from 'lupdo';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
-import { Arrayable } from './types/query/builder';
+import { Arrayable, Stringable } from './types/query/builder';
 import GrammarI from './types/query/grammar';
 
 export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) => any {
@@ -164,4 +164,53 @@ export function isPrimitiveObject(value: any): boolean {
  */
 export function isArrayable<T>(value: any): value is Arrayable<T> {
     return typeof value === 'object' && 'toArray' in value && typeof value.toArray === 'function';
+}
+
+/**
+ * Determine if the value is Stringable
+ */
+export function isStringable(value: any): value is Stringable {
+    return typeof value === 'string' || isExpression(value);
+}
+
+/**
+ * Determine if the value is Expression
+ */
+export function isExpression(value: any): value is ExpressionContract {
+    return typeof value === 'object' && value instanceof ExpressionContract;
+}
+
+/**
+ * Get the portion of a string before the last occurrence of a given value.
+ */
+export function beforeLast(subject: string, search: string): string {
+    if (search === '') {
+        return subject;
+    }
+
+    const pos = subject.lastIndexOf(search);
+
+    if (pos === -1) {
+        return subject;
+    }
+
+    return subject.slice(0, pos);
+}
+
+export function addslashes(str: string): string {
+    return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
+}
+
+/**
+ * Parse the Postgres "search_path" configuration value into an array.
+ */
+export function parseSearchPath(searchPath: string | string[]): string[] {
+    if (typeof searchPath === 'string') {
+        const regex = new RegExp(/[^\s,"\']+/, 'g');
+        return [...searchPath.matchAll(regex)].map(match => {
+            return trimChar(match[0], '\'"');
+        });
+    } else {
+        return searchPath.map(schema => trimChar(schema, '\'"'));
+    }
 }

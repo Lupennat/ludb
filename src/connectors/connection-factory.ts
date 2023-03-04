@@ -50,8 +50,9 @@ class ConnectionFactory {
      */
     protected createSingleConnection(config: DriverFLattedConfig): DriverConnectionI {
         const pdo = this.createPdoResolver(config);
+        const schemaPdo = this.createPdoSchemaResolver(config);
 
-        return this.createConnection(config.driver, pdo, config, config.database, config.prefix);
+        return this.createConnection(config.driver, pdo, schemaPdo, config, config.database, config.prefix);
     }
 
     /**xx
@@ -117,7 +118,18 @@ class ConnectionFactory {
     }
 
     /**
-     * Create a new Closure that resolves to a PDO instance.
+     * Create a new PDO instance for Schema.
+     */
+    protected createPdoSchemaResolver(config: DriverFLattedConfig): Pdo {
+        return this.createConnector(config).connect(
+            Object.assign({}, config, {
+                pool: { min: 0, max: 1 }
+            })
+        );
+    }
+
+    /**
+     * Create a new PDO instance.
      */
     protected createPdoResolver(config: DriverFLattedConfig): Pdo {
         return this.createConnector(config).connect(config);
@@ -160,6 +172,7 @@ class ConnectionFactory {
     protected createConnection(
         driver: string,
         connection: Pdo,
+        schemaConnection: Pdo,
         config: DriverFLattedConfig,
         database: string,
         prefix: string
@@ -167,19 +180,19 @@ class ConnectionFactory {
         const resolver = Connection.getResolver(driver);
 
         if (resolver !== null) {
-            return resolver(connection, config, database, prefix);
+            return resolver(connection, schemaConnection, config, database, prefix);
         }
 
         switch (driver) {
             case 'mysql':
             case 'mariadb':
-                return new MySqlConnection(connection, config, database, prefix);
+                return new MySqlConnection(connection, schemaConnection, config, database, prefix);
             case 'pgsql':
-                return new PostgresConnection(connection, config, database, prefix);
+                return new PostgresConnection(connection, schemaConnection, config, database, prefix);
             case 'sqlite':
-                return new SQLiteConnection(connection, config, database, prefix);
+                return new SQLiteConnection(connection, schemaConnection, config, database, prefix);
             case 'sqlsrv':
-                return new SqlServerConnection(connection, config, database, prefix);
+                return new SqlServerConnection(connection, schemaConnection, config, database, prefix);
             default:
                 throw new Error(`Unsupported driver [${config.driver}].`);
         }

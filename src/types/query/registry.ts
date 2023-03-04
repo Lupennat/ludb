@@ -192,7 +192,7 @@ export interface BindingTypes {
     unionOrder: Binding[];
 }
 
-export default interface Registry {
+export default interface RegistryI {
     /**
      * Whether to use write pdo for the select.
      */

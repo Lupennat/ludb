@@ -3,13 +3,19 @@ import { EventEmitter } from 'stream';
 import { bindTo } from '../../bindings';
 import Connection from '../../connections/connection';
 import ConnectionSession from '../../connections/connection-session';
+import MySqlConnection from '../../connections/mysql-connection';
+import PostgresConnection from '../../connections/postgres-connection';
+import SQLiteConnection from '../../connections/sqlite-connection';
+import SqlServerConnection from '../../connections/sqlserver-connection';
 import QueryExecuted from '../../events/query-executed';
 import Builder from '../../query/builder';
 import Raw from '../../query/expression';
 import Grammar from '../../query/grammars/grammar';
-import Processor from '../../query/processors/processor';
+
+import SchemaBuilder from '../../schema/builders/builder';
+import SchemaGrammar from '../../schema/grammars/grammar';
 import { FlattedConnectionConfig } from '../../types/config';
-import { getConnection, pdo } from '../fixtures/mocked';
+import { getConnection, pdo, schemaPdo } from '../fixtures/mocked';
 
 describe('Connection', () => {
     afterAll(async () => {
@@ -19,18 +25,27 @@ describe('Connection', () => {
     it('Works Resolver', () => {
         const resolver = (
             pdo: Pdo,
+            schemaPdo: Pdo,
             config: FlattedConnectionConfig,
             database: string,
             tablePrefix: string
         ): Connection => {
-            return new Connection(pdo, config, database, tablePrefix);
+            return new Connection(pdo, schemaPdo, config, database, tablePrefix);
         };
         Connection.resolverFor('driver', resolver);
         expect(Connection.getResolver('driver')).toEqual(resolver);
     });
 
     it('Works Session', () => {
-        expect(getConnection().session()).toBeInstanceOf(ConnectionSession);
+        const session = getConnection().session();
+        expect(session).toBeInstanceOf(ConnectionSession);
+        expect(session.isSchema()).toBeFalsy();
+    });
+
+    it('Works Session Schema', () => {
+        const schemaSession = getConnection().sessionSchema();
+        expect(schemaSession).toBeInstanceOf(ConnectionSession);
+        expect(schemaSession.isSchema()).toBeTruthy();
     });
 
     it('Works Query Grammar', () => {
@@ -45,16 +60,58 @@ describe('Connection', () => {
         expect(connection.getQueryGrammar()).not.toBeInstanceOf(TestGrammar);
     });
 
-    it('Works Post Processor', () => {
+    it('Works Schema Grammar', () => {
         const connection = getConnection();
-        class TestProcessor extends Processor {}
-        expect(connection.getPostProcessor()).toBeInstanceOf(Processor);
-        expect(connection.getPostProcessor()).not.toBeInstanceOf(TestProcessor);
-        connection.setPostProcessor(new TestProcessor());
-        expect(connection.getPostProcessor()).toBeInstanceOf(TestProcessor);
-        connection.useDefaultPostProcessor();
-        expect(connection.getPostProcessor()).toBeInstanceOf(Processor);
-        expect(connection.getPostProcessor()).not.toBeInstanceOf(TestProcessor);
+        class TestGrammar extends SchemaGrammar {}
+        expect(connection.getSchemaGrammar()).toBeInstanceOf(SchemaGrammar);
+        expect(connection.getSchemaGrammar()).not.toBeInstanceOf(TestGrammar);
+        connection.setSchemaGrammar(new TestGrammar());
+        expect(connection.getSchemaGrammar()).toBeInstanceOf(TestGrammar);
+        connection.useDefaultSchemaGrammar();
+        expect(connection.getSchemaGrammar()).toBeInstanceOf(SchemaGrammar);
+        expect(connection.getSchemaGrammar()).not.toBeInstanceOf(TestGrammar);
+    });
+
+    it('Works Schema Builder', () => {
+        const connection = getConnection();
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
+    });
+
+    it('Works Schema Builder', () => {
+        let connection = getConnection();
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
+        connection = new MySqlConnection(
+            pdo,
+            schemaPdo,
+            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
+            '',
+            ''
+        );
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
+        connection = new PostgresConnection(
+            pdo,
+            schemaPdo,
+            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
+            '',
+            ''
+        );
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
+        connection = new SQLiteConnection(
+            pdo,
+            schemaPdo,
+            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
+            '',
+            ''
+        );
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
+        connection = new SqlServerConnection(
+            pdo,
+            schemaPdo,
+            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
+            '',
+            ''
+        );
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
     });
 
     it('Works Event Dispatcher', () => {
@@ -132,6 +189,13 @@ describe('Connection', () => {
         expect(connection.getReadPdo()).not.toEqual(pdo);
         expect(connection.getPdo()).toEqual(pdo);
         expect(connection.getPdo()).not.toEqual(readPdo);
+    });
+
+    it('Works Schema Pdo', () => {
+        const connection = getConnection();
+        const pdo = new Pdo('fake', {}, {}, {});
+        connection.setSchemaPdo(pdo);
+        expect(connection.getSchemaPdo()).toEqual(pdo);
     });
 
     it('Works Get Name', () => {
@@ -247,6 +311,15 @@ describe('Connection', () => {
         const spiedSession = jest.spyOn(session, 'select');
         await connection.select('select * from users', [], false);
         expect(spiedSession).toBeCalledWith('select * from users', [], false);
+    });
+
+    it('Works Select Column', async () => {
+        const connection = getConnection();
+        const session = new ConnectionSession(connection);
+        jest.spyOn(connection, 'session').mockReturnValue(session);
+        const spiedSession = jest.spyOn(session, 'selectColumn');
+        await connection.selectColumn(0, 'select * from users', [], false);
+        expect(spiedSession).toBeCalledWith(0, 'select * from users', [], false);
     });
 
     it('Works Select From Write Connection', async () => {

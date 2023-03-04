@@ -1,6 +1,5 @@
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { ConnectionSessionI } from '../types/connection';
-import ProcessorI from '../types/processor';
 import {
     Arrayable,
     BetweenColumnsTuple,
@@ -1917,11 +1916,6 @@ abstract class BuilderContract {
      * Get the database connection instance.
      */
     public abstract getConnection(): ConnectionSessionI;
-
-    /**
-     * Get the database query processor instance.
-     */
-    public abstract getProcessor(): ProcessorI;
 
     /**
      * Get the query grammar instance.

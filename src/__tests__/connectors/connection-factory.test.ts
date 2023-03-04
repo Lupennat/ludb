@@ -8,7 +8,7 @@ import ConnectionFactory from '../../connectors/connection-factory';
 import Connector from '../../connectors/connector';
 import DatabaseManager from '../../database-manager';
 import { mariaConfig, mysqlConfig, postgresConfig, sqliteConfig, sqlserverConfig } from '../fixtures/config';
-import { MockedFactory, pdo } from '../fixtures/mocked';
+import { MockedFactory, pdo, schemaPdo } from '../fixtures/mocked';
 
 describe('Connection Factory', () => {
     const db = new DatabaseManager();
@@ -67,6 +67,7 @@ describe('Connection Factory', () => {
 
     afterAll(async () => {
         await pdo.disconnect();
+        await schemaPdo.disconnect();
     });
 
     it('Works Connection Can Be Created', () => {
@@ -107,6 +108,7 @@ describe('Connection Factory', () => {
         new MockedFactory().createConnection(
             'foo',
             pdo,
+            schemaPdo,
             { driver: 'foo', name: 'foo', database: '', prefix: '' },
             '',
             ''
@@ -119,6 +121,7 @@ describe('Connection Factory', () => {
             new MockedFactory().createConnection(
                 'baz',
                 pdo,
+                schemaPdo,
                 { driver: 'baz', name: 'baz', database: '', prefix: '' },
                 '',
                 ''

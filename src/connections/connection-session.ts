@@ -5,6 +5,7 @@ import {
     PdoTransactionI,
     PdoTransactionPreparedStatementI
 } from 'lupdo';
+import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { EventEmitter } from 'stream';
 import DeadlockError from '../errors/deadlock-error';
@@ -25,9 +26,9 @@ import DriverConnectionI, {
     PretendingCallback,
     TransactionCallback
 } from '../types/connection';
-import ProcessorI from '../types/processor';
 import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
+import SchemaGrammarI from '../types/schema/grammar';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
 export type RunCallback<T> = (query: string, bindings: Binding[]) => Promise<T>;
@@ -74,7 +75,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Create a new connection session instance.
      */
-    constructor(protected driverConnection: DriverConnectionI) {}
+    constructor(protected driverConnection: DriverConnectionI, protected isSchemaConnection = false) {}
 
     /**
      * Begin a fluent query against a database table.
@@ -87,7 +88,7 @@ class ConnectionSession implements ConnectionSessionI {
      * Get a new query builder instance.
      */
     public query(): BuilderI {
-        return new Builder(this, this.getQueryGrammar(), this.getPostProcessor());
+        return new Builder(this, this.getQueryGrammar());
     }
 
     /**
@@ -151,6 +152,37 @@ class ConnectionSession implements ConnectionSessionI {
             }
 
             return statement.fetchDictionary<T>().all();
+        });
+    }
+
+    /**
+     * Run a select statement against the database.
+     */
+    public async selectColumn<T extends PdoColumnValue>(
+        column: number,
+        query: string,
+        bindings: Binding[] = [],
+        useReadPdo?: boolean
+    ): Promise<T[]> {
+        return await this.run<T[]>(query, bindings, async (query, bindings) => {
+            if (this.pretending()) {
+                return [];
+            }
+
+            // For select statements, we'll simply execute the query and return an array
+            // of the database result set. Each element in the array will be a single
+            // row from the database table, and will either be an array or objects.
+            const statement = this.prepared(await this.getPdoForSelect(useReadPdo).prepare(query));
+
+            this.bindValues(statement, this.prepareBindings(bindings));
+
+            await statement.execute();
+
+            if ('close' in statement && typeof statement.close === 'function') {
+                await statement.close();
+            }
+
+            return statement.fetchColumn<T>(column).all();
         });
     }
 
@@ -835,7 +867,14 @@ class ConnectionSession implements ConnectionSessionI {
      * Ensure using Pdo
      */
     protected getEnsuredPdo(): Pdo {
-        return this.driverConnection.getPdo();
+        return this.isSchemaConnection ? this.getSchemaPdo() : this.driverConnection.getPdo();
+    }
+
+    /**
+     * Get the current Schema PDO connection.
+     */
+    public getSchemaPdo(): Pdo {
+        return this.driverConnection.getSchemaPdo();
     }
 
     /**
@@ -853,7 +892,7 @@ class ConnectionSession implements ConnectionSessionI {
             return this.getPdo();
         }
 
-        return this.driverConnection.getReadPdo();
+        return this.isSchemaConnection ? this.getSchemaPdo() : this.driverConnection.getReadPdo();
     }
 
     /**
@@ -887,6 +926,13 @@ class ConnectionSession implements ConnectionSessionI {
     }
 
     /**
+     * Detect if session is for Schema Builder
+     */
+    public isSchema(): boolean {
+        return this.isSchemaConnection;
+    }
+
+    /**
      * Get the PDO driver name.
      */
     public getDriverName(): string {
@@ -894,17 +940,17 @@ class ConnectionSession implements ConnectionSessionI {
     }
 
     /**
+     * Get the schema grammar used by the connection.
+     */
+    public getSchemaGrammar(): SchemaGrammarI {
+        return this.driverConnection.getSchemaGrammar();
+    }
+
+    /**
      * Get the query grammar used by the connection.
      */
     public getQueryGrammar(): GrammarI {
         return this.driverConnection.getQueryGrammar();
-    }
-
-    /**
-     * Get the query post processor used by the connection.
-     */
-    public getPostProcessor(): ProcessorI {
-        return this.driverConnection.getPostProcessor();
     }
 
     /**
@@ -926,6 +972,13 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public getTablePrefix(): string {
         return this.driverConnection.getTablePrefix();
+    }
+
+    /**
+     * Get the Driver Connection of current session
+     */
+    public getDriverConnection(): DriverConnectionI {
+        return this.driverConnection;
     }
 }
 

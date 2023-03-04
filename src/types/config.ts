@@ -254,6 +254,10 @@ export interface PostgresConnectionOptions extends ConnectionOptions {
      */
     schema?: string;
     /**
+     * exclude from drop tables
+     */
+    dont_drop?: string[];
+    /**
      * application name
      */
     application_name?: string;

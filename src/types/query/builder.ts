@@ -3,7 +3,6 @@ import BuilderContract from '../../query/builder-contract';
 
 import GrammarI from '../base-grammar';
 import { ConnectionSessionI } from '../connection';
-import ProcessorI from '../processor';
 
 import ExpressionContract from '../../query/expression-contract';
 import RegistryI, { BindingTypes } from './registry';
@@ -59,11 +58,7 @@ export interface Arrayable<Item> {
     toArray(): Item[];
 }
 
-export type BuilderConstructor = new (
-    connection: ConnectionSessionI,
-    grammar?: GrammarI,
-    processor?: ProcessorI
-) => BuilderI;
+export type BuilderConstructor = new (connection: ConnectionSessionI, grammar?: GrammarI) => BuilderI;
 
 export default interface BuilderI extends BuilderContract {
     /**

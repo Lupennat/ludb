@@ -2,8 +2,6 @@ import Grammar from '../../grammar';
 import Builder from '../../query/builder';
 import Raw from '../../query/expression';
 import MySqlGrammar from '../../query/grammars/mysql-grammar';
-import MySqlProcessor from '../../query/processors/mysql-processor';
-import Processor from '../../query/processors/processor';
 import BuilderI from '../../types/query/builder';
 import { WhereBasic } from '../../types/query/registry';
 import { getBuilder, getConnection, getJoin, getMySqlBuilder, pdo } from '../fixtures/mocked';
@@ -22,17 +20,6 @@ describe('Query Builder Utilities', () => {
         builder = new Builder(session, new MySqlGrammar());
         expect(builder.getGrammar()).toBeInstanceOf(Grammar);
         expect(spiedGrammar).toBeCalledTimes(1);
-    });
-
-    it('Works Builder Get Processor From Connection Session', () => {
-        const session = getConnection().session();
-        const spiedProcessor = jest.spyOn(session, 'getPostProcessor');
-        let builder = new Builder(session);
-        expect(builder.getProcessor()).toBeInstanceOf(Processor);
-        expect(spiedProcessor).toBeCalledTimes(1);
-        builder = new Builder(session, new MySqlGrammar(), new MySqlProcessor());
-        expect(builder.getProcessor()).toBeInstanceOf(MySqlProcessor);
-        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works When Callback', () => {

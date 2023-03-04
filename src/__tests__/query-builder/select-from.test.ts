@@ -3,7 +3,6 @@ import {
     getBuilder,
     getBuilderAlternative,
     getMySqlBuilder,
-    getMySqlBuilderWithProcessor,
     getPostgresBuilder,
     getSQLiteBuilder,
     getSqlServerBuilder,
@@ -34,7 +33,7 @@ describe('Query Builder Select-From', () => {
 
     it('Works Basic Select With Get Columns', async () => {
         const builder = getBuilder();
-        const spyProcess = jest.spyOn(builder.getProcessor(), 'processSelect');
+
         jest.spyOn(builder.getConnection(), 'select')
             .mockImplementationOnce(async sql => {
                 expect('select * from "users"').toBe(sql);
@@ -60,18 +59,16 @@ describe('Query Builder Select-From', () => {
 
         expect('select * from "users"').toBe(builder.toSql());
         expect(builder.getRegistry().columns).toBeNull();
-
-        expect(spyProcess).toBeCalledTimes(3);
     });
 
     it('Works Basic Select User Write Pdo', async () => {
-        let builder = getMySqlBuilderWithProcessor();
+        let builder = getMySqlBuilder();
         let spyConnection = jest.spyOn(builder.getConnection(), 'select');
 
         await builder.useWritePdo().select('*').from('users').get();
         expect(spyConnection).toBeCalledWith('select * from `users`', [], false);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
 
         await builder.select('*').from('users').get();
@@ -264,14 +261,14 @@ describe('Query Builder Select-From', () => {
     });
 
     it('Works SelectWithLockUsesWritePdo', async () => {
-        let builder = getMySqlBuilderWithProcessor();
+        let builder = getMySqlBuilder();
         jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async (_a, _b, useReadPdo) => {
             expect(useReadPdo).toBeFalsy();
             return [];
         });
         await builder.select('*').from('foo').where('bar', '=', 'baz').lock().get();
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async (_a, _b, useReadPdo) => {
             expect(useReadPdo).toBeFalsy();
             return [];

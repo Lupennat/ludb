@@ -1,6 +1,6 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime, whereFulltext } from '../../types/query/registry';
-import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
+import { beforeLast, isPrimitiveBinding, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import Grammar from './grammar';
 
@@ -204,11 +204,7 @@ class PostgresGrammar extends Grammar {
         if (Number.isInteger(Number(lastSegment))) {
             index = Number(lastSegment);
         } else if (matches !== null) {
-            const found = lastSegment.indexOf(matches[0]);
-            if (found > 0) {
-                segments.push(lastSegment.slice(0, found));
-            }
-
+            segments.push(beforeLast(lastSegment, matches[0]));
             index = Number(matches[1]);
         }
 
@@ -557,18 +553,13 @@ class PostgresGrammar extends Grammar {
 
     /**
      * Parse the given JSON path attribute for array keys.
-
      */
     protected parseJsonPathArrayKeys(attribute: string): string[] {
         const regex = new RegExp(/(\[[^\]]+\])+$/, 'g');
         const parts = attribute.match(regex);
 
         if (parts !== null) {
-            let key = '';
-            const index = attribute.indexOf(parts[0]);
-            if (index > 0) {
-                key = attribute.slice(0, index);
-            }
+            const key = beforeLast(attribute, parts[0]);
             const keyRegex = new RegExp(/\[([^\]]+)\]/, 'g');
             const keys = [...parts[0].matchAll(keyRegex)];
             return (key !== '' ? [key] : []).concat(keys.map(key => key[1]));

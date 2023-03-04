@@ -2,7 +2,6 @@ import deepmerge from 'deepmerge';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { snakeCase } from 'snake-case';
 import { ConnectionSessionI } from '../types/connection';
-import ProcessorI from '../types/processor';
 import {
     Arrayable,
     BetweenColumnsTuple,
@@ -28,7 +27,7 @@ import {
 import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
 import RegistryI, { BindingTypes, Order, Where } from '../types/query/registry';
-import { isArrayable, isPrimitiveBinding, raw } from '../utils';
+import { isArrayable, isExpression, isPrimitiveBinding, isStringable, raw } from '../utils';
 import BuilderContract from './builder-contract';
 import ExpressionContract from './expression-contract';
 import IndexHint from './index-hint';
@@ -87,11 +86,7 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Create a new query builder instance.
      */
-    constructor(
-        protected connection: ConnectionSessionI,
-        protected grammar?: GrammarI,
-        protected processor?: ProcessorI
-    ) {
+    constructor(protected connection: ConnectionSessionI, protected grammar?: GrammarI) {
         super();
         this.registry = createRegistry();
     }
@@ -125,7 +120,7 @@ abstract class BaseBuilder extends BuilderContract {
         columns = (Array.isArray(columns) ? columns : [columns]).concat(otherColumns);
 
         for (const column of columns) {
-            if (this.isStringable(column)) {
+            if (isStringable(column)) {
                 this.registry.columns.push(column);
             } else {
                 for (const key in column) {
@@ -175,7 +170,7 @@ abstract class BaseBuilder extends BuilderContract {
      * Add a raw from clause to the query.
      */
     public fromRaw(expression: string | Stringable, bindings: Binding[] = []): this {
-        this.registry.from = this.isExpression(expression) ? expression : this.raw(expression);
+        this.registry.from = isExpression(expression) ? expression : this.raw(expression);
 
         this.addBinding(bindings, 'from');
 
@@ -207,7 +202,7 @@ abstract class BaseBuilder extends BuilderContract {
             return [query.toSql(), query.getBindings()];
         }
 
-        if (this.isStringable(query)) {
+        if (isStringable(query)) {
             return [this.getGrammar().getValue(query).toString(), []];
         }
 
@@ -237,7 +232,7 @@ abstract class BaseBuilder extends BuilderContract {
         columns = (Array.isArray(columns) ? columns : [columns]).concat(otherColumns);
 
         for (const column of columns) {
-            if (this.isStringable(column)) {
+            if (isStringable(column)) {
                 if (this.registry.columns == null) {
                     this.registry.columns = [];
                 }
@@ -973,7 +968,7 @@ abstract class BaseBuilder extends BuilderContract {
             not: not
         });
 
-        if (!this.isExpression(val)) {
+        if (!isExpression(val)) {
             this.addBinding(this.flattenValue(val), 'where');
         }
 
@@ -1195,7 +1190,7 @@ abstract class BaseBuilder extends BuilderContract {
             [second, operatorOrSecond] = [operatorOrSecond, '='];
         }
 
-        if (!this.isStringable(second)) {
+        if (!isStringable(second)) {
             throw new TypeError('Second Parameter must be string or Expression.');
         }
 
@@ -1797,7 +1792,7 @@ abstract class BaseBuilder extends BuilderContract {
             value = value.getDate();
         }
 
-        if (!this.isExpression(value)) {
+        if (!isExpression(value)) {
             value = isNaN(Number(value)) ? '00' : Number(value).toString().padStart(2, '0');
         }
 
@@ -1904,7 +1899,7 @@ abstract class BaseBuilder extends BuilderContract {
             value = value.getMonth() + 1;
         }
 
-        if (!this.isExpression(value)) {
+        if (!isExpression(value)) {
             value = isNaN(Number(value)) ? '00' : Number(value).toString().padStart(2, '0');
         }
 
@@ -2011,7 +2006,7 @@ abstract class BaseBuilder extends BuilderContract {
             value = value.getFullYear();
         }
 
-        if (!this.isExpression(value)) {
+        if (!isExpression(value)) {
             value = isNaN(Number(value)) ? '0000' : Number(value).toString().padStart(4, '0');
         }
 
@@ -2098,7 +2093,7 @@ abstract class BaseBuilder extends BuilderContract {
     ): this {
         this.registry.wheres.push({ type: type, column, operator, value, boolean, not });
 
-        if (!this.isExpression(value)) {
+        if (!isExpression(value)) {
             this.addBinding(value, 'where');
         }
 
@@ -2295,7 +2290,7 @@ abstract class BaseBuilder extends BuilderContract {
 
         this.registry.wheres.push({ type, column, value: value, boolean, not });
 
-        if (!this.isExpression(value)) {
+        if (!isExpression(value)) {
             this.addBinding(this.getGrammar().prepareBindingForJsonContains(value));
         }
 
@@ -2371,7 +2366,7 @@ abstract class BaseBuilder extends BuilderContract {
 
         this.registry.wheres.push({ type, column, operator, value, boolean, not });
 
-        if (!this.isExpression(value)) {
+        if (!isExpression(value)) {
             this.addBinding(Number(this.flattenValue(value)));
         }
 
@@ -2589,7 +2584,7 @@ abstract class BaseBuilder extends BuilderContract {
             not
         });
 
-        if (!this.isExpression(val)) {
+        if (!isExpression(val)) {
             this.addBinding(this.flattenValue(val), 'having');
         }
 
@@ -3379,7 +3374,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public async get<T = Dictionary>(columns: Stringable | Stringable[] = ['*']): Promise<T[]> {
         return await this.onceWithColumns<T>(Array.isArray(columns) ? columns : [columns], async () => {
-            return this.getProcessor().processSelect<T>(this, await this.runSelect<T>());
+            return await this.runSelect<T>();
         });
     }
 
@@ -3427,7 +3422,7 @@ abstract class BaseBuilder extends BuilderContract {
         // given columns / key. Once we have the results, we will be able to take
         // the results and get the exact data that was requested for the query.
         const queryResult = await this.onceWithColumns(key === null ? [column] : [column, key], async () => {
-            return this.getProcessor().processSelect(this, await this.runSelect());
+            return await this.runSelect();
         });
 
         if (queryResult.length === 0) {
@@ -4078,7 +4073,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public cleanBindings(bindings: Binding[]): NotExpressionBinding[] {
         return bindings
-            .filter((binding: Binding) => !this.isExpression(binding))
+            .filter((binding: Binding) => !isExpression(binding))
             .map((binding: Binding) => this.castBinding(binding)) as NotExpressionBinding[];
     }
 
@@ -4110,13 +4105,6 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public getConnection(): ConnectionSessionI {
         return this.connection;
-    }
-
-    /**
-     * Get the database query processor instance.
-     */
-    public getProcessor(): ProcessorI {
-        return this.processor ?? this.connection.getPostProcessor();
     }
 
     /**
@@ -4157,24 +4145,10 @@ abstract class BaseBuilder extends BuilderContract {
     }
 
     /**
-     * Determine if the value is Stringable
-     */
-    protected isStringable(parameter: any): parameter is Stringable {
-        return typeof parameter === 'string' || this.isExpression(parameter);
-    }
-
-    /**
-     * Determine if the value is Expression
-     */
-    protected isExpression(parameter: any): parameter is ExpressionContract {
-        return typeof parameter === 'object' && parameter instanceof ExpressionContract;
-    }
-
-    /**
      * Determine if the value is a Where Object
      */
     protected isWhereObject(parameter: any): parameter is WhereObject {
-        return typeof parameter === 'object' && !this.isBuilderContract(parameter) && !this.isExpression(parameter);
+        return typeof parameter === 'object' && !this.isBuilderContract(parameter) && !isExpression(parameter);
     }
 
     public abstract clone(): BuilderContract;

@@ -1,7 +1,6 @@
 import MySqlGrammar from '../query/grammars/mysql-grammar';
-import MySqlProcessor from '../query/processors/mysql-processor';
-import ProcessorI from '../types/processor';
-import GrammarI from '../types/query/grammar';
+import SchemaBuilder from '../schema/builders/mysql-builder';
+import SchemaGrammar from '../schema/grammars/mysql-grammar';
 import Connection from './connection';
 
 class MySqlConnection extends Connection {
@@ -15,33 +14,23 @@ class MySqlConnection extends Connection {
     /**
      * Get the default query grammar instance.
      */
-    protected getDefaultQueryGrammar(): GrammarI {
+    protected getDefaultQueryGrammar(): MySqlGrammar {
         return this.withTablePrefix(new MySqlGrammar());
     }
 
-    // /**
-    //  * Get a schema builder instance for the connection.
-    //  *
-    //  * @return \Illuminate\Database\Schema\MySqlBuilder
-    //  */
-    // public function getSchemaBuilder()
-    // {
-    //     if (is_null($this->schemaGrammar)) {
-    //         $this->useDefaultSchemaGrammar();
-    //     }
-
-    //     return new MySqlBuilder($this);
-    // }
+    /**
+     * Get a schema builder instance for the connection.
+     */
+    public getSchemaBuilder(): SchemaBuilder {
+        return new SchemaBuilder(this.sessionSchema());
+    }
 
     /**
-    //  * Get the default schema grammar instance.
-    //  *
-    //  * @return \Illuminate\Database\Schema\Grammars\MySqlGrammar
-    //  */
-    // protected function getDefaultSchemaGrammar()
-    // {
-    //     return $this->withTablePrefix(new SchemaGrammar);
-    // }
+     * Get the default schema grammar instance.
+     */
+    protected getDefaultSchemaGrammar(): SchemaGrammar {
+        return new SchemaGrammar();
+    }
 
     // /**
     //  * Get the schema state for the connection.
@@ -54,13 +43,6 @@ class MySqlConnection extends Connection {
     // {
     //     return new MySqlSchemaState($this, $files, $processFactory);
     // }
-
-    /**
-     * Get the default post processor instance.
-     */
-    protected getDefaultPostProcessor(): ProcessorI {
-        return new MySqlProcessor();
-    }
 }
 
 export default MySqlConnection;

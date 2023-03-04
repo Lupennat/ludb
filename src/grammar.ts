@@ -3,6 +3,7 @@
 import ExpressionContract from './query/expression-contract';
 import BaseGrammarI from './types/base-grammar';
 import { Binding, Stringable } from './types/query/builder';
+import { beforeLast, isExpression } from './utils';
 
 abstract class Grammar implements BaseGrammarI {
     /**
@@ -93,6 +94,51 @@ abstract class Grammar implements BaseGrammarI {
     }
 
     /**
+     * Split the given JSON selector into the field and the optional path and wrap them separately.
+     */
+    protected wrapJsonFieldAndPath(column: Stringable): [string, string] {
+        const [first, ...rest] = this.getValue(column).toString().split('->');
+
+        const field = this.wrap(first);
+        const path = rest.length > 0 ? `, ${this.wrapJsonPath(rest.join('->'), '->')}` : '';
+
+        return [field, path];
+    }
+
+    /**
+     * Wrap the given JSON path.
+     */
+    protected wrapJsonPath(value: string, delimiter: string): string {
+        value = value.replace(new RegExp("([\\\\]+)?\\'", 'g'), "''");
+
+        const jsonPath = value
+            .split(delimiter)
+            .map(segment => this.wrapJsonPathSegment(segment))
+            .join('.');
+        return `'$${jsonPath.startsWith('[') ? '' : '.'}${jsonPath}'`;
+    }
+
+    /**
+     * Wrap the given JSON path segment.
+     */
+    protected wrapJsonPathSegment(segment: string): string {
+        const regex = new RegExp(/(\[[^\]]+\])+$/, 'g');
+        const parts = segment.match(regex);
+
+        if (parts !== null) {
+            const key = beforeLast(segment, parts[0]);
+
+            if (key !== '') {
+                return `"${key}"${parts[0]}`;
+            }
+
+            return parts[0];
+        }
+
+        return `"${segment}"`;
+    }
+
+    /**
      * Wrap the given JSON selector.
      */
     protected wrapJsonSelector(_value: Stringable): string {
@@ -142,7 +188,7 @@ abstract class Grammar implements BaseGrammarI {
      * Determine if the given value is a raw expression.
      */
     public isExpression(value: any): value is ExpressionContract {
-        return typeof value === 'object' && value instanceof ExpressionContract;
+        return isExpression(value);
     }
 
     /**

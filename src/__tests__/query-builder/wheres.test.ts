@@ -5,9 +5,7 @@ import {
     ObjectArrayable,
     getBuilder,
     getMySqlBuilder,
-    getMySqlBuilderWithProcessor,
     getPostgresBuilder,
-    getPostgresBuilderWithProcessor,
     getSQLiteBuilder,
     getSqlServerBuilder,
     pdo
@@ -951,47 +949,47 @@ describe('Query Builder Wheres', () => {
     });
 
     it('Works Where Fulltext MySql', () => {
-        let builder = getMySqlBuilderWithProcessor();
+        let builder = getMySqlBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World');
         expect(builder.toSql()).toBe('select * from `users` where match (`body`) against (? in natural language mode)');
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereFulltextNot('body', 'Hello World');
         expect(builder.toSql()).toBe(
             'select * from `users` where not match (`body`) against (? in natural language mode)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').where('name', 'Claudio').orWhereFulltext('body', 'Hello World');
         expect(builder.toSql()).toBe(
             'select * from `users` where `name` = ? or match (`body`) against (? in natural language mode)'
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').where('name', 'Claudio').orWhereFulltextNot('body', 'Hello World');
         expect(builder.toSql()).toBe(
             'select * from `users` where `name` = ? or not match (`body`) against (? in natural language mode)'
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { expanded: true });
         expect(builder.toSql()).toBe(
             'select * from `users` where match (`body`) against (? in natural language mode with query expansion)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereFulltextNot('body', 'Hello World', { expanded: true });
         expect(builder.toSql()).toBe(
             'select * from `users` where not match (`body`) against (? in natural language mode with query expansion)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -1002,7 +1000,7 @@ describe('Query Builder Wheres', () => {
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -1013,17 +1011,17 @@ describe('Query Builder Wheres', () => {
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereFulltext('body', '+Hello -World', { mode: 'boolean' });
         expect(builder.toSql()).toBe('select * from `users` where match (`body`) against (? in boolean mode)');
         expect(builder.getBindings()).toEqual(['+Hello -World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereFulltext('body', '+Hello -World', { mode: 'boolean', expanded: true });
         expect(builder.toSql()).toBe('select * from `users` where match (`body`) against (? in boolean mode)');
         expect(builder.getBindings()).toEqual(['+Hello -World']);
 
-        builder = getMySqlBuilderWithProcessor();
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereFulltext(['body', 'title'], 'Car,Plane');
         expect(builder.toSql()).toBe(
             'select * from `users` where match (`body`, `title`) against (? in natural language mode)'
@@ -1032,49 +1030,49 @@ describe('Query Builder Wheres', () => {
     });
 
     it('Works Where Fulltext Postgres', () => {
-        let builder = getPostgresBuilderWithProcessor();
+        let builder = getPostgresBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World');
         expect(builder.toSql()).toBe(
             'select * from "users" where (to_tsvector(\'english\', "body")) @@ plainto_tsquery(\'english\', ?)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getPostgresBuilderWithProcessor();
+        builder = getPostgresBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { language: 'simple' });
         expect(builder.toSql()).toBe(
             'select * from "users" where (to_tsvector(\'simple\', "body")) @@ plainto_tsquery(\'simple\', ?)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getPostgresBuilderWithProcessor();
+        builder = getPostgresBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { mode: 'plain' });
         expect(builder.toSql()).toBe(
             'select * from "users" where (to_tsvector(\'english\', "body")) @@ plainto_tsquery(\'english\', ?)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getPostgresBuilderWithProcessor();
+        builder = getPostgresBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { mode: 'phrase' });
         expect(builder.toSql()).toBe(
             'select * from "users" where (to_tsvector(\'english\', "body")) @@ phraseto_tsquery(\'english\', ?)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getPostgresBuilderWithProcessor();
+        builder = getPostgresBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { mode: 'websearch' });
         expect(builder.toSql()).toBe(
             'select * from "users" where (to_tsvector(\'english\', "body")) @@ websearch_to_tsquery(\'english\', ?)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getPostgresBuilderWithProcessor();
+        builder = getPostgresBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { language: 'notexist', mode: 'plain' });
         expect(builder.toSql()).toBe(
             'select * from "users" where (to_tsvector(\'english\', "body")) @@ plainto_tsquery(\'english\', ?)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getPostgresBuilderWithProcessor();
+        builder = getPostgresBuilder();
         builder.select('*').from('users').whereFulltext(['body', 'title'], 'Car,Plane');
         expect(builder.toSql()).toBe(
             'select * from "users" where (to_tsvector(\'english\', "body") || to_tsvector(\'english\', "title")) @@ plainto_tsquery(\'english\', ?)'

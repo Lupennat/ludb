@@ -1,40 +1,29 @@
 import PostgresGrammar from '../query/grammars/postgres-grammar';
-import PostgresProcessor from '../query/processors/postgres-processor';
-import ProcessorI from '../types/processor';
-import GrammarI from '../types/query/grammar';
+import SchemaBuilder from '../schema/builders/postgres-builder';
+import SchemaGrammar from '../schema/grammars/postgres-grammar';
 import Connection from './connection';
 
 class PostgresConnection extends Connection {
     /**
      * Get the default query grammar instance.
      */
-    protected getDefaultQueryGrammar(): GrammarI {
+    protected getDefaultQueryGrammar(): PostgresGrammar {
         return this.withTablePrefix(new PostgresGrammar());
     }
 
-    // /**
-    //  * Get a schema builder instance for the connection.
-    //  *
-    //  * @return \Illuminate\Database\Schema\PostgresBuilder
-    //  */
-    // public function getSchemaBuilder()
-    // {
-    //     if (is_null($this->schemaGrammar)) {
-    //         $this->useDefaultSchemaGrammar();
-    //     }
+    /**
+     * Get a schema builder instance for the connection.
+     */
+    public getSchemaBuilder(): SchemaBuilder {
+        return new SchemaBuilder(this.sessionSchema());
+    }
 
-    //     return new PostgresBuilder($this);
-    // }
-
-    // /**
-    //  * Get the default schema grammar instance.
-    //  *
-    //  * @return \Illuminate\Database\Schema\Grammars\PostgresGrammar
-    //  */
-    // protected function getDefaultSchemaGrammar()
-    // {
-    //     return $this->withTablePrefix(new SchemaGrammar);
-    // }
+    /**
+     * Get the default schema grammar instance.
+     */
+    protected getDefaultSchemaGrammar(): SchemaGrammar {
+        return new SchemaGrammar();
+    }
 
     // /**
     //  * Get the schema state for the connection.
@@ -47,13 +36,6 @@ class PostgresConnection extends Connection {
     // {
     //     return new PostgresSchemaState($this, $files, $processFactory);
     // }
-
-    /**
-     * Get the default post processor instance.
-     */
-    protected getDefaultPostProcessor(): ProcessorI {
-        return new PostgresProcessor();
-    }
 }
 
 export default PostgresConnection;

@@ -11,10 +11,6 @@ describe('Query Builder Havings', () => {
             'select count(*) as aggregate from (select (select `count(*)` from `videos` where `posts`.`id` = `videos`.`post_id`) as `videos_count` from `posts` having `videos_count` > ?) as `temp_table`';
         const builder = getMySqlBuilder();
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
-        });
-
         const spyConnection = jest.spyOn(builder.getConnection(), 'select');
         const spyConnectionDatabase = jest.spyOn(builder.getConnection(), 'getDatabaseName');
 
@@ -340,10 +336,6 @@ describe('Query Builder Havings', () => {
         let executedQuery =
             'select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > ?';
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
-        });
-
         let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [
@@ -370,10 +362,6 @@ describe('Query Builder Havings', () => {
         builder = getBuilder();
         executedQuery =
             'select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > 3';
-
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
-        });
 
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {

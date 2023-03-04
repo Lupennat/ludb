@@ -1,15 +1,18 @@
 import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStatementI } from 'lupdo';
+import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import QueryExecuted from '../events/query-executed';
 import BuilderContract from '../query/builder-contract';
 import { FlattedConnectionConfig, ReadWriteType } from './config';
-import ProcessorI from './processor';
 import { Binding, NotExpressionBinding, Stringable, SubQuery } from './query/builder';
 import GrammarI from './query/grammar';
+import SchemaBuilderI from './schema/builder';
+import SchemaGrammarI from './schema/grammar';
 
 export type ConnectionResolver = <T extends FlattedConnectionConfig>(
     pdo: Pdo,
+    schemaPdo: Pdo,
     config: T,
     database: string,
     tablePrefix: string
@@ -29,7 +32,7 @@ export interface LoggedQuery {
 }
 
 export default interface DriverConnectionI
-    extends Omit<ConnectionSessionI, 'getPdo' | 'getReadPdo' | 'transactionLevel' | 'commit' | 'rollBack'> {
+    extends Omit<ConnectionSessionI, 'isSchema' | 'transactionLevel' | 'commit' | 'rollBack' | 'getDriverConnection'> {
     /**
      * Get the current PDO connection.
      */
@@ -46,9 +49,14 @@ export default interface DriverConnectionI
     useDefaultQueryGrammar(): this;
 
     /**
-     * Start Connection session
+     * Start Connection session for Builder
      */
     session(): ConnectionSessionI;
+
+    /**
+     * Start Connection session for SchemaBuilder
+     */
+    sessionSchema(): ConnectionSessionI;
 
     /**
      * Reconnect to the database.
@@ -60,20 +68,15 @@ export default interface DriverConnectionI
      */
     disconnect(): Promise<void>;
 
-    //  /**
-    //   * Set the schema grammar to the default implementation.
-    //   */
-    //  useDefaultSchemaGrammar() :void
+    /**
+     * Set the schema grammar to the default implementation.
+     */
+    useDefaultSchemaGrammar(): this;
 
     /**
-     * Set the query post processor to the default implementation.
+     * Get a schema builder instance for the connection.
      */
-    useDefaultPostProcessor(): this;
-
-    //  /**
-    //   * Get a schema builder instance for the connection.
-    //   */
-    //  getSchemaBuilder() :SchemaBuilderI
+    getSchemaBuilder(): SchemaBuilderI;
 
     /**
      * Register a hook to be run just before a database query is executed.
@@ -84,6 +87,11 @@ export default interface DriverConnectionI
      * Register a database query listener with the connection.
      */
     listen(callback: QueryExecutedCallback): void;
+
+    /**
+     * Set the Schema PDO connection.
+     */
+    setSchemaPdo(pdo: Pdo): this;
 
     /**
      * Set the PDO connection.
@@ -100,20 +108,10 @@ export default interface DriverConnectionI
      */
     setQueryGrammar(grammar: GrammarI): this;
 
-    //  /**
-    //   * Get the schema grammar used by the connection.
-    //   */
-    //  getSchemaGrammar() :SchemaGrammarI
-
-    //  /**
-    //   * Set the schema grammar used by the connection.
-    //   */
-    //  setSchemaGrammar(grammar: SchemaGrammarI) :this
-
     /**
-     * Set the query post processor used by the connection.
+     * Set the schema grammar used by the connection.
      */
-    setPostProcessor(processor: ProcessorI): this;
+    setSchemaGrammar(grammar: SchemaGrammarI): this;
 
     /**
      * Set the event dispatcher instance on the connection.
@@ -176,6 +174,16 @@ export interface ConnectionSessionI {
      * Run a select statement against the database.
      */
     select<T = Dictionary>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T[]>;
+
+    /**
+     * Run a select statement against the database and get Column.
+     */
+    selectColumn<T extends PdoColumnValue>(
+        column: number,
+        query: string,
+        bindings?: Binding[],
+        useReadPdo?: boolean
+    ): Promise<T[]>;
 
     /**
      * Run a select statement against the database and returns a generator.
@@ -270,6 +278,11 @@ export interface ConnectionSessionI {
     prepareBindings(bindings: Binding[]): NotExpressionBinding[];
 
     /**
+     * Get the current Schema PDO connection.
+     */
+    getSchemaPdo(): Pdo;
+
+    /**
      * Get the current PDO connection.
      */
     getPdo(): Pdo | PdoTransactionI;
@@ -302,18 +315,24 @@ export interface ConnectionSessionI {
     getConfig<T>(option?: string, defaultValue?: T): T;
 
     /**
+     * Detect if session is for Schema Builder
+     */
+    isSchema(): boolean;
+
+    /**
      * Get the PDO driver name.
      */
     getDriverName(): string;
+
+    /**
+     * Get the schema grammar used by the connection.
+     */
+    getSchemaGrammar(): SchemaGrammarI;
+
     /**
      * Get the query grammar used by the connection.
      */
     getQueryGrammar(): GrammarI;
-
-    /**
-     * Get the query post processor used by the connection.
-     */
-    getPostProcessor(): ProcessorI;
 
     /**
      * Get the event dispatcher used by the connection.
@@ -329,4 +348,9 @@ export interface ConnectionSessionI {
      * Get the table prefix for the connection.
      */
     getTablePrefix(): string;
+
+    /**
+     * Get the Driver Connection of current session
+     */
+    getDriverConnection(): DriverConnectionI;
 }

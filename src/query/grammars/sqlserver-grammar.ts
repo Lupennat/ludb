@@ -1,6 +1,6 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime } from '../../types/query/registry';
-import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
+import { beforeLast, isPrimitiveBinding, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -161,11 +161,7 @@ class SqlServerGrammar extends Grammar {
         let key = '';
 
         if (matches !== null) {
-            const index = lastSegment.indexOf(matches[0]);
-            if (index > 0) {
-                segments.push(lastSegment.slice(0, index));
-            }
-
+            segments.push(beforeLast(lastSegment, matches[0]));
             key = matches[1];
         } else {
             key = `'${lastSegment.replace(/'/g, "''")}'`;

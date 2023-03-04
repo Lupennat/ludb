@@ -1,5 +1,5 @@
 import { ConnectionSessionI } from '../types/connection';
-import ProcessorI from '../types/processor';
+
 import BuilderI, {
     BuilderConstructor,
     ConditionBoolean,
@@ -18,17 +18,14 @@ import { cloneRegistry, cloneRegistryWithoutBindings, cloneRegistryWithoutProper
 
 class JoinClause extends BaseBuilder implements JoinClauseI {
     protected parentGrammar: GrammarI;
-    protected parentProcessor: ProcessorI;
     protected parentConnection: ConnectionSessionI;
     protected parentClass: BuilderConstructor;
 
     constructor(parentQuery: BuilderContract, public type: string, public table: string | ExpressionContract) {
         const connection = parentQuery.getConnection();
         const grammar = parentQuery.getGrammar();
-        const processor = parentQuery.getProcessor();
-        super(connection, grammar, processor);
+        super(connection, grammar);
         this.parentGrammar = grammar;
-        this.parentProcessor = processor;
         this.parentConnection = connection;
         this.parentClass = parentQuery.constructor as BuilderConstructor;
     }
@@ -106,7 +103,7 @@ class JoinClause extends BaseBuilder implements JoinClauseI {
      * Create a new parent query instance.
      */
     protected newParentQuery(): BuilderI {
-        return new this.parentClass(this.parentConnection, this.parentGrammar, this.parentProcessor);
+        return new this.parentClass(this.parentConnection, this.parentGrammar);
     }
 
     public clone(): JoinClauseI {

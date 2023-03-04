@@ -5,7 +5,7 @@ import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
 import { PostgresConfig } from '../types/config';
 import ConnectorI from '../types/connector';
-import { trimChar } from '../utils';
+import { parseSearchPath } from '../utils';
 import Connector from './connector';
 
 class PostgresConnector extends Connector implements ConnectorI {
@@ -111,21 +111,7 @@ class PostgresConnector extends Connector implements ConnectorI {
         const search = config.search_path ?? config.schema;
 
         if (search) {
-            await connection.query(`set search_path to ${this.quoteSearchPath(this.parseSearchPath(search))}`);
-        }
-    }
-
-    /**
-     * Parse the Postgres "search_path" configuration value into an array.
-     */
-    protected parseSearchPath(searchPath: string | string[]): string[] {
-        if (typeof searchPath === 'string') {
-            const regex = new RegExp(/[^\s,"\']+/, 'g');
-            return [...searchPath.matchAll(regex)].map(match => {
-                return trimChar(match[0], '\'"');
-            });
-        } else {
-            return searchPath.map(schema => trimChar(schema, '\'"'));
+            await connection.query(`set search_path to ${this.quoteSearchPath(parseSearchPath(search))}`);
         }
     }
 

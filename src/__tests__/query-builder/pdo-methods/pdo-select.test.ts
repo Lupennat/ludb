@@ -9,11 +9,6 @@ describe('Query Builder Pdo Methods Select', () => {
     it('Works Find Returns First Result By ID', async () => {
         const builder = getBuilder();
 
-        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
-
         const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [
@@ -27,8 +22,6 @@ describe('Query Builder Pdo Methods Select', () => {
         expect({ foo: 'bar' }).toEqual(results);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedConnection).toBeCalledWith('select * from "users" where "id" = ? limit 1', [1], true);
-        expect(spiedProcessor).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledWith(builder, [{ foo: 'bar' }]);
     });
 
     it('Works Find Or Returns First Result By ID', async () => {
@@ -62,10 +55,6 @@ describe('Query Builder Pdo Methods Select', () => {
 
     it('Works First Method Returns First Result', async () => {
         const builder = getBuilder();
-        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
 
         const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
@@ -80,19 +69,10 @@ describe('Query Builder Pdo Methods Select', () => {
         expect({ foo: 'bar' }).toEqual(results);
         expect(spiedConnection).toBeCalledTimes(1);
         expect(spiedConnection).toBeCalledWith('select * from "users" where "id" = ? limit 1', [1], true);
-        expect(spiedProcessor).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledWith(builder, [{ foo: 'bar' }]);
     });
 
     it('Works Sole Method Returns Only If Sole', async () => {
         let builder = getBuilder();
-        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }]);
-            return results;
-        });
-
         let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
@@ -104,16 +84,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results = await builder.from('users').where('id', '=', 1).sole('foo');
         expect({ foo: 'bar' }).toEqual(results);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select * from "users" where "id" = ? limit 2');
@@ -125,16 +97,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results2 = await builder.from('users').where('id', '=', 1).sole();
         expect({ foo: 'bar' }).toEqual(results2);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
@@ -148,13 +112,6 @@ describe('Query Builder Pdo Methods Select', () => {
         );
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }, { foo: 'baz' }]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
@@ -170,14 +127,6 @@ describe('Query Builder Pdo Methods Select', () => {
 
     it('Works Pluck Method Gets An Array Or Object Of Column Values', async () => {
         let builder = getBuilder();
-
-        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }, { foo: 'baz' }]);
-            return results;
-        });
-
         let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [{ foo: 'bar' }, { foo: 'baz' }];
@@ -187,19 +136,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect(['bar', 'baz']).toEqual(results);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([
-                { id: 1, foo: 'bar' },
-                { id: null, foo: 'baz' }
-            ]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [
@@ -211,19 +149,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results2 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
         expect({ 1: 'bar', null: 'baz' }).toEqual(results2);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([
-                { id: Buffer.from('1'), foo: 'bar' },
-                { id: Buffer.from('10'), foo: 'baz' }
-            ]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [
@@ -237,16 +164,6 @@ describe('Query Builder Pdo Methods Select', () => {
         );
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([
-                { id: [1, 2], foo: 'bar' },
-                { id: [3, 4], foo: 'baz' }
-            ]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [
@@ -260,13 +177,6 @@ describe('Query Builder Pdo Methods Select', () => {
         );
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [];
@@ -275,16 +185,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results3 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
         expect({}).toEqual(results3);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [];
@@ -293,19 +195,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results4 = await builder.from('users').where('id', '=', 1).pluck<string>('foo');
         expect([]).toEqual(results4);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([
-                { id: 1, foo: 'bar' },
-                { id: null, foo: 'baz' }
-            ]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [
@@ -317,19 +208,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results5 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', new Raw('baz as id'));
         expect({ 1: 'bar', null: 'baz' }).toEqual(results5);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([
-                { id: 1, foo: 'bar' },
-                { id: null, foo: 'baz' }
-            ]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [
@@ -341,19 +221,11 @@ describe('Query Builder Pdo Methods Select', () => {
         const results6 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'table.id');
         expect({ 1: 'bar', null: 'baz' }).toEqual(results6);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works Implode', async () => {
         // Test without glue.
         let builder = getBuilder();
-        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }, { foo: 'baz' }]);
-            return results;
-        });
-
         let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [{ foo: 'bar' }, { foo: 'baz' }];
@@ -363,16 +235,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect('barbaz').toEqual(results);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }, { foo: 'baz' }]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async () => {
             return [{ foo: 'bar' }, { foo: 'baz' }];
@@ -382,18 +246,10 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect('bar,baz').toEqual(results);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works Value Method Returns Single Column', async () => {
         let builder = getBuilder();
-        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }]);
-            return results;
-        });
-
         let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 1');
@@ -405,16 +261,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results = await builder.from('users').where('id', '=', 1).value<string>('foo');
         expect('bar').toBe(results);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 1');
@@ -426,18 +274,10 @@ describe('Query Builder Pdo Methods Select', () => {
         const results2 = await builder.from('users').where('id', '=', 1).value<string>('foo');
         expect(results2).toBeNull();
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works Sole Value Method Returns Single Column', async () => {
         const builder = getBuilder();
-        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ foo: 'bar' }]);
-            return results;
-        });
-
         const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 2');
@@ -449,18 +289,10 @@ describe('Query Builder Pdo Methods Select', () => {
         const results = await builder.from('users').where('id', '=', 1).soleValue<string>('foo');
         expect('bar').toBe(results);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works RawValue Method Returns Single Column', async () => {
         let builder = getBuilder();
-        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([{ 'UPPER("foo")': 'BAR' }]);
-            return results;
-        });
-
         let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select UPPER("foo") from "users" where "id" = ? limit 1');
@@ -472,16 +304,8 @@ describe('Query Builder Pdo Methods Select', () => {
         const results = await builder.from('users').where('id', '=', 1).rawValue<string>('UPPER("foo")');
         expect('BAR').toBe(results);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((query, results) => {
-            expect(query).toEqual(builder);
-            expect(results).toEqual([]);
-            return results;
-        });
-
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select "foo" from "users" where "id" = ? limit 1');
@@ -493,16 +317,10 @@ describe('Query Builder Pdo Methods Select', () => {
         const results2 = await builder.from('users').where('id', '=', 1).rawValue<string>('"foo"');
         expect(results2).toBeNull();
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works Aggregate Functions', async () => {
         let builder = getBuilder();
-        let spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
-
         let spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select count(*) as aggregate from "users"');
@@ -512,7 +330,6 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').count()).toBe(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
         expect(spiedConnection).toBeCalledTimes(1);
 
         builder = getBuilder();
@@ -552,10 +369,6 @@ describe('Query Builder Pdo Methods Select', () => {
         expect(spiedConnection).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select max("id") as aggregate from "users"');
@@ -566,13 +379,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect(await builder.from('users').max('id')).toBe(1);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select min("id") as aggregate from "users"');
@@ -583,13 +391,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect(await builder.from('users').min('id')).toBe(1);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select sum("id") as aggregate from "users"');
@@ -600,13 +403,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect(await builder.from('users').sum('id')).toBe(1);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select sum("id") as aggregate from "users"');
@@ -617,13 +415,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect(await builder.from('users').sum('id')).toBe(0);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select avg("id") as aggregate from "users"');
@@ -634,13 +427,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect(await builder.from('users').avg('id')).toBe(1);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
 
         builder = getBuilder();
-        spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select avg("id") as aggregate from "users"');
@@ -651,15 +439,11 @@ describe('Query Builder Pdo Methods Select', () => {
 
         expect(await builder.from('users').average('id')).toBe(1);
         expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedProcessor).toBeCalledTimes(1);
     });
 
     it('Works Aggregate', async () => {
         const builder = getBuilder();
-        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
+
         const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select count(*) as aggregate from "users"');
@@ -673,10 +457,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
     it('Works Numeric Aggregate', async () => {
         const builder = getBuilder();
-        const spiedProcessor = jest.spyOn(builder.getProcessor(), 'processSelect');
-        spiedProcessor.mockImplementation((_query, results) => {
-            return results;
-        });
+
         const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection
             .mockImplementationOnce(async (query, bindings, useReadPdo) => {
@@ -813,10 +594,6 @@ describe('Query Builder Pdo Methods Select', () => {
                 return [{ column1: 'foo', column2: 'bar' }];
             });
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
-        });
-
         builder.from('users').select('column1', 'column2');
         expect(await builder.count()).toBe(1);
         expect(await builder.sum('id')).toBe(2);
@@ -840,10 +617,6 @@ describe('Query Builder Pdo Methods Select', () => {
                 return [{ column2: 'foo', column3: 'bar' }];
             });
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
-        });
-
         builder.from('users');
         expect(await builder.count('column1')).toBe(1);
         const res = await builder.select('column2', 'column3').get();
@@ -866,10 +639,6 @@ describe('Query Builder Pdo Methods Select', () => {
                 return [{ column2: 'foo', column3: 'bar' }];
             });
 
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
-        });
-
         builder.from('users');
         expect(await builder.count('column1')).toBe(1);
         const res = await builder.get(['column2', 'column3']);
@@ -883,10 +652,6 @@ describe('Query Builder Pdo Methods Select', () => {
             expect(bindings).toEqual([]);
             expect(useReadPdo).toBeTruthy();
             return [{ aggregate: 1 }];
-        });
-
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
         });
 
         builder.from('users').selectSub(query => {
@@ -920,10 +685,6 @@ describe('Query Builder Pdo Methods Select', () => {
                     Extra: null
                 }
             ];
-        });
-
-        jest.spyOn(builder.getProcessor(), 'processSelect').mockImplementation((_query, results) => {
-            return results;
         });
 
         builder.from('users').selectSub(query => {

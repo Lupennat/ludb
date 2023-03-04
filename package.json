@@ -76,10 +76,12 @@
     "dependencies": {
         "@types/get-value": "^3.0.3",
         "@types/node": "^18.11.18",
+        "@types/pluralize": "^0.0.29",
         "@types/set-value": "^4.0.1",
         "deepmerge": "^4.3.0",
         "get-value": "^3.0.1",
         "lupdo": "^3.1.4",
+        "pluralize": "^8.0.0",
         "set-value": "^4.1.0",
         "snake-case": "^3.0.4",
         "tslib": "^2.4.1"

@@ -1039,51 +1039,6 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
-     * Split the given JSON selector into the field and the optional path and wrap them separately.
-     */
-    protected wrapJsonFieldAndPath(column: Stringable): [string, string] {
-        const [first, ...rest] = this.getValue(column).toString().split('->');
-
-        const field = this.wrap(first);
-        const path = rest.length > 0 ? `, ${this.wrapJsonPath(rest.join('->'), '->')}` : '';
-
-        return [field, path];
-    }
-
-    /**
-     * Wrap the given JSON path.
-     */
-    protected wrapJsonPath(value: string, delimiter: string): string {
-        value = value.replace(new RegExp("([\\\\]+)?\\'", 'g'), "''");
-
-        const jsonPath = value
-            .split(delimiter)
-            .map(segment => this.wrapJsonPathSegment(segment))
-            .join('.');
-        return `'$${jsonPath.startsWith('[') ? '' : '.'}${jsonPath}'`;
-    }
-
-    /**
-     * Wrap the given JSON path segment.
-     */
-    protected wrapJsonPathSegment(segment: string): string {
-        const regex = new RegExp(/(\[[^\]]+\])+$/, 'g');
-        const parts = segment.match(regex);
-
-        if (parts !== null) {
-            const index = segment.indexOf(parts[0]);
-            if (index > 0) {
-                const key = segment.slice(0, index);
-                return `"${key}"${parts[0]}`;
-            }
-
-            return parts[0];
-        }
-
-        return `"${segment}"`;
-    }
-
-    /**
      * Concatenate an array of segments, removing empties.
      */
     protected concatenate(segments: string[]): string {

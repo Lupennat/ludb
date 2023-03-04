@@ -3,7 +3,7 @@ import SQLiteConnection from '../connections/sqlite-connection';
 import DatabaseManager from '../database-manager';
 import Expression from '../query/expression';
 import { FlattedConnectionConfig } from '../types/config';
-import { pdo } from './fixtures/mocked';
+import { pdo, schemaPdo } from './fixtures/mocked';
 
 describe('Database Manager', () => {
     it('Works Connection Return Connection', () => {
@@ -156,12 +156,12 @@ describe('Database Manager', () => {
         class TestConnection extends Connection {}
         db.extend('new-driver', (config, name) => {
             config.name = name;
-            return new TestConnection(pdo, config as FlattedConnectionConfig, '', '');
+            return new TestConnection(pdo, schemaPdo, config as FlattedConnectionConfig, '', '');
         });
         class TestNameConnection extends Connection {}
         db.extend('test-name', (config, name) => {
             config.name = name;
-            return new TestNameConnection(pdo, config as FlattedConnectionConfig, '', '');
+            return new TestNameConnection(pdo, schemaPdo, config as FlattedConnectionConfig, '', '');
         });
         expect(db.connection('test')).toBeInstanceOf(TestConnection);
         expect(db.connection('test-name')).toBeInstanceOf(TestNameConnection);

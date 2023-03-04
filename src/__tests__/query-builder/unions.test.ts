@@ -182,46 +182,36 @@ describe('Query Builder Unions', () => {
         let expected =
             'select count(*) as aggregate from ((select * from `posts`) union (select * from `videos`)) as `temp_table`';
         let builder = getMySqlBuilder();
-        let spyProcess = jest.spyOn(builder.getProcessor(), 'processSelect');
         let spyConnection = jest.spyOn(builder.getConnection(), 'select');
         await builder.from('posts').union(getMySqlBuilder().from('videos')).count();
-        expect(spyProcess).toBeCalledTimes(1);
         expect(spyConnection).toBeCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from ((select `id` from `posts`) union (select `id` from `videos`)) as `temp_table`';
         builder = getMySqlBuilder();
-        spyProcess = jest.spyOn(builder.getProcessor(), 'processSelect');
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
         await builder.from('posts').select('id').union(getMySqlBuilder().from('videos').select('id')).count();
-        expect(spyProcess).toBeCalledTimes(1);
         expect(spyConnection).toBeCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from ((select * from "posts") union (select * from "videos")) as "temp_table"';
         builder = getPostgresBuilder();
-        spyProcess = jest.spyOn(builder.getProcessor(), 'processSelect');
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
         await builder.from('posts').union(getPostgresBuilder().from('videos')).count();
-        expect(spyProcess).toBeCalledTimes(1);
         expect(spyConnection).toBeCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from (select * from (select * from "posts") union select * from (select * from "videos")) as "temp_table"';
         builder = getSQLiteBuilder();
-        spyProcess = jest.spyOn(builder.getProcessor(), 'processSelect');
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
         await builder.from('posts').union(getSQLiteBuilder().from('videos')).count();
-        expect(spyProcess).toBeCalledTimes(1);
         expect(spyConnection).toBeCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from (select * from (select * from [posts]) as [temp_table] union select * from (select * from [videos]) as [temp_table]) as [temp_table]';
         builder = getSqlServerBuilder();
-        spyProcess = jest.spyOn(builder.getProcessor(), 'processSelect');
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
         await builder.from('posts').union(getSqlServerBuilder().from('videos')).count();
-        expect(spyProcess).toBeCalledTimes(1);
         expect(spyConnection).toBeCalledWith(expected, [], true);
     });
 });
