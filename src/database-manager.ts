@@ -211,7 +211,7 @@ class DatabaseManager implements DatabaseI {
      * Get all of the support drivers.
      */
     public supportedDrivers(): string[] {
-        return ['mysql', 'mariadb', 'pgsql', 'sqlite', 'sqlsrv'];
+        return ['mysql', 'pgsql', 'sqlite', 'sqlsrv'];
     }
 
     /**

@@ -58,6 +58,11 @@ class ConnectionSession implements ConnectionSessionI {
     protected queryLog: LoggedQuery[] = [];
 
     /**
+     * The duration of all executed queries in milliseconds.
+     */
+    protected totalQueryDuration = 0.0;
+
+    /**
      * The number of active transactions.
      */
     protected transactions = 0;
@@ -456,16 +461,18 @@ class ConnectionSession implements ConnectionSessionI {
      * Log a query in the connection's query log.
      */
     protected logQuery(query: string, bindings: Binding[], time: number): void {
+        this.totalQueryDuration += time;
+
         if (this.transactionLevel() > 0) {
             this.afterCommit.push({
                 level: this.transactionLevel(),
-                query: new QueryExecuted(this, query, bindings, time, false)
+                query: new QueryExecuted(this, query, bindings, time, this.totalQueryDuration, false)
             });
         }
 
         this.getEventDispatcher()?.emit(
             QueryExecuted.eventName,
-            new QueryExecuted(this, query, bindings, time, this.transactionLevel() > 0)
+            new QueryExecuted(this, query, bindings, time, this.totalQueryDuration, this.transactionLevel() > 0)
         );
 
         if (this.loggingQueries) {

@@ -14,7 +14,9 @@ class MySqlConnector extends Connector implements ConnectorI {
         const attributes = this.getAttributes<MySqlConfig>(config);
         const poolOptions = this.getPoolOptions<MySqlConfig>(config);
 
-        poolOptions.created = async (_uuid: string, connection: PdoConnectionI) => {
+        const originalCreated = poolOptions.created;
+
+        poolOptions.created = async (uuid: string, connection: PdoConnectionI) => {
             await this.configureIsolationLevel(connection, config);
             await this.configureEncoding(connection, config);
             // Next, we will check to see if a timezone has been specified in this config
@@ -22,6 +24,9 @@ class MySqlConnector extends Connector implements ConnectorI {
             // database. Setting this DB timezone is an optional configuration item.
             await this.configureTimezone(connection, config);
             await this.setModes(connection, config);
+            if (typeof originalCreated === 'function') {
+                await originalCreated(uuid, connection);
+            }
         };
 
         const options: MysqlOptions = deepmerge(
@@ -40,12 +45,7 @@ class MySqlConnector extends Connector implements ConnectorI {
         // We need to grab the PDO options that should be used while making the brand
         // new connection instance. The PDO options control various aspects of the
         // connection's behavior, and some might be specified by the developers.
-        return this.createConnection<MysqlOptions>(
-            config.driver === 'mysql' ? 'mysql' : 'mariadb',
-            options,
-            poolOptions,
-            attributes
-        );
+        return this.createConnection<MysqlOptions>('mysql', options, poolOptions, attributes);
     }
 
     /**

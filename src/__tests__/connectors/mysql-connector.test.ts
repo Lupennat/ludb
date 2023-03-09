@@ -37,15 +37,46 @@ describe('MySql Connector', () => {
     });
 
     it('Works Created Callback', async () => {
-        const connector = new MySqlConnector();
-        const spiedCallback: jest.SpyInstance[] = [];
+        let connector = new MySqlConnector();
+        let spiedCallback: jest.SpyInstance[] = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
                 spiedCallback.push(jest.spyOn(poolOptions, 'created'));
                 return new Pdo('fake', options, poolOptions, attributes);
             }
         );
-        const pdo = connector.connect({
+        const callback = jest.fn(async (uuid, connection) => {
+            expect(typeof uuid).toBe('string');
+            expect(connection).toBeInstanceOf(FakeConnection);
+        });
+        let pdo = connector.connect({
+            username: 'username',
+            password: 'secret',
+            driver: 'mysql',
+            host: 'foo',
+            database: 'bar',
+            port: 111,
+            unix_socket: 'baz',
+            charset: 'utf8',
+            pool: {
+                created: callback
+            }
+        });
+        await pdo.query('SELECT 1');
+        expect(spiedCallback[0]).toBeCalledTimes(1);
+        expect(callback).toBeCalledTimes(1);
+        await pdo.disconnect();
+
+        connector = new MySqlConnector();
+        spiedCallback = [];
+        jest.spyOn(connector, 'createConnection').mockImplementationOnce(
+            (_driver, options, poolOptions, attributes) => {
+                spiedCallback.push(jest.spyOn(poolOptions, 'created'));
+                return new Pdo('fake', options, poolOptions, attributes);
+            }
+        );
+
+        pdo = connector.connect({
             username: 'username',
             password: 'secret',
             driver: 'mysql',

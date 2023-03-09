@@ -15,8 +15,14 @@ class SQLiteConnector extends Connector implements ConnectorI {
         const attributes = this.getAttributes<SQLiteConfig>(config);
         const poolOptions = this.getPoolOptions<SQLiteConfig>(config);
 
-        poolOptions.created = async (_uuid: string, connection: PdoConnectionI) => {
+        const originalCreated = poolOptions.created;
+
+        poolOptions.created = async (uuid: string, connection: PdoConnectionI) => {
             await this.configureForeignKeyConstraints(connection, config);
+
+            if (typeof originalCreated === 'function') {
+                await originalCreated(uuid, connection);
+            }
         };
 
         const options = deepmerge({ path: config.database }, config.lupdo_options ?? {});

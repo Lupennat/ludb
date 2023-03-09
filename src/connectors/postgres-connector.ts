@@ -16,7 +16,9 @@ class PostgresConnector extends Connector implements ConnectorI {
         const attributes = this.getAttributes<PostgresConfig>(config);
         const poolOptions = this.getPoolOptions<PostgresConfig>(config);
 
-        poolOptions.created = async (_uuid: string, connection: PdoConnectionI) => {
+        const originalCreated = poolOptions.created;
+
+        poolOptions.created = async (uuid: string, connection: PdoConnectionI) => {
             await this.configureIsolationLevel(connection, config);
             await this.configureEncoding(connection, config);
             // Next, we will check to see if a timezone has been specified in this config
@@ -27,6 +29,10 @@ class PostgresConnector extends Connector implements ConnectorI {
             await this.configureSearchPath(connection, config);
 
             await this.configureSynchronousCommit(connection, config);
+
+            if (typeof originalCreated === 'function') {
+                await originalCreated(uuid, connection);
+            }
         };
 
         let ssl: undefined | boolean | { [key: string]: string | undefined | boolean } = {

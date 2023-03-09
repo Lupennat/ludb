@@ -12,7 +12,8 @@ class QueryExecuted extends ConnectionEvent {
         connection: ConnectionSessionI,
         public sql: string,
         public bindings: Binding[],
-        public time: number | null,
+        public time: number,
+        public sessionTime: number,
         public inTransaction: boolean
     ) {
         super(connection);

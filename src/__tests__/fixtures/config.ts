@@ -9,10 +9,6 @@ export const mysqlConfig: MySqlConfig = {
     driver: 'mysql'
 };
 
-export const mariaConfig: MySqlConfig = {
-    driver: 'mariadb'
-};
-
 export const postgresConfig: PostgresConfig = {
     driver: 'pgsql'
 };

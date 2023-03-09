@@ -133,12 +133,12 @@ describe('Database Manager', () => {
 
     it('Works Supported Drivers', () => {
         const db = new DatabaseManager();
-        expect(db.supportedDrivers()).toEqual(['mysql', 'mariadb', 'pgsql', 'sqlite', 'sqlsrv']);
+        expect(db.supportedDrivers()).toEqual(['mysql', 'pgsql', 'sqlite', 'sqlsrv']);
     });
 
     it('Works Available Drivers', () => {
         const db = new DatabaseManager();
-        expect(db.availableDrivers()).toEqual(['mysql', 'mariadb', 'pgsql', 'sqlite', 'sqlsrv']);
+        expect(db.availableDrivers()).toEqual(['mysql', 'pgsql', 'sqlite', 'sqlsrv']);
     });
 
     it('Works Extend', () => {

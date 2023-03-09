@@ -5,13 +5,6 @@ import Connection from './connection';
 
 class MySqlConnection extends Connection {
     /**
-     * Determine if the connected database is a MariaDB database.
-     */
-    public isMaria(): boolean {
-        return this.config.driver === 'mariadb';
-    }
-
-    /**
      * Get the default query grammar instance.
      */
     protected getDefaultQueryGrammar(): MySqlGrammar {

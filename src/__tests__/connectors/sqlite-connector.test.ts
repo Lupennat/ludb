@@ -26,15 +26,43 @@ describe('SQLite Connector', () => {
     });
 
     it('Works Created Callback', async () => {
-        const connector = new SQLiteConnector();
-        const spiedCallback: jest.SpyInstance[] = [];
+        let connector = new SQLiteConnector();
+        let spiedCallback: jest.SpyInstance[] = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
                 spiedCallback.push(jest.spyOn(poolOptions, 'created'));
                 return new Pdo('fake', options, poolOptions, attributes);
             }
         );
-        const pdo = connector.connect({
+
+        const callback = jest.fn(async (uuid, connection) => {
+            expect(typeof uuid).toBe('string');
+            expect(connection).toBeInstanceOf(FakeConnection);
+        });
+
+        let pdo = connector.connect({
+            driver: 'sqlite',
+            database: ':memory:',
+            foreign_key_constraints: false,
+            pool: {
+                created: callback
+            }
+        });
+        await pdo.query('SELECT 1');
+        expect(spiedCallback[0]).toBeCalledTimes(1);
+        expect(callback).toBeCalledTimes(1);
+        await pdo.disconnect();
+
+        connector = new SQLiteConnector();
+        spiedCallback = [];
+        jest.spyOn(connector, 'createConnection').mockImplementationOnce(
+            (_driver, options, poolOptions, attributes) => {
+                spiedCallback.push(jest.spyOn(poolOptions, 'created'));
+                return new Pdo('fake', options, poolOptions, attributes);
+            }
+        );
+
+        pdo = connector.connect({
             driver: 'sqlite',
             database: ':memory:',
             foreign_key_constraints: false

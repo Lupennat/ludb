@@ -1,4 +1,4 @@
-# SCHEMA
+# Schema
 
 > Ludb offers an (almost) identical api to [Laravel Schema](https://laravel.com/docs/migrations).
 

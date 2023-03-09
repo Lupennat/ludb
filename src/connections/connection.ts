@@ -204,6 +204,13 @@ class Connection implements DriverConnectionI {
     }
 
     /**
+     * Remove a database query listener with the connection.
+     */
+    public unlisten(callback: QueryExecutedCallback): void {
+        this.dispatcher?.off(QueryExecuted.eventName, callback);
+    }
+
+    /**
      * Get the current Schema PDO connection.
      */
     public getSchemaPdo(): Pdo {

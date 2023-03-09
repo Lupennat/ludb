@@ -90,6 +90,11 @@ export default interface DriverConnectionI
     listen(callback: QueryExecutedCallback): void;
 
     /**
+     * Remove a database query listener with the connection.
+     */
+    unlisten(callback: QueryExecutedCallback): void;
+
+    /**
      * Set the Schema PDO connection.
      */
     setSchemaPdo(pdo: Pdo): this;

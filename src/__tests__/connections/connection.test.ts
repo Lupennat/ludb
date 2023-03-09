@@ -172,6 +172,25 @@ describe('Connection', () => {
         expect(spiedEvent).toBeCalledWith(QueryExecuted.eventName, callback);
     });
 
+    it('Works UnListen', () => {
+        const connection = getConnection();
+        class MockedEventEmitter extends EventEmitter {
+            public _eventsCount = 0;
+        }
+        const eventDispatcher = new MockedEventEmitter();
+        const spiedEvent = jest.spyOn(eventDispatcher, 'off');
+        const callback = (): void => {};
+        connection.unlisten(callback);
+        expect(spiedEvent).not.toBeCalled();
+        connection.setEventDispatcher(eventDispatcher);
+        connection.listen(callback);
+        expect(spiedEvent).not.toBeCalled();
+        expect(eventDispatcher._eventsCount).toBe(1);
+        connection.unlisten(callback);
+        expect(spiedEvent).toBeCalledWith(QueryExecuted.eventName, callback);
+        expect(eventDispatcher._eventsCount).toBe(0);
+    });
+
     it('Works Pdo', () => {
         const connection = getConnection();
         const pdo = new Pdo('fake', {}, {}, {});

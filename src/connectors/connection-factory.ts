@@ -153,7 +153,6 @@ class ConnectionFactory {
 
         switch (config.driver) {
             case 'mysql':
-            case 'mariadb':
                 return new MySqlConnector();
             case 'pgsql':
                 return new PostgresConnector();
@@ -185,7 +184,6 @@ class ConnectionFactory {
 
         switch (driver) {
             case 'mysql':
-            case 'mariadb':
                 return new MySqlConnection(connection, schemaConnection, config, database, prefix);
             case 'pgsql':
                 return new PostgresConnection(connection, schemaConnection, config, database, prefix);

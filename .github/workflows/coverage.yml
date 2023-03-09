@@ -46,7 +46,5 @@ jobs:
           thresholds: '75 90'
 
       - name: Upload coverage to Codecov
+        if:  ${{matrix.node-version == '18.x'}}
         uses: codecov/codecov-action@v3
-
-      - name: Stop Database(s)
-        run: npm run db:down

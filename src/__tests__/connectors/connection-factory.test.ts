@@ -7,7 +7,7 @@ import SqlServerConnection from '../../connections/sqlserver-connection';
 import ConnectionFactory from '../../connectors/connection-factory';
 import Connector from '../../connectors/connector';
 import DatabaseManager from '../../database-manager';
-import { mariaConfig, mysqlConfig, postgresConfig, sqliteConfig, sqlserverConfig } from '../fixtures/config';
+import { mysqlConfig, postgresConfig, sqliteConfig, sqlserverConfig } from '../fixtures/config';
 import { MockedFactory, pdo, schemaPdo } from '../fixtures/mocked';
 
 describe('Connection Factory', () => {
@@ -131,12 +131,6 @@ describe('Connection Factory', () => {
 
     it('Works MySql Driver', () => {
         expect(new ConnectionFactory().make(mysqlConfig, 'mysql')).toBeInstanceOf(MySqlConnection);
-    });
-
-    it('Works MariaDB Driver', () => {
-        const connection = new ConnectionFactory().make(mariaConfig, 'maria');
-        expect(connection).toBeInstanceOf(MySqlConnection);
-        expect(connection.isMaria()).toBeTruthy();
     });
 
     it('Works SQLite Driver', () => {

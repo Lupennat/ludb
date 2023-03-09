@@ -1,4 +1,4 @@
-# Ludb
+# Query Builder
 
 > Ludb offers an (almost) identical api to [Laravel Query Builder](https://laravel.com/docs/queries).
 

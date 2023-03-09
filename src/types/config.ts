@@ -29,9 +29,9 @@ export interface ConnectionOptions {
      */
     password?: string;
     /**
-     * table prefix
+     * pool options
      */
-    prefix?: string;
+    pool?: PoolOptions;
 }
 
 export interface FlattedConnectionConfig extends ConnectionOptions {
@@ -51,6 +51,10 @@ export interface FlattedConnectionConfig extends ConnectionOptions {
      * database
      */
     database: string;
+    /**
+     * use prefix for schema builder
+     */
+    prefix_indexes?: boolean;
     /**
      * pdo attributes
      */
@@ -83,6 +87,10 @@ export interface PreparedConnectionConfig extends FlattedConnectionConfig {
      */
     read?: ConnectionOptions | ConnectionOptions[];
     /**
+     * use prefix for schema builder
+     */
+    prefix_indexes?: boolean;
+    /**
      * pdo attributes
      */
     attributes?: PdoAttributes;
@@ -105,6 +113,10 @@ export interface ConnectionConfig extends Omit<PreparedConnectionConfig, 'name' 
      * table prefix
      */
     database?: string;
+    /**
+     * use prefix for schema builder
+     */
+    prefix_indexes?: boolean;
 }
 
 export type MySqlStrict = `${'N' | 'n'}${'E' | 'e'}${'W' | 'w'}` | `${'O' | 'o'}${'L' | 'l'}${'D' | 'd'}`;
@@ -114,14 +126,6 @@ export interface MySqlConnectionOptions extends ConnectionOptions {
      * database
      */
     database?: string;
-    /**
-     * table prefix
-     */
-    prefix?: string;
-    /**
-     * use prefix for schema builder
-     */
-    prefix_indexes?: boolean;
     /**
      * connection charset
      */
@@ -160,15 +164,13 @@ export interface MySqlConnectionOptions extends ConnectionOptions {
     lupdo_options?: MysqlOptions;
 }
 
-export interface MySqlFlattedConfig
-    extends FlattedConnectionConfig,
-        Omit<MySqlConnectionOptions, 'prefix' | 'database'> {}
+export interface MySqlFlattedConfig extends FlattedConnectionConfig, Omit<MySqlConnectionOptions, 'database'> {}
 
 export interface MySqlConfig extends MySqlConnectionOptions {
     /**
      * driver name
      */
-    driver: 'mysql' | 'mariadb';
+    driver: 'mysql';
     /**
      * write connection
      */
@@ -177,6 +179,14 @@ export interface MySqlConfig extends MySqlConnectionOptions {
      * read connection
      */
     read?: MySqlConnectionOptions | MySqlConnectionOptions[];
+    /**
+     * use prefix for schema builder
+     */
+    prefix_indexes?: boolean;
+    /**
+     * pdo attributes
+     */
+    attributes?: PdoAttributes;
 }
 
 export interface SQLiteConnectionOptions
@@ -201,7 +211,7 @@ export interface SQLiteConnectionOptions
 
 export interface SQLiteFlattedConfig
     extends Omit<FlattedConnectionConfig, 'host' | 'port' | 'username' | 'password'>,
-        Omit<SQLiteConnectionOptions, 'prefix'> {}
+        SQLiteConnectionOptions {}
 
 export interface SQLiteConfig extends SQLiteConnectionOptions {
     /**
@@ -216,6 +226,14 @@ export interface SQLiteConfig extends SQLiteConnectionOptions {
      * read connection
      */
     read?: SQLiteConnectionOptions | SQLiteConnectionOptions[];
+    /**
+     * use prefix for schema builder
+     */
+    prefix_indexes?: boolean;
+    /**
+     * pdo attributes
+     */
+    attributes?: PdoAttributes;
 }
 
 export type PostgresSslMode = 'disable' | 'prefer' | 'require' | 'verify-ca' | 'verify-full' | 'no-verify';
@@ -225,14 +243,6 @@ export interface PostgresConnectionOptions extends ConnectionOptions {
      * database
      */
     database?: string;
-    /**
-     * table prefix
-     */
-    prefix?: string;
-    /**
-     * use prefix for schema builder
-     */
-    prefix_indexes?: boolean;
     /**
      * connection charset
      */
@@ -288,9 +298,7 @@ export interface PostgresConnectionOptions extends ConnectionOptions {
     lupdo_options?: PostgresOptions;
 }
 
-export interface PostgresFlattedConfig
-    extends FlattedConnectionConfig,
-        Omit<PostgresConnectionOptions, 'prefix' | 'database'> {}
+export interface PostgresFlattedConfig extends FlattedConnectionConfig, Omit<PostgresConnectionOptions, 'database'> {}
 
 export interface PostgresConfig extends PostgresConnectionOptions {
     /**
@@ -305,13 +313,17 @@ export interface PostgresConfig extends PostgresConnectionOptions {
      * read connection
      */
     read?: PostgresConnectionOptions | PostgresConnectionOptions[];
-}
-
-export interface SqlServerConnectionOptions extends ConnectionOptions {
     /**
      * use prefix for schema builder
      */
     prefix_indexes?: boolean;
+    /**
+     * pdo attributes
+     */
+    attributes?: PdoAttributes;
+}
+
+export interface SqlServerConnectionOptions extends ConnectionOptions {
     /**
      * make Database ReadOnly
      */
@@ -350,9 +362,7 @@ export interface SqlServerConnectionOptions extends ConnectionOptions {
     lupdo_options?: MssqlOptions;
 }
 
-export interface SqlServerFlattedConfig
-    extends FlattedConnectionConfig,
-        Omit<SqlServerConnectionOptions, 'prefix' | 'database'> {}
+export interface SqlServerFlattedConfig extends FlattedConnectionConfig, Omit<SqlServerConnectionOptions, 'database'> {}
 
 export interface SqlServerConfig extends SqlServerConnectionOptions {
     /**
@@ -367,6 +377,14 @@ export interface SqlServerConfig extends SqlServerConnectionOptions {
      * read connection
      */
     read?: SqlServerConnectionOptions | SqlServerConnectionOptions[];
+    /**
+     * use prefix for schema builder
+     */
+    prefix_indexes?: boolean;
+    /**
+     * pdo attributes
+     */
+    attributes?: PdoAttributes;
 }
 
 export type DriverConnectionOptions =
