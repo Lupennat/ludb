@@ -254,7 +254,9 @@ class MySqlGrammar extends Grammar {
      */
     public compileRenameColumn(blueprint: BlueprintI, command: CommandDefinition<RenameFullRegistryI>): string {
         const registry = command.getRegistry();
-        return `alter table ${this.wrapTable(blueprint)} rename ${this.wrap(registry.from)} to ${registry.to}`;
+        return `alter table ${this.wrapTable(blueprint)} rename column ${this.wrap(registry.from)} to ${this.wrap(
+            registry.to
+        )}`;
     }
 
     /**
@@ -354,7 +356,7 @@ class MySqlGrammar extends Grammar {
     protected compileKey(blueprint: BlueprintI, command: CommandIndexDefinition, type: string): string {
         const registry = command.getRegistry();
         return `alter table ${this.wrapTable(blueprint)} add ${type} ${this.wrap(registry.index)}${
-            registry.algorithm ? 'using ' + registry.algorithm : ''
+            registry.algorithm ? ' using ' + registry.algorithm : ''
         }(${this.columnize(registry.columns)})`;
     }
 
@@ -399,13 +401,6 @@ class MySqlGrammar extends Grammar {
     }
 
     /**
-     * Compile Column Real
-     */
-    protected compileTypeReal(): string {
-        return 'float';
-    }
-
-    /**
      * Compile Column Boolean
      */
     protected compileTypeBoolean(): string {
@@ -416,7 +411,7 @@ class MySqlGrammar extends Grammar {
      * Compile Column Set
      */
     protected compileTypeSet(column: ColumnDefinition): string {
-        return `set(${this.quoteString(column.getRegistry().allowed ?? [])}`;
+        return `set(${this.quoteString(column.getRegistry().allowed!)})`;
     }
 
     /**
@@ -600,7 +595,7 @@ class MySqlGrammar extends Grammar {
     protected compileModifyOnUpdate(_blueprint: BlueprintI, column: ColumnDefinition): string {
         const onUpdate = column.getRegistry().onUpdate;
         if (onUpdate !== undefined) {
-            return ` default ${this.getDefaultValue(onUpdate)}`;
+            return ` on update ${this.getDefaultValue(onUpdate)}`;
         }
 
         return '';

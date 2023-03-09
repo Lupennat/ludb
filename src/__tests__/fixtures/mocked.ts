@@ -13,9 +13,10 @@ import SqlServerGrammar from '../../query/grammars/sqlserver-grammar';
 import JoinClause from '../../query/join-clause';
 import Blueprint from '../../schema/blueprint';
 import SchemaBuilder from '../../schema/builders/builder';
-import PostgresBuilder from '../../schema/builders/postgres-builder';
-import { default as SQLiteBuilder, default as SQLiteSchemaBuilder } from '../../schema/builders/sqlite-builder';
-import SqlServerBuilder from '../../schema/builders/sqlserver-builder';
+import { default as SQLiteSchemaBuilder } from '../../schema/builders/sqlite-builder';
+import ColumnDefinition from '../../schema/definitions/column-definition';
+import SchemaGrammar from '../../schema/grammars/grammar';
+import MySqlSchemaGrammar from '../../schema/grammars/mysql-grammar';
 import PostgresSchemaGrammar from '../../schema/grammars/postgres-grammar';
 import SQLiteSchemaGrammar from '../../schema/grammars/sqlite-grammar';
 import SqlServerSchemaGrammar from '../../schema/grammars/sqlserver-grammar';
@@ -25,7 +26,7 @@ import ConnectorI from '../../types/connector';
 import BuilderI, { Arrayable, Binding } from '../../types/query/builder';
 import JoinClauseI from '../../types/query/join-clause';
 import BlueprintI from '../../types/schema/blueprint';
-import SchemaBuilderI, { BlueprintCallback } from '../../types/schema/builder';
+import { BlueprintCallback } from '../../types/schema/builder';
 import GrammarI from '../../types/schema/grammar';
 import FakePdo from './fake-pdo';
 export { FakeConnection } from './fake-pdo';
@@ -115,22 +116,20 @@ export function getSQLiteBuilder(): BuilderI {
     return new Builder(connection.session(), new SQLiteGrammar());
 }
 
-export function getPostgresSchemaBuilder(): SchemaBuilderI {
-    const connection = getConnection();
-    jest.spyOn(connection, 'getSchemaGrammar').mockReturnValue(new PostgresSchemaGrammar());
-    return new PostgresBuilder(connection.sessionSchema());
+export function getPostgresBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
+    return new Blueprint(table, new PostgresSchemaGrammar(), callback, prefix);
 }
 
-export function getSqlServerSchemaBuilder(): SchemaBuilderI {
-    const connection = getConnection();
-    jest.spyOn(connection, 'getSchemaGrammar').mockReturnValue(new SqlServerSchemaGrammar());
-    return new SqlServerBuilder(connection.sessionSchema());
+export function getSqlServerBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
+    return new Blueprint(table, new SqlServerSchemaGrammar(), callback, prefix);
 }
 
-export function getSQLiteSchemaBuilder(): SchemaBuilderI {
-    const connection = getConnection();
-    jest.spyOn(connection, 'getSchemaGrammar').mockReturnValue(new SQLiteSchemaGrammar());
-    return new SQLiteBuilder(connection.sessionSchema());
+export function getMySqlBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
+    return new Blueprint(table, new MySqlSchemaGrammar(), callback, prefix);
+}
+
+export function getSQLiteBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
+    return new Blueprint(table, new SQLiteSchemaGrammar(), callback, prefix);
 }
 
 export class MockedFactory extends ConnectionFactory {
@@ -332,5 +331,119 @@ export class ObjectArrayable<Item> implements Arrayable<Item> {
     constructor(protected items: Item[]) {}
     toArray(): Item[] {
         return this.items;
+    }
+}
+
+export class MockedGrammar extends SchemaGrammar {
+    /**
+     * Get the SQL for an after column modifier.
+     */
+    public compileModifyAfter(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyAfter(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a charset column modifier.
+     */
+    public compileModifyCharset(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyCharset(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a collate column modifier.
+     */
+    public compileModifyCollate(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyCollate(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a comment column modifier.
+     */
+    public compileModifyComment(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyComment(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a default column modifier.
+     */
+    public compileModifyDefault(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyDefault(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a first column modifier.
+     */
+    public compileModifyFirst(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyFirst(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a generated as column modifier.
+     */
+    public compileModifyGeneratedAs(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyGeneratedAs(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for an increment column modifier.
+     */
+    public compileModifyIncrement(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyIncrement(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for an invisible column modifier.
+     */
+    public compileModifyInvisible(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyInvisible(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a nullable column modifier.
+     */
+    public compileModifyNullable(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyNullable(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for an on update column modifier.
+     */
+    public compileModifyOnUpdate(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyOnUpdate(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a persisted column modifier.
+     */
+    public compileModifyPersisted(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyPersisted(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a srid column modifier.
+     */
+    public compileModifySrid(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifySrid(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a stored as column modifier.
+     */
+    public compileModifyStoredAs(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyStoredAs(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for an unsigned column modifier.
+     */
+    public compileModifyUnsigned(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyUnsigned(blueprint, column);
+    }
+
+    /**
+     * Get the SQL for a virtual as column modifier.
+     */
+    public compileModifyVirtualAs(blueprint: BlueprintI, column: ColumnDefinition): string {
+        return super.compileModifyVirtualAs(blueprint, column);
     }
 }

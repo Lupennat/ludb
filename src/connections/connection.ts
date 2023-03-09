@@ -22,6 +22,7 @@ import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/quer
 import GrammarI from '../types/query/grammar';
 import SchemaBuilderI from '../types/schema/builder';
 import SchemaGrammarI from '../types/schema/grammar';
+import { raw } from '../utils';
 import ConnectionSession from './connection-session';
 
 class Connection implements DriverConnectionI {
@@ -556,6 +557,13 @@ class Connection implements DriverConnectionI {
      */
     public useWriteConnectionWhenReading(value?: boolean): ConnectionSessionI {
         return this.session().useWriteConnectionWhenReading(value);
+    }
+
+    /**
+     * Get a new raw query expression.
+     */
+    public raw(value: string | bigint | number): ExpressionContract {
+        return raw(value);
     }
 }
 

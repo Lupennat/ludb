@@ -489,4 +489,24 @@ describe('Query Builder Utilities', () => {
         builder.select(new Raw('name'));
         expect(builder.getColumns()).toEqual(['name']);
     });
+
+    it('Works Log', () => {
+        console.log = jest.fn();
+        const builder = getBuilder()
+            .select('*')
+            .from('users')
+            .join('othertable', join => {
+                join.where('bar', '=', 'foo');
+            })
+            .where('registered', 1)
+            .groupBy('city')
+            .having('population', '>', 3)
+            .orderByRaw('match ("foo") against(?)', ['bar']);
+
+        expect(builder.log()).toEqual(builder);
+        expect(console.log).toHaveBeenCalledWith(
+            'select * from "users" inner join "othertable" on "bar" = ? where "registered" = ? group by "city" having "population" > ? order by match ("foo") against(?)',
+            ['foo', 1, 3, 'bar']
+        );
+    });
 });

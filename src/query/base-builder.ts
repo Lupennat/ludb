@@ -4115,6 +4115,15 @@ abstract class BaseBuilder extends BuilderContract {
     }
 
     /**
+     * Log the current SQL and bindings.
+     */
+    public log(): this {
+        console.log(this.toSql(), this.getBindings());
+
+        return this;
+    }
+
+    /**
      * Determine if the value is a query builder instance or a Closure.
      */
     protected isQueryable<T extends BuilderContract = this>(

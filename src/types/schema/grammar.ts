@@ -24,12 +24,12 @@ export default interface GrammarI extends Omit<BaseGrammarI, 'wrapTable'> {
     /**
      * Compile the SQL needed to retrieve all table names.
      */
-    compileGetAllTables(searchPath?: string | string[]): string;
+    compileGetAllTables(searchPath?: string[]): string;
 
     /**
      * Compile the SQL needed to retrieve all table views.
      */
-    compileGetAllViews(searchPath?: string | string[]): string;
+    compileGetAllViews(searchPath?: string[]): string;
 
     /**
      * Compile the SQL needed to retrieve all type names.

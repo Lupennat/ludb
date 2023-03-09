@@ -3,6 +3,38 @@ import MySqlSchemaGrammar from '../../schema/grammars/mysql-grammar';
 import { getConnection } from '../fixtures/mocked';
 
 describe('Mysql Schema Builder Test', () => {
+    it('Works Enable Foreign Key Constraints', async () => {
+        const connection = getConnection();
+        const session = connection.sessionSchema();
+        const grammar = new MySqlSchemaGrammar();
+        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('SET FOREIGN_KEY_CHECKS=1;');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new MySqlBuilder(session);
+        expect(await builder.enableForeignKeyConstraints()).toBeTruthy();
+    });
+
+    it('Works Disable Foreign Key Constraints', async () => {
+        const connection = getConnection();
+        const session = connection.sessionSchema();
+        const grammar = new MySqlSchemaGrammar();
+        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('SET FOREIGN_KEY_CHECKS=0;');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new MySqlBuilder(session);
+        expect(await builder.disableForeignKeyConstraints()).toBeTruthy();
+    });
+
     it('Works Create Table', async () => {
         const connection = getConnection();
         const session = connection.sessionSchema();

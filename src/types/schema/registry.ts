@@ -43,39 +43,6 @@ export interface ForeignKeyRegistryI extends IndexRegistryI {
     notValid?: Boolean;
 }
 
-// export interface AvailableIndexCommands {
-//     dropPrimary: IndexRegistryI;
-//     dropUnique: IndexRegistryI;
-//     dropIndex: IndexRegistryI;
-//     dropFullText: IndexRegistryI;
-//     dropSpatialIndex: IndexRegistryI;
-//     dropForeign: ForeignKeyRegistryI;
-// }
-
-// export interface AvailableCommands extends AvailableIndexCommands {
-//     create: CommandCreate;
-//     drop: CommandDrop;
-//     dropColumn: CommandDropColumn;
-//     dropIfExists: CommandDropIfExists;
-//     rename: CommandRename;
-//     renameColumn: CommandRenameColumn;
-//     renameIndex: CommandRenameIndex;
-// }
-
-// export type Command =
-//     | CommandDropPrimary
-//     | CommandDropUnique
-//     | CommandDropIndex
-//     | CommandDropFullText
-//     | CommandDropSpatialIndex
-//     | CommandDropForeign
-//     | CommandCreate
-//     | CommandDrop
-//     | CommandDropColumn
-//     | CommandDropIfExists
-//     | CommandRenameColumn
-//     | CommandRenameIndex;
-
 export type CommandType =
     | 'add'
     | 'autoIncrementStartingValues'
@@ -133,7 +100,6 @@ export type ColumnType =
     | 'multiPolygonZ'
     | 'point'
     | 'polygon'
-    | 'real'
     | 'set'
     | 'smallInteger'
     | 'string'
@@ -287,7 +253,7 @@ export interface ColumnRegistryI {
     /**
      * Create a stored generated column (MySQL/PostgreSQL/SQLite)
      */
-    storedAs?: Stringable;
+    storedAs?: Stringable | null;
     /**
      * Specify numeric total digit
      */
@@ -315,7 +281,7 @@ export interface ColumnRegistryI {
     /**
      * Create a virtual generated column (MySQL/PostgreSQL/SQLite)
      */
-    virtualAs?: Stringable;
+    virtualAs?: Stringable | null;
 }
 
 export default interface RegistryI {

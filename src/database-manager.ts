@@ -36,7 +36,7 @@ class DatabaseManager implements DatabaseI {
     /**
      * Create a new database manager instance.
      */
-    constructor(config?: DatabaseConfig, factory?: ConnectionFactory, dispatcher?: EventEmitter) {
+    constructor(config?: DatabaseConfig, dispatcher?: EventEmitter, factory?: ConnectionFactory) {
         this.config = config || { default: 'default', connections: {} };
         this.factory = factory || new ConnectionFactory();
         this.dispatcher = dispatcher || new EventEmitter();

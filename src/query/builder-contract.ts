@@ -1936,6 +1936,11 @@ abstract class BuilderContract {
      * Clone the query without the given bindings.
      */
     public abstract cloneWithoutBindings(except: (keyof BindingTypes)[]): BuilderContract;
+
+    /**
+     * Log the current SQL and bindings.
+     */
+    public abstract log(): this;
 }
 
 export default BuilderContract;

@@ -5,7 +5,7 @@ import { createColumnRegistry } from '../registries';
 class ColumnDefinition {
     protected registry: ColumnRegistryI;
 
-    constructor(type: ColumnType, public name: Stringable, parameters: Partial<ColumnRegistryI> = {}) {
+    constructor(type: ColumnType, public name: Stringable, parameters: Partial<ColumnRegistryI>) {
         this.registry = createColumnRegistry(type);
         Object.assign(this.registry, parameters);
     }
@@ -89,13 +89,6 @@ class ColumnDefinition {
     }
 
     /**
-     * Specify an expression value to computed column (SqlServer)
-     */
-    public expression(expression: Stringable): this {
-        return this.addToRegistry('expression', expression);
-    }
-
-    /**
      * Place the column "first" in the table (MySQL)
      */
     public first(): this {
@@ -119,15 +112,8 @@ class ColumnDefinition {
     /**
      * Add an index
      */
-    public index(indexName?: Stringable): this {
+    public index(indexName?: Stringable | boolean): this {
         return this.addToRegistry('index', indexName ?? true);
-    }
-
-    /**
-     * switch geography to geometry
-     */
-    public isGeometry(value = true): this {
-        return this.addToRegistry('isGeometry', value);
     }
 
     /**
@@ -135,6 +121,13 @@ class ColumnDefinition {
      */
     public invisible(value = true): this {
         return this.addToRegistry('invisible', value);
+    }
+
+    /**
+     * switch geography to geometry
+     */
+    public isGeometry(value = true): this {
+        return this.addToRegistry('isGeometry', value);
     }
 
     /**
@@ -161,8 +154,8 @@ class ColumnDefinition {
     /**
      * Add a primary index
      */
-    public primary(): this {
-        return this.addToRegistry('primary', true);
+    public primary(value: Stringable | boolean = true): this {
+        return this.addToRegistry('primary', value);
     }
 
     /**
@@ -175,7 +168,7 @@ class ColumnDefinition {
     /**
      *  Add a fulltext index
      */
-    public fulltext(indexName?: Stringable): this {
+    public fulltext(indexName?: Stringable | boolean): this {
         return this.addToRegistry('fulltext', indexName ?? true);
     }
 
@@ -189,8 +182,15 @@ class ColumnDefinition {
     /**
      * Add a spatial index
      */
-    public spatialIndex(indexName?: Stringable): this {
+    public spatialIndex(indexName?: Stringable | boolean): this {
         return this.addToRegistry('spatialIndex', indexName ?? true);
+    }
+
+    /**
+     * Point Srid
+     */
+    public srid(srid: number): this {
+        return this.addToRegistry('srid', srid);
     }
 
     /**
@@ -208,17 +208,24 @@ class ColumnDefinition {
     }
 
     /**
-     * Specify a type for the column
+     * Add a unique index
      */
-    public type(type: ColumnType): this {
-        return this.addToRegistry('type', type);
+    public unique(indexName?: Stringable | boolean): this {
+        return this.addToRegistry('unique', indexName ?? true);
     }
 
     /**
-     * Add a unique index
+     *  Remove a stored generated column (MySQL/PostgreSQL/SQLite)
      */
-    public unique(indexName?: Stringable): this {
-        return this.addToRegistry('unique', indexName ?? true);
+    public unsetStoredAs(): this {
+        return this.addToRegistry('storedAs', null);
+    }
+
+    /**
+     * Unset a virtual generated column (MySQL/PostgreSQL/SQLite)
+     */
+    public unsetVirtualAs(): this {
+        return this.addToRegistry('virtualAs', null);
     }
 
     /**

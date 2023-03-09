@@ -39,6 +39,48 @@ class CommandForeignKeyDefinition<
     public notValid(value = true): this {
         return this.addToRegistry('notValid', value);
     }
+
+    /**
+     * Indicate that updates should cascade.
+     */
+    public cascadeOnUpdate(): this {
+        return this.onUpdate('cascade');
+    }
+
+    /**
+     * Indicate that updates should be restricted.
+     */
+    public restrictOnUpdate(): this {
+        return this.onUpdate('restrict');
+    }
+
+    /**
+     * Indicate that deletes should cascade.
+     */
+    public cascadeOnDelete(): this {
+        return this.onDelete('cascade');
+    }
+
+    /**
+     * Indicate that deletes should be restricted.
+     */
+    public restrictOnDelete(): this {
+        return this.onDelete('restrict');
+    }
+
+    /**
+     * Indicate that deletes should set the foreign key value to null.
+     */
+    public nullOnDelete(): this {
+        return this.onDelete('set null');
+    }
+
+    /**
+     * Indicate that deletes should have "no action".
+     */
+    public noActionOnDelete(): this {
+        return this.onDelete('no action');
+    }
 }
 
 export default CommandForeignKeyDefinition;

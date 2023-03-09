@@ -5,14 +5,61 @@ import CommandForeignKeyDefinition from '../../schema/definitions/commands/comma
 import CommandIndexDefinition from '../../schema/definitions/commands/command-index-definition';
 import ForeignIdColumnDefinition from '../../schema/definitions/foreign-id-column-definition';
 import { Stringable } from '../query/builder';
+import { BlueprintCallback } from './builder';
 import GrammarI from './grammar';
-import RegistryI, { ColumnRegistryI, ColumnType, ForeignKeyRegistryI, IndexRegistryI } from './registry';
+import RegistryI, {
+    ColumnRegistryI,
+    ColumnType,
+    ColumnsRegistryI,
+    CommentRegistryI,
+    ForeignKeyRegistryI,
+    IndexRegistryI,
+    RenameFullRegistryI,
+    RenameRegistryI
+} from './registry';
+
+export type RelatableConstructor = new () => Relatable;
+
+export interface Relatable {
+    /**
+     * Get the default foreign key name for the model.
+     */
+    getForeignKey(): string;
+    /**
+     * Get the auto-incrementing key type.
+     */
+    getKeyType(): string;
+    /**
+     * Get the value indicating whether the IDs are incrementing.
+     */
+    getIncrementing(): boolean;
+}
 
 export default interface BlueprintI {
     /**
      * Get BluePrint Registry
      */
     getRegistry(): RegistryI;
+
+    /**
+     * The storage engine that should be used for the table.
+     */
+    engine(engine: Stringable): this;
+
+    /**
+     * The default character set that should be used for the table.
+     */
+    charset(charset: Stringable): this;
+
+    /**
+     * The collation that should be used for the table.
+     */
+    collation(collation: Stringable): this;
+
+    /**
+     * Indicate that the table needs to be temporary.
+     */
+    temporary(): this;
 
     /*
      * Execute the blueprint against the database.
@@ -37,62 +84,67 @@ export default interface BlueprintI {
     /**
      * Indicate that the table needs to be created.
      */
-    create(): void;
+    create(): CommandDefinition;
 
     /**
-     * Indicate that the table needs to be temporary.
+     * Add a comment to the table.
      */
-    temporary(): void;
+    comment(comment: string): CommandDefinition<CommentRegistryI>;
 
     /**
      * Indicate that the table should be dropped.
      */
-    drop(): void;
+    drop(): CommandDefinition;
 
     /**
      * Indicate that the table should be dropped if it exists.
      */
-    dropIfExists(): void;
+    dropIfExists(): CommandDefinition;
 
     /**
      * Indicate that the given columns should be dropped.
      */
-    dropColumn(columns: Stringable | Stringable[], ...otherColumns: Stringable[]): void;
+    dropColumn(columns: Stringable | Stringable[], ...otherColumns: Stringable[]): CommandDefinition<ColumnsRegistryI>;
 
     /**
      * Indicate that the given columns should be renamed.
      */
-    renameColumn(from: Stringable, to: Stringable): void;
+    renameColumn(from: Stringable, to: Stringable): CommandDefinition<RenameFullRegistryI>;
 
     /**
      * Indicate that the given primary key should be dropped.
      */
-    dropPrimary(index?: Stringable[] | Stringable): void;
+    dropPrimary(index?: Stringable[] | Stringable): CommandIndexDefinition;
 
     /**
      * Indicate that the given unique key should be dropped.
      */
-    dropUnique(index: Stringable[] | Stringable): void;
+    dropUnique(index: Stringable[] | Stringable): CommandIndexDefinition;
 
     /**
      * Indicate that the given index should be dropped.
      */
-    dropIndex(index: Stringable[] | Stringable): void;
+    dropIndex(index: Stringable[] | Stringable): CommandIndexDefinition;
 
     /**
      * Indicate that the given fulltext index should be dropped.
      */
-    dropFulltext(index: Stringable | Stringable[]): void;
+    dropFulltext(index: Stringable | Stringable[]): CommandIndexDefinition;
 
     /**
      * Indicate that the given spatial index should be dropped.
      */
-    dropSpatialIndex(index: Stringable | Stringable[]): void;
+    dropSpatialIndex(index: Stringable | Stringable[]): CommandIndexDefinition;
 
     /**
      * Indicate that the given foreign key should be dropped.
      */
-    dropForeign(index: Stringable | Stringable[]): void;
+    dropForeign(index: Stringable | Stringable[]): CommandForeignKeyDefinition;
+
+    /**
+     * Indicate that the given foreign key should be dropped.
+     */
+    dropForeignIdFor(model: RelatableConstructor | Relatable, column?: string): CommandForeignKeyDefinition;
 
     /**
      * Indicate that the given column and foreign key should be dropped.
@@ -100,34 +152,34 @@ export default interface BlueprintI {
     dropConstrainedForeignId(column: Stringable): void;
 
     /**
+     * Indicate that the given foreign key should be dropped.
+     */
+    dropConstrainedForeignIdFor(model: RelatableConstructor | Relatable, column?: string): void;
+
+    /**
      * Indicate that the given indexes should be renamed.
      */
-    renameIndex(from: Stringable, to: Stringable): void;
+    renameIndex(from: Stringable, to: Stringable): CommandDefinition<RenameFullRegistryI>;
 
     /**
      * Indicate that the timestamp columns should be dropped.
      */
-    dropTimestamps(): void;
+    dropTimestamps(): CommandDefinition<ColumnsRegistryI>;
 
     /**
      * Indicate that the timestamp columns should be dropped.
      */
-    dropTimestampsTz(): void;
+    dropTimestampsTz(): CommandDefinition<ColumnsRegistryI>;
 
     /**
      * Indicate that the soft delete column should be dropped.
      */
-    dropSoftDeletes(column?: string): void;
+    dropSoftDeletes(column?: string): CommandDefinition<ColumnsRegistryI>;
 
     /**
      * Indicate that the soft delete column should be dropped.
      */
-    dropSoftDeletesTz(column?: string): void;
-
-    /**
-     * Indicate that the remember token column should be dropped.
-     */
-    dropRememberToken(): void;
+    dropSoftDeletesTz(column?: string): CommandDefinition<ColumnsRegistryI>;
 
     /**
      * Indicate that the polymorphic columns should be dropped.
@@ -137,7 +189,7 @@ export default interface BlueprintI {
     /**
      * Rename the table to a given name.
      */
-    rename(to: Stringable): void;
+    rename(to: Stringable): CommandDefinition<RenameRegistryI>;
 
     /**
      * Specify the primary key(s) for the table.
@@ -311,6 +363,11 @@ export default interface BlueprintI {
     foreignId(column: Stringable): ForeignIdColumnDefinition;
 
     /**
+     * Create a foreign ID column for the given model.
+     */
+    foreignIdFor(model: RelatableConstructor | Relatable, column?: string): ForeignIdColumnDefinition;
+
+    /**
      * Create a new float column on the table.
      */
     float(column: Stringable, total?: number, places?: number, unsigned?: boolean): ColumnDefinition;
@@ -443,7 +500,7 @@ export default interface BlueprintI {
     /**
      * Create a new UUID column on the table.
      */
-    uuid(column: Stringable): ColumnDefinition;
+    uuid(column?: Stringable): ColumnDefinition;
 
     /**
      * Create a new UUID column on the table with a foreign key constraint.
@@ -561,16 +618,6 @@ export default interface BlueprintI {
     nullableUlidMorphs(name: Stringable, indexName?: Stringable): void;
 
     /**
-     * Adds the `remember_token` column to the table.
-     */
-    rememberToken(): ColumnDefinition;
-
-    /**
-     * Add a comment to the table.
-     */
-    comment(comment: string): void;
-
-    /**
      * Add a new column to the blueprint.
      */
     addColumn(type: ColumnType, name: Stringable, parameters?: Partial<ColumnRegistryI>): ColumnDefinition;
@@ -578,7 +625,7 @@ export default interface BlueprintI {
     /**
      * Add the columns from the callback after the given column.
      */
-    after(column: Stringable, callback: Function): void;
+    after(column: Stringable, callback: BlueprintCallback): void;
 
     /**
      * Remove a column from the schema blueprint.

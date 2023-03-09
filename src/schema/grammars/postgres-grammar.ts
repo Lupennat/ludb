@@ -57,25 +57,19 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile the SQL needed to retrieve all table names.
      */
-    public compileGetAllTables(searchPath: string | string[] = []): string {
-        return `select tablename, concat('"', schemaname, '"."', tablename, '"') as qualifiedname from pg_catalog.pg_tables where schemaname in ('${(Array.isArray(
-            searchPath
-        )
-            ? searchPath
-            : [searchPath]
-        ).join("','")}')`;
+    public compileGetAllTables(searchPath: string[]): string {
+        return `select tablename, concat('"', schemaname, '"."', tablename, '"') as qualifiedname from pg_catalog.pg_tables where schemaname in ('${searchPath.join(
+            "','"
+        )}')`;
     }
 
     /**
      * Compile the SQL needed to retrieve all table views.
      */
-    public compileGetAllViews(searchPath: string | string[] = []): string {
-        return `select viewname, concat('"', schemaname, '"."', viewname, '"') as qualifiedname from pg_catalog.pg_views where schemaname in ('${(Array.isArray(
-            searchPath
-        )
-            ? searchPath
-            : [searchPath]
-        ).join("','")}')`;
+    public compileGetAllViews(searchPath: string[]): string {
+        return `select viewname, concat('"', schemaname, '"."', viewname, '"') as qualifiedname from pg_catalog.pg_views where schemaname in ('${searchPath.join(
+            "','"
+        )}')`;
     }
 
     /**
@@ -202,7 +196,9 @@ class PostgresGrammar extends Grammar {
                     continue;
                 }
 
-                changes.push(sql);
+                if (sql) {
+                    changes.push(sql);
+                }
             }
 
             columns.push(this.prefixArray(`alter column ${this.wrap(column)}`, changes).join(', '));
@@ -225,7 +221,9 @@ class PostgresGrammar extends Grammar {
      */
     public compileRenameColumn(blueprint: BlueprintI, command: CommandDefinition<RenameFullRegistryI>): string {
         const registry = command.getRegistry();
-        return `alter table ${this.wrapTable(blueprint)} rename column ${this.wrap(registry.from)} to ${registry.to}`;
+        return `alter table ${this.wrapTable(blueprint)} rename column ${this.wrap(registry.from)} to ${this.wrap(
+            registry.to
+        )}`;
     }
 
     /**
@@ -277,7 +275,7 @@ class PostgresGrammar extends Grammar {
      * Compile a drop primary key command.
      */
     public compileDropPrimary(blueprint: BlueprintI): string {
-        const index = `${this.getValue(blueprint.getTable()).toString()}_pkey`;
+        const index = this.wrap(`${this.getValue(blueprint.getTable()).toString()}_pkey`);
         return `alter table ${this.wrapTable(blueprint)} drop constraint ${index}`;
     }
 
@@ -314,7 +312,7 @@ class PostgresGrammar extends Grammar {
     public compileIndex(blueprint: BlueprintI, command: CommandIndexDefinition): string {
         const registry = command.getRegistry();
         return `create index ${this.wrap(registry.index)} on ${this.wrapTable(blueprint)}${
-            registry.algorithm ? 'using ' + registry.algorithm : ''
+            registry.algorithm ? ' using ' + registry.algorithm : ''
         } (${this.columnize(registry.columns)})`;
     }
 
@@ -416,26 +414,6 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
-     * Compile Column Char
-     */
-    protected compileTypeChar(column: ColumnDefinition): string {
-        if (column.getRegistry().length) {
-            return super.compileTypeChar(column);
-        }
-        return 'char';
-    }
-
-    /**
-     * Compile Column String
-     */
-    protected compileTypeString(column: ColumnDefinition): string {
-        if (column.getRegistry().length) {
-            return super.compileTypeString(column);
-        }
-        return 'varchar';
-    }
-
-    /**
      * Compile Column TinyText
      */
     protected compileTypeTinyText(): string {
@@ -510,7 +488,7 @@ class PostgresGrammar extends Grammar {
      */
     protected compileTypeEnum(column: ColumnDefinition): string {
         return `varchar(255) check ("${this.getValue(column.name).toString()}" in (${this.quoteString(
-            column.getRegistry().allowed ?? []
+            column.getRegistry().allowed!
         )}))`;
     }
 
@@ -650,7 +628,7 @@ class PostgresGrammar extends Grammar {
      */
     protected formatPostGisType(type: string, column: ColumnDefinition): string {
         const registry = column.getRegistry();
-        if (registry.isGeometry) {
+        if (!registry.isGeometry) {
             return `geography(${type}, ${registry.projection ?? 4326})`;
         }
 
@@ -727,7 +705,7 @@ class PostgresGrammar extends Grammar {
             if (storedAs) {
                 throw new Error('This database driver does not support modifying generated columns.');
             }
-            return storedAs !== undefined ? 'drop expression if exists' : '';
+            return storedAs === null ? 'drop expression if exists' : '';
         }
 
         if (storedAs) {
@@ -747,7 +725,7 @@ class PostgresGrammar extends Grammar {
             if (virtualAs) {
                 throw new Error('This database driver does not support modifying generated columns.');
             }
-            return virtualAs !== undefined ? 'drop expression if exists' : '';
+            return virtualAs === null ? 'drop expression if exists' : '';
         }
 
         if (virtualAs) {

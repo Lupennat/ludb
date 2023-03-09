@@ -4,6 +4,7 @@ import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import QueryExecuted from '../events/query-executed';
 import BuilderContract from '../query/builder-contract';
+import ExpressionContract from '../query/expression-contract';
 import { FlattedConnectionConfig, ReadWriteType } from './config';
 import { Binding, NotExpressionBinding, Stringable, SubQuery } from './query/builder';
 import GrammarI from './query/grammar';
@@ -142,6 +143,11 @@ export default interface DriverConnectionI
      * Set the table prefix and return the grammar.
      */
     withTablePrefix(grammar: GrammarI): GrammarI;
+
+    /**
+     * Get a new raw query expression.
+     */
+    raw(value: string | bigint | number): ExpressionContract;
 }
 
 export interface ConnectionSessionI {

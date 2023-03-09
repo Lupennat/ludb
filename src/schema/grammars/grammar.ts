@@ -47,14 +47,14 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile the SQL needed to retrieve all table names.
      */
-    public compileGetAllTables(_searchPath?: string | string[]): string {
+    public compileGetAllTables(_searchPath?: string[]): string {
         throw new Error('This database driver does not support get all tables.');
     }
 
     /**
      * Compile the SQL needed to retrieve all table views.
      */
-    public compileGetAllViews(_searchPath?: string | string[]): string {
+    public compileGetAllViews(_searchPath?: string[]): string {
         throw new Error('This database driver does not support get all views.');
     }
 
@@ -376,7 +376,7 @@ class Grammar extends BaseGrammar implements GrammarI {
         // We need to prepare several of the elements of the foreign key definition
         // before we can create the SQL, such as wrapping the tables and convert
         // an array of columns to comma-delimited strings for the SQL queries.
-        let sql = `alter table ${this.wrapTable(blueprint)} add constraint ${this.wrap(registry.index)}`;
+        let sql = `alter table ${this.wrapTable(blueprint)} add constraint ${this.wrap(registry.index)} `;
 
         // Once we have the initial portion of the SQL statement we will add on the
         // key name, table name, and referenced columns. These will complete the
@@ -524,8 +524,6 @@ class Grammar extends BaseGrammar implements GrammarI {
                 return this.compileTypePoint(column);
             case 'polygon':
                 return this.compileTypePolygon(column);
-            case 'real':
-                return this.compileTypeReal(column);
             case 'set':
                 return this.compileTypeSet(column);
             case 'smallInteger':
@@ -557,14 +555,14 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile Column Char
      */
     protected compileTypeChar(column: ColumnDefinition): string {
-        return `char(${column.getRegistry().length ?? ''})`;
+        return column.getRegistry().length ? `char(${column.getRegistry().length})` : 'char';
     }
 
     /**
      * Compile Column String
      */
     protected compileTypeString(column: ColumnDefinition): string {
-        return `varchar(${column.getRegistry().length ?? ''})`;
+        return column.getRegistry().length ? `varchar(${column.getRegistry().length})` : 'varchar';
     }
 
     /**
@@ -638,13 +636,6 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
-     * Compile Column Real
-     */
-    protected compileTypeReal(_column: ColumnDefinition): string {
-        return 'real';
-    }
-
-    /**
      * Compile Column Double
      */
     protected compileTypeDouble(column: ColumnDefinition): string {
@@ -675,7 +666,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile Column Enum
      */
     protected compileTypeEnum(column: ColumnDefinition): string {
-        return `enum(${this.quoteString(column.getRegistry().allowed ?? [])}`;
+        return `enum(${this.quoteString(column.getRegistry().allowed!)})`;
     }
 
     /**
@@ -711,7 +702,8 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile Column DateTimeTz
      */
     protected compileTypeDateTimeTz(column: ColumnDefinition): string {
-        return this.compileTypeDateTime(column);
+        const precision = column.getRegistry().precision;
+        return precision !== undefined ? `datetime(${precision})` : 'datetime';
     }
 
     /**
@@ -726,7 +718,8 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile Column TimeTz
      */
     protected compileTypeTimeTz(column: ColumnDefinition): string {
-        return this.compileTypeTime(column);
+        const precision = column.getRegistry().precision;
+        return precision !== undefined ? `time(${precision})` : 'time';
     }
 
     /**
@@ -741,7 +734,8 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile Column TimestampTz
      */
     protected compileTypeTimestampTz(column: ColumnDefinition): string {
-        return this.compileTypeTimestamp(column);
+        const precision = column.getRegistry().precision;
+        return precision !== undefined ? `timestamp(${precision})` : 'timestamp';
     }
 
     /**
@@ -1083,7 +1077,7 @@ class Grammar extends BaseGrammar implements GrammarI {
             return this.getValue(value).toString();
         }
 
-        return value === 'boolean' ? `'${Number(value)}'` : `'${value.toString()}'`;
+        return typeof value === 'boolean' ? `'${Number(value)}'` : `'${value.toString()}'`;
     }
 
     // /**

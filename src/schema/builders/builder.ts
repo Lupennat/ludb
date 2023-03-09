@@ -20,7 +20,7 @@ class Builder implements BuilderI {
     /**
      * The default string length for migrations.
      */
-    public static defaultStringLength = 255;
+    public static defaultStringLength: number | undefined = 255;
 
     /**
      * The default relationship morph key type.
@@ -39,6 +39,13 @@ class Builder implements BuilderI {
      */
     public static withDefaultStringLength(length: number): void {
         Builder.defaultStringLength = length;
+    }
+
+    /**
+     * UnSet the default string length for migrations.
+     */
+    public static withoutDefaultStringLength(): void {
+        Builder.defaultStringLength = undefined;
     }
 
     /**

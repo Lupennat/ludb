@@ -173,9 +173,9 @@ class SqlServerGrammar extends Grammar {
 
             for (const modifier of this.modifiers) {
                 sql += this.compileModifier(modifier, blueprint, column);
-
-                changes.push(sql);
             }
+
+            changes.push(sql);
         }
 
         return changes;
@@ -206,7 +206,7 @@ class SqlServerGrammar extends Grammar {
         return `${this.compileDropDefaultConstraint(
             blueprint,
             command.getRegistry().columns
-        )}; alter table ${this.wrapTable(blueprint)} drop column ${columns.join(', ')}`;
+        )};alter table ${this.wrapTable(blueprint)} drop column ${columns.join(', ')}`;
     }
 
     /**
@@ -330,14 +330,14 @@ class SqlServerGrammar extends Grammar {
      * Compile Column Char
      */
     protected compileTypeChar(column: ColumnDefinition): string {
-        return `nchar(${column.getRegistry().length ?? ''})`;
+        return column.getRegistry().length ? `nchar(${column.getRegistry().length})` : 'nchar';
     }
 
     /**
      * Compile Column String
      */
     protected compileTypeString(column: ColumnDefinition): string {
-        return `nvarchar(${column.getRegistry().length ?? ''})`;
+        return column.getRegistry().length ? `nvarchar(${column.getRegistry().length})` : 'nvarchar';
     }
 
     /**
@@ -394,7 +394,7 @@ class SqlServerGrammar extends Grammar {
      */
     protected compileTypeEnum(column: ColumnDefinition): string {
         return `nvarchar(255) check ("${this.getValue(column.name).toString()}" in (${this.quoteString(
-            column.getRegistry().allowed ?? []
+            column.getRegistry().allowed!
         )}))`;
     }
 
@@ -545,7 +545,7 @@ class SqlServerGrammar extends Grammar {
      * Compile Column Computed
      */
     protected compileTypeComputed(column: ColumnDefinition): string {
-        return `as (${this.getValue(column.getRegistry().expression ?? '').toString()})`;
+        return `as (${this.getValue(column.getRegistry().expression!).toString()})`;
     }
 
     /**

@@ -1,6 +1,7 @@
 import Expression from '../query/expression';
 import { ConnectionSessionI } from '../types';
 import { Stringable } from '../types/query/builder';
+import { Relatable, RelatableConstructor } from '../types/schema/blueprint';
 import { BlueprintCallback } from '../types/schema/builder';
 import GrammarI from '../types/schema/grammar';
 import RegistryI, {
@@ -45,6 +46,38 @@ class Blueprint {
      */
     public getRegistry(): RegistryI {
         return this.registry;
+    }
+
+    /**
+     * The storage engine that should be used for the table.
+     */
+    public engine(engine: Stringable): this {
+        this.registry.engine = engine;
+        return this;
+    }
+
+    /**
+     * The default character set that should be used for the table.
+     */
+    public charset(charset: Stringable): this {
+        this.registry.charset = charset;
+        return this;
+    }
+
+    /**
+     * The collation that should be used for the table.
+     */
+    public collation(collation: Stringable): this {
+        this.registry.collation = collation;
+        return this;
+    }
+
+    /**
+     * Indicate that the table needs to be temporary.
+     */
+    public temporary(): this {
+        this.registry.temporary = true;
+        return this;
     }
 
     /*
@@ -213,7 +246,7 @@ class Blueprint {
      * Ensure the commands on the blueprint are valid for the connection type.
      */
     protected ensureCommandsAreValid(connection: ConnectionSessionI): void {
-        if (connection.getConfig<string>('driver') === 'sqlite') {
+        if (connection.getDriverName() === 'sqlite') {
             if (this.commandsNamed(['dropForeign']).length > 0) {
                 throw new Error(
                     "SQLite doesn't support dropping foreign keys (you would need to re-create the table)."
@@ -263,7 +296,7 @@ class Blueprint {
                     column.resetIndex(type);
                     continue loop1;
                 } else if (value) {
-                    this.addIndexByType(type, value);
+                    this.addIndexByType(type, column.name, value);
                     column.resetIndex(type);
                     continue loop1;
                 }
@@ -274,22 +307,22 @@ class Blueprint {
     /**
      * Add the index
      */
-    protected addIndexByType(type: string, name: Stringable): void {
+    protected addIndexByType(type: string, column: Stringable, name?: Stringable): void {
         switch (type) {
             case 'primary':
-                this.primary(name);
+                this.primary(column, name);
                 break;
             case 'unique':
-                this.unique(name);
+                this.unique(column, name);
                 break;
             case 'index':
-                this.index(name);
+                this.index(column, name);
                 break;
             case 'fulltext':
-                this.fulltext(name);
+                this.fulltext(column, name);
                 break;
             case 'spatialIndex':
-                this.spatialIndex(name);
+                this.spatialIndex(column, name);
                 break;
         }
     }
@@ -300,19 +333,19 @@ class Blueprint {
     protected dropIndexByType(type: string, name: Stringable): void {
         switch (type) {
             case 'primary':
-                this.dropPrimary(name);
+                this.dropPrimary([name]);
                 break;
             case 'unique':
-                this.dropUnique(name);
+                this.dropUnique([name]);
                 break;
             case 'index':
-                this.dropIndex(name);
+                this.dropIndex([name]);
                 break;
             case 'fulltext':
-                this.dropFulltext(name);
+                this.dropFulltext([name]);
                 break;
             case 'spatialIndex':
-                this.dropSpatialIndex(name);
+                this.dropSpatialIndex([name]);
                 break;
         }
     }
@@ -338,93 +371,100 @@ class Blueprint {
     /**
      * Indicate that the table needs to be created.
      */
-    public create(): void {
-        this.addCommand(this.createCommand('create', {}));
-    }
-
-    /**
-     * Indicate that the table needs to be temporary.
-     */
-    public temporary(): void {
-        this.registry.temporary = true;
+    public create(): CommandDefinition {
+        return this.addCommand(this.createCommand('create', {}));
     }
 
     /**
      * Add a comment to the table.
      */
-    public comment(comment: string): void {
-        this.addCommand(this.createCommand('tableComment', { comment }));
+    public comment(comment: string): CommandDefinition<CommentRegistryI> {
+        return this.addCommand(this.createCommand<CommentRegistryI>('tableComment', { comment }));
     }
 
     /**
      * Indicate that the table should be dropped.
      */
-    public drop(): void {
-        this.addCommand(this.createCommand('drop', {}));
+    public drop(): CommandDefinition {
+        return this.addCommand(this.createCommand('drop', {}));
     }
 
     /**
      * Indicate that the table should be dropped if it exists.
      */
-    public dropIfExists(): void {
-        this.addCommand(this.createCommand('dropIfExists', {}));
+    public dropIfExists(): CommandDefinition {
+        return this.addCommand(this.createCommand('dropIfExists', {}));
     }
 
     /**
      * Indicate that the given columns should be dropped.
      */
-    public dropColumn(columns: Stringable | Stringable[], ...otherColumns: Stringable[]): void {
+    public dropColumn(
+        columns: Stringable | Stringable[],
+        ...otherColumns: Stringable[]
+    ): CommandDefinition<ColumnsRegistryI> {
         columns = (Array.isArray(columns) ? columns : [columns]).concat(otherColumns);
-        this.addCommand(this.createCommand<ColumnsRegistryI>('dropColumn', { columns }));
+        return this.addCommand(this.createCommand<ColumnsRegistryI>('dropColumn', { columns }));
     }
 
     /**
      * Indicate that the given columns should be renamed.
      */
-    public renameColumn(from: Stringable, to: Stringable): void {
-        this.addCommand(this.createCommand<RenameFullRegistryI>('renameColumn', { from, to }));
+    public renameColumn(from: Stringable, to: Stringable): CommandDefinition<RenameFullRegistryI> {
+        return this.addCommand(this.createCommand<RenameFullRegistryI>('renameColumn', { from, to }));
     }
 
     /**
      * Indicate that the given primary key should be dropped.
      */
-    public dropPrimary(index?: Stringable[] | Stringable): void {
-        this.addCommand(this.dropIndexCommand('dropPrimary', 'primary', index));
+    public dropPrimary(index?: Stringable[] | Stringable): CommandIndexDefinition {
+        return this.addCommand(this.dropIndexCommand('dropPrimary', 'primary', index));
     }
 
     /**
      * Indicate that the given unique key should be dropped.
      */
-    public dropUnique(index: Stringable[] | Stringable): void {
-        this.addCommand(this.dropIndexCommand('dropUnique', 'unique', index));
+    public dropUnique(index: Stringable[] | Stringable): CommandIndexDefinition {
+        return this.addCommand(this.dropIndexCommand('dropUnique', 'unique', index));
     }
 
     /**
      * Indicate that the given index should be dropped.
      */
-    public dropIndex(index: Stringable[] | Stringable): void {
-        this.addCommand(this.dropIndexCommand('dropIndex', 'index', index));
+    public dropIndex(index: Stringable[] | Stringable): CommandIndexDefinition {
+        return this.addCommand(this.dropIndexCommand('dropIndex', 'index', index));
     }
 
     /**
      * Indicate that the given fulltext index should be dropped.
      */
-    public dropFulltext(index: Stringable | Stringable[]): void {
-        this.addCommand(this.dropIndexCommand('dropFulltext', 'fulltext', index));
+    public dropFulltext(index: Stringable | Stringable[]): CommandIndexDefinition {
+        return this.addCommand(this.dropIndexCommand('dropFulltext', 'fulltext', index));
     }
 
     /**
      * Indicate that the given spatial index should be dropped.
      */
-    public dropSpatialIndex(index: Stringable | Stringable[]): void {
-        this.addCommand(this.dropIndexCommand('dropSpatialIndex', 'spatialIndex', index));
+    public dropSpatialIndex(index: Stringable | Stringable[]): CommandIndexDefinition {
+        return this.addCommand(this.dropIndexCommand('dropSpatialIndex', 'spatialIndex', index));
     }
 
     /**
      * Indicate that the given foreign key should be dropped.
      */
-    public dropForeign(index: Stringable | Stringable[]): void {
-        this.addCommand(this.dropForeignKeyCommand('dropForeign', 'foreign', index));
+    public dropForeign(index: Stringable | Stringable[]): CommandForeignKeyDefinition {
+        return this.addCommand(this.dropForeignKeyCommand('dropForeign', 'foreign', index));
+    }
+
+    /**
+     * Indicate that the given foreign key should be dropped.
+     */
+    public dropForeignIdFor(model: RelatableConstructor | Relatable, column?: string): CommandForeignKeyDefinition {
+        if (typeof model === 'function') {
+            model = new model();
+        }
+
+        return this.dropForeign([column || model.getForeignKey()]);
     }
 
     /**
@@ -437,45 +477,49 @@ class Blueprint {
     }
 
     /**
+     * Indicate that the given foreign key should be dropped.
+     */
+    public dropConstrainedForeignIdFor(model: RelatableConstructor | Relatable, column?: string): void {
+        if (typeof model === 'function') {
+            model = new model();
+        }
+
+        return this.dropConstrainedForeignId(column || model.getForeignKey());
+    }
+
+    /**
      * Indicate that the given indexes should be renamed.
      */
-    public renameIndex(from: Stringable, to: Stringable): void {
-        this.addCommand(this.createCommand<RenameFullRegistryI>('renameIndex', { from, to }));
+    public renameIndex(from: Stringable, to: Stringable): CommandDefinition<RenameFullRegistryI> {
+        return this.addCommand(this.createCommand<RenameFullRegistryI>('renameIndex', { from, to }));
     }
 
     /**
      * Indicate that the timestamp columns should be dropped.
      */
-    public dropTimestamps(): void {
-        this.dropColumn('created_at', 'updated_at');
+    public dropTimestamps(): CommandDefinition<ColumnsRegistryI> {
+        return this.dropColumn('created_at', 'updated_at');
     }
 
     /**
      * Indicate that the timestamp columns should be dropped.
      */
-    public dropTimestampsTz(): void {
-        this.dropTimestamps();
+    public dropTimestampsTz(): CommandDefinition<ColumnsRegistryI> {
+        return this.dropTimestamps();
     }
 
     /**
      * Indicate that the soft delete column should be dropped.
      */
-    public dropSoftDeletes(column = 'deleted_at'): void {
-        this.dropColumn(column);
+    public dropSoftDeletes(column = 'deleted_at'): CommandDefinition<ColumnsRegistryI> {
+        return this.dropColumn(column);
     }
 
     /**
      * Indicate that the soft delete column should be dropped.
      */
-    public dropSoftDeletesTz(column = 'deleted_at'): void {
-        this.dropSoftDeletes(column);
-    }
-
-    /**
-     * Indicate that the remember token column should be dropped.
-     */
-    public dropRememberToken(): void {
-        this.dropColumn('remember_token');
+    public dropSoftDeletesTz(column = 'deleted_at'): CommandDefinition<ColumnsRegistryI> {
+        return this.dropSoftDeletes(column);
     }
 
     /**
@@ -491,8 +535,8 @@ class Blueprint {
     /**
      * Rename the table to a given name.
      */
-    public rename(to: Stringable): void {
-        this.addCommand(this.createCommand<RenameRegistryI>('rename', { to }));
+    public rename(to: Stringable): CommandDefinition<RenameRegistryI> {
+        return this.addCommand(this.createCommand<RenameRegistryI>('rename', { to }));
     }
 
     /**
@@ -549,7 +593,7 @@ class Blueprint {
      * Specify a raw index for the table.
      */
     public rawIndex(expression: string, name: Stringable): CommandIndexDefinition<IndexRegistryI> {
-        return this.index([new Expression(expression), name]);
+        return this.index([new Expression(expression)], name);
     }
 
     /**
@@ -559,8 +603,7 @@ class Blueprint {
         columns: Stringable | Stringable[],
         name?: Stringable
     ): CommandForeignKeyDefinition<ForeignKeyRegistryI> {
-        const command = this.foreignKeyCommand('foreign', columns, name);
-
+        const command = this.addCommand(this.foreignKeyCommand('foreign', columns, name));
         this.registry.commands[this.registry.commands.length - 1] = command;
 
         return command;
@@ -619,18 +662,14 @@ class Blueprint {
      * Create a new char column on the table.
      */
     public char(column: Stringable, length?: number): ColumnDefinition {
-        length = length != null ? length : Builder.defaultStringLength;
-
-        return this.addColumn('char', column, { length });
+        return this.addColumn('char', column, { length: length ?? Builder.defaultStringLength });
     }
 
     /**
      * Create a new string column on the table.
      */
     public string(column: Stringable, length?: number): ColumnDefinition {
-        length = length != null ? length : Builder.defaultStringLength;
-
-        return this.addColumn('string', column, { length });
+        return this.addColumn('string', column, { length: length ?? Builder.defaultStringLength });
     }
 
     /**
@@ -744,6 +783,19 @@ class Blueprint {
     }
 
     /**
+     * Create a foreign ID column for the given model.
+     */
+    public foreignIdFor(model: RelatableConstructor | Relatable, column?: string): ForeignIdColumnDefinition {
+        if (typeof model === 'function') {
+            model = new model();
+        }
+
+        return model.getKeyType() === 'int' && model.getIncrementing()
+            ? this.foreignId(column || model.getForeignKey())
+            : this.foreignUuid(column || model.getForeignKey());
+    }
+
+    /**
      * Create a new float column on the table.
      */
     public float(column: Stringable, total = 8, places = 2, unsigned?: boolean): ColumnDefinition {
@@ -830,49 +882,49 @@ class Blueprint {
     /**
      * Create a new date-time column on the table.
      */
-    public dateTime(column: Stringable, precision = 0): ColumnDefinition {
+    public dateTime(column: Stringable, precision?: number): ColumnDefinition {
         return this.addColumn('dateTime', column, { precision });
     }
 
     /**
      * Create a new date-time column (with time zone) on the table.
      */
-    public dateTimeTz(column: Stringable, precision = 0): ColumnDefinition {
+    public dateTimeTz(column: Stringable, precision?: number): ColumnDefinition {
         return this.addColumn('dateTimeTz', column, { precision });
     }
 
     /**
      * Create a new time column on the table.
      */
-    public time(column: Stringable, precision = 0): ColumnDefinition {
+    public time(column: Stringable, precision?: number): ColumnDefinition {
         return this.addColumn('time', column, { precision });
     }
 
     /**
      * Create a new time column (with time zone) on the table.
      */
-    public timeTz(column: Stringable, precision = 0): ColumnDefinition {
+    public timeTz(column: Stringable, precision?: number): ColumnDefinition {
         return this.addColumn('timeTz', column, { precision });
     }
 
     /**
      * Create a new timestamp column on the table.
      */
-    public timestamp(column: Stringable, precision = 0): ColumnDefinition {
+    public timestamp(column: Stringable, precision?: number): ColumnDefinition {
         return this.addColumn('timestamp', column, { precision });
     }
 
     /**
      * Create a new timestamp (with time zone) column on the table.
      */
-    public timestampTz(column: Stringable, precision = 0): ColumnDefinition {
+    public timestampTz(column: Stringable, precision?: number): ColumnDefinition {
         return this.addColumn('timestampTz', column, { precision });
     }
 
     /**
      * Add nullable creation and update timestamps to the table.
      */
-    public timestamps(precision = 0): void {
+    public timestamps(precision?: number): void {
         this.timestamp('created_at', precision).nullable();
 
         this.timestamp('updated_at', precision).nullable();
@@ -881,7 +933,7 @@ class Blueprint {
     /**
      * Add creation and update timestampTz columns to the table.
      */
-    public timestampsTz(precision = 0): void {
+    public timestampsTz(precision?: number): void {
         this.timestampTz('created_at', precision).nullable();
 
         this.timestampTz('updated_at', precision).nullable();
@@ -890,7 +942,7 @@ class Blueprint {
     /**
      * Add creation and update datetime columns to the table.
      */
-    public datetimes(precision = 0): void {
+    public datetimes(precision?: number): void {
         this.dateTime('created_at', precision).nullable();
 
         this.dateTime('updated_at', precision).nullable();
@@ -899,21 +951,21 @@ class Blueprint {
     /**
      * Add a "deleted at" timestamp for the table.
      */
-    public softDeletes(column: Stringable = 'deleted_at', precision = 0): ColumnDefinition {
+    public softDeletes(column: Stringable = 'deleted_at', precision?: number): ColumnDefinition {
         return this.timestamp(column, precision).nullable();
     }
 
     /**
      * Add a "deleted at" timestampTz for the table.
      */
-    public softDeletesTz(column: Stringable = 'deleted_at', precision = 0): ColumnDefinition {
+    public softDeletesTz(column: Stringable = 'deleted_at', precision?: number): ColumnDefinition {
         return this.timestampTz(column, precision).nullable();
     }
 
     /**
      * Add a "deleted at" datetime column to the table.
      */
-    public softDeletesDatetime(column: Stringable = 'deleted_at', precision = 0): ColumnDefinition {
+    public softDeletesDatetime(column: Stringable = 'deleted_at', precision?: number): ColumnDefinition {
         return this.dateTime(column, precision).nullable();
     }
 
@@ -934,7 +986,7 @@ class Blueprint {
     /**
      * Create a new UUID column on the table.
      */
-    public uuid(column: Stringable): ColumnDefinition {
+    public uuid(column: Stringable = 'uuid'): ColumnDefinition {
         return this.addColumn('uuid', column);
     }
 
@@ -1148,13 +1200,6 @@ class Blueprint {
     }
 
     /**
-     * Adds the `remember_token` column to the table.
-     */
-    public rememberToken(): ColumnDefinition {
-        return this.string('remember_token', 100).nullable();
-    }
-
-    /**
      * Create a new index command.
      */
     protected createIndexCommand<T extends IndexRegistryI = IndexRegistryI>(
@@ -1290,7 +1335,7 @@ class Blueprint {
     /**
      * Add the columns from the callback after the given column.
      */
-    public after(column: Stringable, callback: Function): void {
+    public after(column: Stringable, callback: BlueprintCallback): void {
         this.registry.after = column;
 
         callback(this);
@@ -1302,7 +1347,7 @@ class Blueprint {
      * Remove a column from the schema blueprint.
      */
     public removeColumn(name: Stringable): this {
-        this.registry.columns.filter(
+        this.registry.columns = this.registry.columns.filter(
             definition => this.grammar.getValue(definition.name).toString() !== this.grammar.getValue(name).toString()
         );
 

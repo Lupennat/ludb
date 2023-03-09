@@ -187,7 +187,7 @@ class SQLiteGrammar extends Grammar {
      * Compile a rename table command.
      */
     public compileRename(blueprint: BlueprintI, command: CommandDefinition<RenameRegistryI>): string {
-        return `alter table ${this.wrapTable(blueprint)} to ${this.wrapTable(command.getRegistry().to)}`;
+        return `alter table ${this.wrapTable(blueprint)} rename to ${this.wrapTable(command.getRegistry().to)}`;
     }
 
     /**
@@ -220,7 +220,9 @@ class SQLiteGrammar extends Grammar {
      */
     public compileRenameColumn(blueprint: BlueprintI, command: CommandDefinition<RenameFullRegistryI>): string {
         const registry = command.getRegistry();
-        return `alter table ${this.wrapTable(blueprint)} rename ${this.wrap(registry.from)} to ${registry.to}`;
+        return `alter table ${this.wrapTable(blueprint)} rename column ${this.wrap(registry.from)} to ${this.wrap(
+            registry.to
+        )}`;
     }
 
     /**
@@ -278,13 +280,6 @@ class SQLiteGrammar extends Grammar {
      */
     public compileDropIfExists(blueprint: BlueprintI): string {
         return `drop table if exists ${this.wrapTable(blueprint)}`;
-    }
-
-    /**
-     * Compile a rename index command.
-     */
-    public compileRenameIndex(): string {
-        throw new Error('do without doctrine');
     }
 
     /**
@@ -383,7 +378,7 @@ class SQLiteGrammar extends Grammar {
      */
     protected compileTypeEnum(column: ColumnDefinition): string {
         return `varchar check ("${this.getValue(column.name).toString()}" in (${this.quoteString(
-            column.getRegistry().allowed ?? []
+            column.getRegistry().allowed!
         )}))`;
     }
 
@@ -409,10 +404,24 @@ class SQLiteGrammar extends Grammar {
     }
 
     /**
+     * Compile Column DateTimeTz
+     */
+    protected compileTypeDateTimeTz(column: ColumnDefinition): string {
+        return this.compileTypeDateTime(column);
+    }
+
+    /**
      * Compile Column Time
      */
     protected compileTypeTime(): string {
         return 'time';
+    }
+
+    /**
+     * Compile Column TimeTz
+     */
+    protected compileTypeTimeTz(): string {
+        return this.compileTypeTime();
     }
 
     /**
@@ -424,6 +433,13 @@ class SQLiteGrammar extends Grammar {
         }
 
         return 'datetime';
+    }
+
+    /**
+     * Compile Column TimestampTz
+     */
+    protected compileTypeTimestampTz(column: ColumnDefinition): string {
+        return this.compileTypeTimestamp(column);
     }
 
     /**

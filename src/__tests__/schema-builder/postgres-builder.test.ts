@@ -3,6 +3,38 @@ import PostgresSchemaGrammar from '../../schema/grammars/postgres-grammar';
 import { getConnection } from '../fixtures/mocked';
 
 describe('Postgres Schema Builder Test', () => {
+    it('Works Enable Foreign Key Constraints', async () => {
+        const connection = getConnection();
+        const session = connection.sessionSchema();
+        const grammar = new PostgresSchemaGrammar();
+        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('SET CONSTRAINTS ALL IMMEDIATE;');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.enableForeignKeyConstraints()).toBeTruthy();
+    });
+
+    it('Works Disable Foreign Key Constraints', async () => {
+        const connection = getConnection();
+        const session = connection.sessionSchema();
+        const grammar = new PostgresSchemaGrammar();
+        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('SET CONSTRAINTS ALL DEFERRED;');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.disableForeignKeyConstraints()).toBeTruthy();
+    });
+
     it('Works Create Database', async () => {
         const connection = getConnection();
         const session = connection.sessionSchema();

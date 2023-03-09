@@ -39,8 +39,8 @@ class ForeignIdColumnDefinition extends ColumnDefinition {
     /**
      * Specify which column this foreign ID references on another table.
      */
-    public references(column: Stringable): CommandForeignKeyDefinition {
-        return this.blueprint.foreign(this.name).references(column);
+    public references(columns: Stringable | Stringable[]): CommandForeignKeyDefinition {
+        return this.blueprint.foreign(this.name).references(columns);
     }
 }
 

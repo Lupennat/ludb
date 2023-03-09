@@ -65,12 +65,19 @@ class SqlServerBuilder extends Builder {
      * Get the data type for the given column name.
      */
     public async getColumnType(table: string, column: string): Promise<string> {
-        const result = await this.connection.selectOne<{ type: string }>(this.grammar.compileColumnType(), [
-            `${this.connection.getTablePrefix()}${table}`,
-            column
-        ]);
+        const result = await this.connection.selectOne<{ type: string }>(
+            this.grammar.compileColumnType(),
+            [`${this.connection.getTablePrefix()}${table}`, column],
+            false
+        );
 
-        return result === null ? '' : result.type;
+        if (result === null) {
+            throw new Error(
+                `column "${column}" not found on table "${`${this.connection.getTablePrefix()}${table}`}" with database "${this.getConnection().getDatabaseName()}".`
+            );
+        }
+
+        return result.type;
     }
 }
 

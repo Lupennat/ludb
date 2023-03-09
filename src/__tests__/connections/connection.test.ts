@@ -12,6 +12,7 @@ import Builder from '../../query/builder';
 import Raw from '../../query/expression';
 import Grammar from '../../query/grammars/grammar';
 
+import Expression from '../../query/expression';
 import SchemaBuilder from '../../schema/builders/builder';
 import SchemaGrammar from '../../schema/grammars/grammar';
 import { FlattedConnectionConfig } from '../../types/config';
@@ -445,5 +446,11 @@ describe('Connection', () => {
         const spiedSession = jest.spyOn(session, 'useWriteConnectionWhenReading');
         expect(connection.useWriteConnectionWhenReading(true)).toEqual(session);
         expect(spiedSession).toBeCalledWith(true);
+    });
+
+    it('Works Raw Return Expression', () => {
+        const connection = getConnection();
+        const raw = connection.raw('rawValue');
+        expect(raw).toBeInstanceOf(Expression);
     });
 });
