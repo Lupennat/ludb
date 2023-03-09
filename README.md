@@ -23,6 +23,7 @@ If you want to perform a schema operation on a database connection that is not y
     -   [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time)
 -   [Database Transactions](#database-transactions)
 -   [Differences With Laravel](#differences-with-laravel)
+-   [Under The Hood](#under-the-hood)
 
 ## Introduction
 
@@ -357,7 +358,7 @@ dbTrx.commit();
     -   `sessionTime` cumulative session query time
     -   `inTransaction` query event is inside a transaction when true.
 
-## Under the hood
+## Under The Hood
 
 Ludb use [Lupdo](https://www.npmjs.com/package/lupdo) an abstraction layer used for accessing databases.\
 When the nodejs application start and a connection is required from `DatabaseManager` only the first time Ludb generate the pdo connection and it store internally the pdo required for the specific connection.\
