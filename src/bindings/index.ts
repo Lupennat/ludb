@@ -18,7 +18,6 @@ import {
     PARAM_VARCHAR,
     TypedBinding
 } from 'lupdo';
-import { MSSQL_PARAM_SMALLDATETIME } from 'lupdo-mssql';
 import { TypeBindingOptions } from 'lupdo/dist/typings/typed-binding';
 
 import { ValidBindingsPrimitive } from 'lupdo/dist/typings/types/pdo-prepared-statement';
@@ -59,9 +58,6 @@ export const bindTo = {
     },
     datetime: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
         return TypedBinding.create(PARAM_DATETIME, value, options);
-    },
-    smalldatetime: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(MSSQL_PARAM_SMALLDATETIME, value, options);
     },
     datetimeZone: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
         return TypedBinding.create(PARAM_DATETIMEZONE, value, options);
