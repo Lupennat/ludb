@@ -18,20 +18,20 @@ class PostgresConnector extends Connector implements ConnectorI {
         const originalCreated = poolOptions.created;
 
         poolOptions.created = async (uuid: string, connection: PdoConnectionI) => {
-            await this.configureIsolationLevel(connection, config);
-            await this.configureEncoding(connection, config);
-            // Next, we will check to see if a timezone has been specified in this config
-            // and if it has we will issue a statement to modify the timezone with the
-            // database. Setting this DB timezone is an optional configuration item.
-            await this.configureTimezone(connection, config);
-
-            await this.configureSearchPath(connection, config);
-
-            await this.configureSynchronousCommit(connection, config);
-
+            const promises = [
+                this.configureIsolationLevel(connection, config),
+                this.configureEncoding(connection, config),
+                // Next, we will check to see if a timezone has been specified in this config
+                // and if it has we will issue a statement to modify the timezone with the
+                // database. Setting this DB timezone is an optional configuration item.
+                this.configureTimezone(connection, config),
+                this.configureSearchPath(connection, config),
+                this.configureSynchronousCommit(connection, config)
+            ];
             if (typeof originalCreated === 'function') {
-                await originalCreated(uuid, connection);
+                promises.push(originalCreated(uuid, connection));
             }
+            await Promise.all(promises);
         };
 
         let ssl: undefined | boolean | { [key: string]: string | undefined | boolean } = {
@@ -85,9 +85,7 @@ class PostgresConnector extends Connector implements ConnectorI {
      */
     public async configureIsolationLevel(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.isolation_level) {
-            await connection.query(
-                `set session characteristics as transaction isolation level ${config.isolation_level}`
-            );
+            connection.query(`set session characteristics as transaction isolation level ${config.isolation_level}`);
         }
     }
 
@@ -96,7 +94,7 @@ class PostgresConnector extends Connector implements ConnectorI {
      */
     public async configureEncoding(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.charset) {
-            await connection.query(`set names '${config.charset}'`);
+            connection.query(`set names '${config.charset}'`);
         }
     }
 
@@ -105,7 +103,7 @@ class PostgresConnector extends Connector implements ConnectorI {
      */
     public async configureTimezone(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.timezone) {
-            await connection.query(`set time zone '${config.timezone}'`);
+            connection.query(`set time zone '${config.timezone}'`);
         }
     }
 
@@ -116,7 +114,7 @@ class PostgresConnector extends Connector implements ConnectorI {
         const search = config.search_path ?? config.schema;
 
         if (search) {
-            await connection.query(`set search_path to ${this.quoteSearchPath(parseSearchPath(search))}`);
+            connection.query(`set search_path to ${this.quoteSearchPath(parseSearchPath(search))}`);
         }
     }
 
@@ -132,7 +130,7 @@ class PostgresConnector extends Connector implements ConnectorI {
      */
     public async configureSynchronousCommit(connection: PdoConnectionI, config: PostgresConfig): Promise<void> {
         if (config.synchronous_commit) {
-            await connection.query(`set synchronous_commit to '${config.synchronous_commit}'`);
+            connection.query(`set synchronous_commit to '${config.synchronous_commit}'`);
         }
     }
 }
