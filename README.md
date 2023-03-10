@@ -192,6 +192,15 @@ await DB.unprepared('create table a (col varchar(1) null)');
 
 Please refer to the MySQL manual for [a list of all statements](https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html) that trigger implicit commits.
 
+### Bindings Caveat
+
+Ludb and Lupdo can detect the right type of binded value through the Javascript type of a variable, but SqlServer Ludpo driver need to know the exact type of the database column to make an insert or an update, and in some case it can fail (for instance when a binded value is `null`).\
+You can bypass the problem using the `TypedBinding` object of Lupdo; Ludb make it super easy to implement it providing a complete set of TypedBinding through `bindTo` Api, an example:
+
+```ts
+await DB.insert('insert into users (id, name, nullablestring) values (?, ?)', [1, 'Marc', DB.bindTo.string(null)]);
+```
+
 ### Using Multiple Database Connections
 
 If your application defines multiple connections in your configuration object, you may access each connection via the `connection` method provided by the `DB`. The connection name passed to the `connection` method should correspond to one of the connections listed in your configuration:
@@ -404,6 +413,7 @@ session.commit();
 -   Methods `getQueryLog` does not exists, logging query is used only internally for `pretend` method.
 -   Methods `beginTransaction` and `useWriteConnectionWhenReading` return a `ConnectionSession` you must use the session instead the original connection for the queries you want to execute them within the transaction or against the write pdo.
 -   Callbacks for methods `transaction` and `pretend` are called with a `ConnectionSession` you must use the session instead the original connection inside the callback if you want to execute the queries within the transaction or to pretend the execution.
+-   Query Builder return `Array` instead of `Collection`
 
 ## Under The Hood
 

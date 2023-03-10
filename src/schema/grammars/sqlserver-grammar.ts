@@ -435,7 +435,7 @@ class SqlServerGrammar extends Grammar {
         }
 
         const precision = column.getRegistry().precision;
-        return precision !== undefined ? `datetime2(${precision})` : 'datetime';
+        return precision !== undefined ? `datetime2(${precision})` : 'datetime2';
     }
 
     /**

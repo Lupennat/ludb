@@ -1,4 +1,3 @@
-export * from './bindings';
 export * from './connections';
 export * from './connectors';
 export { default as DatabaseManager } from './database-manager';

@@ -1,6 +1,6 @@
 {
     "name": "ludb",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Nodejs Query Builder",
     "author": "Claudio Pennati <claudio.pennati@gmail.com>",
     "license": "MIT",
@@ -45,10 +45,20 @@
         "build:esm": "tsc -p ./typescript/tsconfig.esm.json",
         "build:types": "tsc -p ./typescript/tsconfig.types.json",
         "clean": "rimraf ./dist",
-        "test:all": "npm run lint && jest --config test/jest.config.js",
-        "test:coverage": "npm run lint && jest --config test/jest.config.js --coverage",
+        "test:all": "npm run lint && jest --config test/jest.config.js --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/'",
+        "test:coverage": "npm run lint && jest --config test/jest.config.js --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --coverage",
+        "test:integration": "npm run lint && jest --config test/jest.config.js --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
+        "test:integration:mysql": "npm run lint && cross-env DB=mysql jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
+        "test:integration:maria": "npm run lint && cross-env DB=maria jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
+        "test:integration:sqlite": "npm run lint && cross-env DB=sqlite jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
+        "test:integration:postgres": "npm run lint && cross-env DB=postgres jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
+        "test:integration:sqlsrv": "npm run lint && cross-env DB=sqlsrv jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
         "lint": "eslint --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
-        "lint:fix": "eslint --fix --ext \".js,.jsx,.ts,.tsx\" \"./src\""
+        "lint:fix": "eslint --fix --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
+        "sqlite:up": "touch .sqlite3.db",
+        "sqlite:down": "rimraf .sqlite3.db",
+        "db:up": "sqlite:up && docker compose -f docker-compose.yml up --build -d mysql postgres sqlsrv maria && docker-compose -f docker-compose.yml up waitmysql waitpostgres waitsqlsrv waitmaria",
+        "db:down": "sqlite:down && docker compose -f docker-compose.yml down -v"
     },
     "engines": {
         "node": "^14.19.0 || ^16.10.0 || >=18.0.0"

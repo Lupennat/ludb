@@ -1,4 +1,5 @@
-export { default as DatabaseConfig } from './config';
+export { default as BindToI } from './bind-to';
+export { default as DatabaseConfig, DriverConfig } from './config';
 export { ConnectionSessionI, default as DriverConnectionI } from './connection';
 export { default as ConnectorI } from './connector';
 export { default as DatabaseI } from './database';

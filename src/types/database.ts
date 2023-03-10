@@ -1,4 +1,5 @@
 import ExpressionContract from '../query/expression-contract';
+import BindToI from './bind-to';
 import { ConnectionConfig, DriverConfig } from './config';
 import DriverConnectionI from './connection';
 
@@ -23,6 +24,11 @@ export default interface DatabaseI {
      * Get a new raw query expression.
      */
     raw(value: string): ExpressionContract;
+
+    /**
+     * Get the bind to object.
+     */
+    get bindTo(): BindToI;
 
     /**
      * Disconnect from the given database and remove from local cache.
