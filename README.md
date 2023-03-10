@@ -6,9 +6,8 @@
 
 -   [Introduction](#introduction)
     -   [Configuration](#configuration)
-    -   [Read & Write Connections](#read-and-write-connections)
--   [Query Builder](#query-builder)
--   [Schema Builder](#schema-builder)
+    -   [Query Builder](#query-builder)
+    -   [Schema Builder](#schema-builder)
 -   [Running SQL Queries](#running-queries)
     -   [Using Multiple Database Connections](#using-multiple-database-connections)
     -   [Listening For Query Events](#listening-for-query-events)
@@ -31,7 +30,7 @@ Almost every modern web application interacts with a database. Ludb makes intera
 
 In the [configuration object](CONFIG.md), you may define all of your database connections, as well as specify which connection should be used by default.
 
-## Query Builder
+### Query Builder
 
 Once you have configured your database connection, you may retrieve the [Query Builder](BUILDER.md) using the `DatabaseManager` connection.
 
@@ -45,7 +44,7 @@ const query = DB.table('users');
 const query = DB.query();
 ```
 
-## Schema Builder
+### Schema Builder
 
 Once you have configured your database connection, you may retrieve the [Schema Builder](SCHEMA.md) using the `DatabaseManager` connection.
 
