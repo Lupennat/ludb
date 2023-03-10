@@ -5,6 +5,7 @@ import EventEmitter from 'node:events';
 import QueryExecuted from '../events/query-executed';
 import BuilderContract from '../query/builder-contract';
 import ExpressionContract from '../query/expression-contract';
+import BindToI from './bind-to';
 import { FlattedConnectionConfig, ReadWriteType } from './config';
 import {
     Binding,
@@ -159,11 +160,6 @@ export default interface DriverConnectionI
      * Set the table prefix and return the grammar.
      */
     withTablePrefix(grammar: GrammarI): GrammarI;
-
-    /**
-     * Get a new raw query expression.
-     */
-    raw(value: string | bigint | number): ExpressionContract;
 }
 
 export interface ConnectionSessionI {
@@ -383,4 +379,14 @@ export interface ConnectionSessionI {
      * Get the Driver Connection of current session
      */
     getDriverConnection(): DriverConnectionI;
+
+    /**
+     * Get a new raw query expression.
+     */
+    raw(value: string | bigint | number): ExpressionContract;
+
+    /**
+     * Get the bind to object.
+     */
+    get bindTo(): BindToI;
 }

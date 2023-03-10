@@ -1,0 +1,44 @@
+import TypedBinding, { TypeBindingOptions } from 'lupdo/dist/typings/typed-binding';
+import { ValidBindingsPrimitive } from 'lupdo/dist/typings/types/pdo-prepared-statement';
+
+export default interface BindToI {
+    bigInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    binary: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    boolean: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    char: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    dateTime: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    dateTimeTz: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    date: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    decimal: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    double: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    enum: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    float: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    geometryCollection: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    geometry: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    id: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    integer: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    ipAddress: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    json: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    jsonb: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    lineString: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    longText: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    macAddress: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    mediumInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    mediumText: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    multiLineString: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    multiPoint: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    multiPolygon: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    point: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    polygon: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    smallInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    string: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    text: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    time: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    timestamp: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    timestampTZ: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    tinyInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    tinyText: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    ulid: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    uuid: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+    year: (value: ValidBindingsPrimitive, options?: TypeBindingOptions) => TypedBinding;
+}

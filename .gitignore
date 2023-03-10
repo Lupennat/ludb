@@ -105,3 +105,6 @@ dist
 
 # code-workspace
 *.code-workspace
+
+# Sqlite Local files
+.sqlite*

@@ -3,11 +3,13 @@ import { Pdo, PdoPreparedStatementI, PdoTransactionPreparedStatementI } from 'lu
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
+import { bindTo } from '../bindings';
 import QueryExecuted from '../events/query-executed';
 import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
 import SchemaBuilder from '../schema/builders/builder';
 import SchemaGrammar from '../schema/grammars/grammar';
+import { BindToI } from '../types';
 import { DriverFLattedConfig, FlattedConnectionConfig, ReadWriteType } from '../types/config';
 import DriverConnectionI, {
     BeforeExecutingCallback,
@@ -615,6 +617,13 @@ class Connection implements DriverConnectionI {
      */
     public raw(value: string | bigint | number): ExpressionContract {
         return raw(value);
+    }
+
+    /**
+     * Get the bind to object.
+     */
+    public get bindTo(): BindToI {
+        return bindTo;
     }
 }
 

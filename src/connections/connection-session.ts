@@ -18,6 +18,8 @@ import TransactionCommitted from '../events/transaction-committed';
 import TransactionCommitting from '../events/transaction-committing';
 import TransactionRolledBack from '../events/transaction-rolledback';
 import Builder from '../query/builder';
+import ExpressionContract from '../query/expression-contract';
+import { BindToI } from '../types';
 import { FlattedConnectionConfig } from '../types/config';
 import DriverConnectionI, {
     BeforeExecutingCallback,
@@ -1007,6 +1009,20 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public getDriverConnection(): DriverConnectionI {
         return this.driverConnection;
+    }
+
+    /**
+     * Get a new raw query expression.
+     */
+    public raw(value: string | bigint | number): ExpressionContract {
+        return this.driverConnection.raw(value);
+    }
+
+    /**
+     * Get the bind to object.
+     */
+    public get bindTo(): BindToI {
+        return this.driverConnection.bindTo;
     }
 }
 

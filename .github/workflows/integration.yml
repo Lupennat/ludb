@@ -1,0 +1,71 @@
+name: Integration
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 16.x, 14.x]
+        database-type: [mysql, maria, sqlite, postgres, sqlsrv]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Start Database(s)
+        if: ${{ matrix.database-type != 'sqlite' }}
+        run: |
+            docker-compose \
+              --file "docker-compose.yml" \
+              up \
+                --detach \
+                --build \
+                "${{ matrix.database-type }}"
+
+      - name: Start Database(s)
+        if: ${{ matrix.database-type == 'sqlite' }}
+        run: |
+            npm run sqlite:up
+
+      - name: Run npm install
+        run: npm install
+
+      - name: Initialize Database
+        if: ${{ matrix.database-type != 'sqlite' }}
+        run: |
+            docker-compose \
+              --file "docker-compose.yml" \
+              up \
+                "wait${{ matrix.database-type }}"
+
+      - name: Build and test
+        run: |
+          npm run build
+          npm run test:integration
+        env:
+          CI: true
+          DB: ${{ matrix.database-type }}
+          TZ: "Africa/Algiers"
+
+      - name: Stop Database(s)
+        if: ${{ matrix.database-type != 'sqlite' }}
+        run: |
+          docker-compose \
+            --file "docker-compose.yml" \
+            down
+      
+      - name: Stop Database(s)
+        if: ${{ matrix.database-type == 'sqlite' }}
+        run: |
+          npm run sqlite:down

@@ -1,7 +1,9 @@
 import { Pdo } from 'lupdo';
 import EventEmitter from 'node:events';
+import { bindTo } from './bindings';
 import ConnectionFactory from './connectors/connection-factory';
 import ExpressionContract from './query/expression-contract';
+import BindToI from './types/bind-to';
 import DatabaseConfig, { ConnectionConfig, DriverConfig, ReadWriteType } from './types/config';
 import DriverConnectionI from './types/connection';
 import DatabaseI, { Extension } from './types/database';
@@ -156,6 +158,13 @@ class DatabaseManager implements DatabaseI {
      */
     public raw(value: string | bigint | number): ExpressionContract {
         return raw(value);
+    }
+
+    /**
+     * Get the bind to object.
+     */
+    public get bindTo(): BindToI {
+        return bindTo;
     }
 
     /**
