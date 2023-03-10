@@ -1,6 +1,5 @@
 import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
-import 'lupdo-mysql';
 import { MysqlOptions } from 'lupdo-mysql';
 import { MySqlConfig, MySqlStrict } from '../types/config';
 import ConnectorI from '../types/connector';

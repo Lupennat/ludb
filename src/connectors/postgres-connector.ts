@@ -1,6 +1,5 @@
 import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
-import 'lupdo-postgres';
 import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
 import { PostgresConfig } from '../types/config';

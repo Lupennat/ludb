@@ -1,6 +1,5 @@
 import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
-import 'lupdo-sqlite';
 import { SqliteOptions } from 'lupdo-sqlite';
 import { existsSync } from 'node:fs';
 import { SQLiteConfig } from '../types/config';
