@@ -1,6 +1,5 @@
 import deepmerge from 'deepmerge';
 import { Pdo } from 'lupdo';
-import 'lupdo-mssql';
 import { MssqlOptions } from 'lupdo-mssql';
 import { SqlServerConfig } from '../types/config';
 import ConnectorI from '../types/connector';
