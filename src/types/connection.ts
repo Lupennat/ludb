@@ -6,7 +6,14 @@ import QueryExecuted from '../events/query-executed';
 import BuilderContract from '../query/builder-contract';
 import ExpressionContract from '../query/expression-contract';
 import { FlattedConnectionConfig, ReadWriteType } from './config';
-import { Binding, NotExpressionBinding, Stringable, SubQuery } from './query/builder';
+import {
+    Binding,
+    BindingObject,
+    NotExpressionBinding,
+    NotExpressionBindingObject,
+    Stringable,
+    SubQuery
+} from './query/builder';
 import GrammarI from './query/grammar';
 import SchemaBuilderI from './schema/builder';
 import SchemaGrammarI from './schema/grammar';
@@ -19,7 +26,11 @@ export type ConnectionResolver = <T extends FlattedConnectionConfig>(
     tablePrefix: string
 ) => DriverConnectionI;
 
-export type BeforeExecutingCallback = (query: string, bindings: Binding[], connection: unknown) => void | Promise<void>;
+export type BeforeExecutingCallback = (
+    query: string,
+    bindings: Binding[] | BindingObject,
+    connection: unknown
+) => void | Promise<void>;
 
 export type QueryExecutedCallback = (event: QueryExecuted) => void | Promise<void>;
 
@@ -29,7 +40,7 @@ export type TransactionCallback = (session: ConnectionSessionI) => void | Promis
 
 export interface LoggedQuery {
     query: string;
-    bindings: Binding[];
+    bindings: Binding[] | BindingObject;
 }
 
 export default interface DriverConnectionI
@@ -169,22 +180,26 @@ export interface ConnectionSessionI {
     /**
      * Run a select statement and return a single result.
      */
-    selectOne<T = Dictionary>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T | null>;
+    selectOne<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T | null>;
 
     /**
      * Run a select statement and return the first column of the first row.
      */
-    scalar<T>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T | null>;
+    scalar<T>(query: string, bindings?: Binding[] | BindingObject, useReadPdo?: boolean): Promise<T | null>;
 
     /**
      * Run a select statement against the database.
      */
-    selectFromWriteConnection<T = Dictionary>(query: string, bindings?: Binding[]): Promise<T[]>;
+    selectFromWriteConnection<T = Dictionary>(query: string, bindings?: Binding[] | BindingObject): Promise<T[]>;
 
     /**
      * Run a select statement against the database.
      */
-    select<T = Dictionary>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T[]>;
+    select<T = Dictionary>(query: string, bindings?: Binding[] | BindingObject, useReadPdo?: boolean): Promise<T[]>;
 
     /**
      * Run a select statement against the database and get Column.
@@ -192,48 +207,52 @@ export interface ConnectionSessionI {
     selectColumn<T extends PdoColumnValue>(
         column: number,
         query: string,
-        bindings?: Binding[],
+        bindings?: Binding[] | BindingObject,
         useReadPdo?: boolean
     ): Promise<T[]>;
 
     /**
      * Run a select statement against the database and returns a generator.
      */
-    cursor<T = Dictionary>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<Generator<T>>;
+    cursor<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<Generator<T>>;
 
     /**
      * Run an insert statement against the database.
      */
-    insert(query: string, bindings?: Binding[]): Promise<boolean>;
+    insert(query: string, bindings?: Binding[] | BindingObject): Promise<boolean>;
 
     /**
      * Run an insert get id statement against the database.
      */
     insertGetId<T = number | bigint | string>(
         query: string,
-        bindings?: Binding[],
+        bindings?: Binding[] | BindingObject,
         sequence?: Stringable | null
     ): Promise<T | null>;
 
     /**
      * Run an update statement against the database.
      */
-    update(query: string, bindings?: Binding[]): Promise<number>;
+    update(query: string, bindings?: Binding[] | BindingObject): Promise<number>;
 
     /**
      * Run a delete statement against the database.
      */
-    delete(query: string, bindings?: Binding[]): Promise<number>;
+    delete(query: string, bindings?: Binding[] | BindingObject): Promise<number>;
 
     /**
      * Execute an SQL statement and return the boolean result.
      */
-    statement(query: string, bindings?: Binding[]): Promise<boolean>;
+    statement(query: string, bindings?: Binding[] | BindingObject): Promise<boolean>;
 
     /**
      * Run an SQL statement and get the number of rows affected.
      */
-    affectingStatement(query: string, bindings?: Binding[]): Promise<number>;
+    affectingStatement(query: string, bindings?: Binding[] | BindingObject): Promise<number>;
 
     /**
      * Run a raw, unprepared query against the PDO connection.
@@ -280,13 +299,13 @@ export interface ConnectionSessionI {
      */
     bindValues(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
-        bindings: NotExpressionBinding[]
+        bindings: NotExpressionBinding[] | NotExpressionBindingObject
     ): void;
 
     /**
      * Prepare the query bindings for execution.
      */
-    prepareBindings(bindings: Binding[]): NotExpressionBinding[];
+    prepareBindings(bindings: Binding[] | BindingObject): NotExpressionBinding[] | NotExpressionBindingObject;
 
     /**
      * Get the current Schema PDO connection.

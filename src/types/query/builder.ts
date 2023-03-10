@@ -13,6 +13,14 @@ export type NotExpressionBinding = PrimitiveBinding | null;
 export type NotNullableBinding = PrimitiveBinding | ExpressionContract;
 export type Binding = NotNullableBinding | null | ExpressionContract;
 
+export type BindingObject = {
+    [key: string]: Binding;
+};
+
+export type NotExpressionBindingObject = {
+    [key: string]: NotExpressionBinding;
+};
+
 export type BooleanCallback<T, U extends BuilderContract> = (query: U) => T;
 export type QueryAbleCallback<T extends BuilderContract> = (query: T) => void;
 

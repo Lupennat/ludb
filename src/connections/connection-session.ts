@@ -26,12 +26,18 @@ import DriverConnectionI, {
     PretendingCallback,
     TransactionCallback
 } from '../types/connection';
-import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
+import BuilderI, {
+    Binding,
+    BindingObject,
+    NotExpressionBinding,
+    NotExpressionBindingObject,
+    SubQuery
+} from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import SchemaGrammarI from '../types/schema/grammar';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
-export type RunCallback<T> = (query: string, bindings: Binding[]) => Promise<T>;
+export type RunCallback<T> = (query: string, bindings: Binding[] | BindingObject) => Promise<T>;
 export type AfterCommitEvent = {
     level: number;
     query: QueryExecuted;
@@ -101,7 +107,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public async selectOne<T = Dictionary>(
         query: string,
-        bindings?: Binding[],
+        bindings?: Binding[] | BindingObject,
         useReadPdo?: boolean
     ): Promise<T | null> {
         const records = await this.select<T>(query, bindings, useReadPdo);
@@ -111,7 +117,11 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run a select statement and return the first column of the first row.
      */
-    public async scalar<T>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T | null> {
+    public async scalar<T>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T | null> {
         const record = await this.selectOne<Dictionary>(query, bindings, useReadPdo);
 
         if (record === null) {
@@ -130,14 +140,21 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run a select statement against the database.
      */
-    public async selectFromWriteConnection<T = Dictionary>(query: string, bindings?: Binding[]): Promise<T[]> {
+    public async selectFromWriteConnection<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject
+    ): Promise<T[]> {
         return await this.select<T>(query, bindings, false);
     }
 
     /**
      * Run a select statement against the database.
      */
-    public async select<T = Dictionary>(query: string, bindings: Binding[] = [], useReadPdo?: boolean): Promise<T[]> {
+    public async select<T = Dictionary>(
+        query: string,
+        bindings: Binding[] | BindingObject = [],
+        useReadPdo?: boolean
+    ): Promise<T[]> {
         return await this.run<T[]>(query, bindings, async (query, bindings) => {
             if (this.pretending()) {
                 return [];
@@ -166,7 +183,7 @@ class ConnectionSession implements ConnectionSessionI {
     public async selectColumn<T extends PdoColumnValue>(
         column: number,
         query: string,
-        bindings: Binding[] = [],
+        bindings: Binding[] | BindingObject = [],
         useReadPdo?: boolean
     ): Promise<T[]> {
         return await this.run<T[]>(query, bindings, async (query, bindings) => {
@@ -196,7 +213,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public async cursor<T = Dictionary>(
         query: string,
-        bindings: Binding[] = [],
+        bindings: Binding[] | BindingObject = [],
         useReadPdo?: boolean
     ): Promise<Generator<T>> {
         const statement = await this.run<PdoPreparedStatementI | PdoTransactionPreparedStatementI | never[]>(
@@ -258,7 +275,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run an insert statement against the database.
      */
-    public async insert(query: string, bindings?: Binding[]): Promise<boolean> {
+    public async insert(query: string, bindings?: Binding[] | BindingObject): Promise<boolean> {
         return this.statement(query, bindings);
     }
 
@@ -294,21 +311,21 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run an update statement against the database.
      */
-    public async update(query: string, bindings?: Binding[]): Promise<number> {
+    public async update(query: string, bindings?: Binding[] | BindingObject): Promise<number> {
         return this.affectingStatement(query, bindings);
     }
 
     /**
      * Run a delete statement against the database.
      */
-    public async delete(query: string, bindings?: Binding[]): Promise<number> {
+    public async delete(query: string, bindings?: Binding[] | BindingObject): Promise<number> {
         return this.affectingStatement(query, bindings);
     }
 
     /**
      * Execute an SQL statement and return the boolean result.
      */
-    public async statement(query: string, bindings: Binding[] = []): Promise<boolean> {
+    public async statement(query: string, bindings: Binding[] | BindingObject = []): Promise<boolean> {
         return this.run<boolean>(query, bindings, async (query, bindings) => {
             if (this.pretending()) {
                 return true;
@@ -331,7 +348,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run an SQL statement and get the number of rows affected.
      */
-    public async affectingStatement(query: string, bindings: Binding[] = []): Promise<number> {
+    public async affectingStatement(query: string, bindings: Binding[] | BindingObject = []): Promise<number> {
         return this.run(query, bindings, async (query, bindings) => {
             if (this.pretending()) {
                 return 0;
@@ -411,7 +428,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run a SQL statement and log its execution context.
      */
-    protected async run<T>(query: string, bindings: Binding[], callback: RunCallback<T>): Promise<T> {
+    protected async run<T>(query: string, bindings: Binding[] | BindingObject, callback: RunCallback<T>): Promise<T> {
         for (const beforeExecutingCallback of this.getBeforeExecuting()) {
             await beforeExecutingCallback(query, bindings, this);
         }
@@ -443,7 +460,11 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Run a SQL statement.
      */
-    protected async runQueryCallback<T>(query: string, bindings: Binding[], callback: RunCallback<T>): Promise<T> {
+    protected async runQueryCallback<T>(
+        query: string,
+        bindings: Binding[] | BindingObject,
+        callback: RunCallback<T>
+    ): Promise<T> {
         // To execute the statement, we'll simply call the callback, which will actually
         // run the SQL against the PDO connection. Then we can calculate the time it
         // took to execute and log the query SQL, bindings and time in our memory.
@@ -460,7 +481,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Log a query in the connection's query log.
      */
-    protected logQuery(query: string, bindings: Binding[], time: number): void {
+    protected logQuery(query: string, bindings: Binding[] | BindingObject, time: number): void {
         this.totalQueryDuration += time;
 
         if (this.transactionLevel() > 0) {
@@ -771,7 +792,7 @@ class ConnectionSession implements ConnectionSessionI {
     protected async handleQueryError<T>(
         error: QueryError,
         query: string,
-        bindings: Binding[],
+        bindings: Binding[] | BindingObject,
         callback: RunCallback<T>
     ): Promise<T> {
         if (this.transactionLevel() >= 1) {
@@ -787,7 +808,7 @@ class ConnectionSession implements ConnectionSessionI {
     protected tryAgainIfCausedByLostConnection<T>(
         error: QueryError,
         query: string,
-        bindings: Binding[],
+        bindings: Binding[] | BindingObject,
         callback: RunCallback<T>
     ): Promise<T> {
         if (causedByLostConnection(error.cause)) {
@@ -847,7 +868,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public bindValues(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
-        bindings: NotExpressionBinding[]
+        bindings: NotExpressionBinding[] | NotExpressionBindingObject
     ): void {
         this.driverConnection.bindValues(statement, bindings);
     }
@@ -855,7 +876,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Prepare the query bindings for execution.
      */
-    public prepareBindings(bindings: Binding[]): NotExpressionBinding[] {
+    public prepareBindings(bindings: Binding[] | BindingObject): NotExpressionBinding[] | NotExpressionBindingObject {
         return this.driverConnection.prepareBindings(bindings);
     }
 

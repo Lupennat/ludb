@@ -18,7 +18,13 @@ import DriverConnectionI, {
     QueryExecutedCallback,
     TransactionCallback
 } from '../types/connection';
-import BuilderI, { Binding, NotExpressionBinding, SubQuery } from '../types/query/builder';
+import BuilderI, {
+    Binding,
+    BindingObject,
+    NotExpressionBinding,
+    NotExpressionBindingObject,
+    SubQuery
+} from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import SchemaBuilderI from '../types/schema/builder';
 import SchemaGrammarI from '../types/schema/grammar';
@@ -133,28 +139,55 @@ class Connection implements DriverConnectionI {
      */
     public bindValues(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
-        bindings: NotExpressionBinding[]
+        bindings: NotExpressionBinding[] | NotExpressionBindingObject
     ): void {
-        for (let x = 0; x < bindings.length; x++) {
-            const binding = bindings[x];
-            if (binding instanceof ExpressionContract) {
-                throw new Error('Expression binding can not be binded directly to statement.');
+        if (Array.isArray(bindings)) {
+            for (let x = 0; x < bindings.length; x++) {
+                this.bindValue(statement, x + 1, bindings[x]);
             }
-            statement.bindValue(x + 1, binding);
+        } else {
+            for (const key in bindings) {
+                this.bindValue(statement, key, bindings[key]);
+            }
         }
+    }
+
+    /**
+     * Bind value to their parameter in the given statement.
+     */
+    protected bindValue(
+        statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
+        key: string | number,
+        binding: NotExpressionBinding
+    ): void {
+        if (binding instanceof ExpressionContract) {
+            throw new Error('Expression binding can not be binded directly to statement.');
+        }
+        statement.bindValue(key, binding);
     }
 
     /**
      * Prepare the query bindings for execution.
      */
-    public prepareBindings(bindings: Binding[]): NotExpressionBinding[] {
-        return bindings.map(binding => {
-            if (this.queryGrammar.isExpression(binding)) {
-                return this.queryGrammar.getValue(binding).toString();
-            }
+    public prepareBindings(bindings: Binding[] | BindingObject): NotExpressionBinding[] | NotExpressionBindingObject {
+        if (Array.isArray(bindings)) {
+            return bindings.map(binding => {
+                return this.prepareBinding(binding);
+            });
+        } else {
+            return Object.keys(bindings).reduce((carry: NotExpressionBindingObject, key) => {
+                carry[key] = this.prepareBinding(bindings[key]);
+                return carry;
+            }, {});
+        }
+    }
 
-            return binding;
-        });
+    protected prepareBinding(binding: Binding): NotExpressionBinding {
+        if (this.queryGrammar.isExpression(binding)) {
+            return this.queryGrammar.getValue(binding).toString();
+        }
+
+        return binding;
     }
 
     /**
@@ -435,7 +468,7 @@ class Connection implements DriverConnectionI {
      */
     public async selectOne<T = Dictionary>(
         query: string,
-        bindings?: Binding[],
+        bindings?: Binding[] | BindingObject,
         useReadPdo?: boolean
     ): Promise<T | null> {
         return this.session().selectOne<T>(query, bindings, useReadPdo);
@@ -444,14 +477,22 @@ class Connection implements DriverConnectionI {
     /**
      * Run a select statement and return the first column of the first row.
      */
-    public async scalar<T>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T | null> {
+    public async scalar<T>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T | null> {
         return this.session().scalar<T>(query, bindings, useReadPdo);
     }
 
     /**
      * Run a select statement against the database.
      */
-    public async select<T = Dictionary>(query: string, bindings?: Binding[], useReadPdo?: boolean): Promise<T[]> {
+    public async select<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T[]> {
         return this.session().select<T>(query, bindings, useReadPdo);
     }
 
@@ -461,7 +502,7 @@ class Connection implements DriverConnectionI {
     public async selectColumn<T extends PdoColumnValue>(
         column: number,
         query: string,
-        bindings?: Binding[],
+        bindings?: Binding[] | BindingObject,
         useReadPdo?: boolean
     ): Promise<T[]> {
         return this.session().selectColumn<T>(column, query, bindings, useReadPdo);
@@ -470,7 +511,10 @@ class Connection implements DriverConnectionI {
     /**
      * Run a select statement against the database.
      */
-    public async selectFromWriteConnection<T = Dictionary>(query: string, bindings?: Binding[]): Promise<T[]> {
+    public async selectFromWriteConnection<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject
+    ): Promise<T[]> {
         return this.session().selectFromWriteConnection<T>(query, bindings);
     }
 
@@ -479,7 +523,7 @@ class Connection implements DriverConnectionI {
      */
     public async cursor<T = Dictionary>(
         query: string,
-        bindings?: Binding[],
+        bindings?: Binding[] | BindingObject,
         useReadPdo?: boolean
     ): Promise<Generator<T>> {
         return this.session().cursor<T>(query, bindings, useReadPdo);
@@ -488,7 +532,7 @@ class Connection implements DriverConnectionI {
     /**
      * Run an insert statement against the database.
      */
-    public async insert(query: string, bindings?: Binding[]): Promise<boolean> {
+    public async insert(query: string, bindings?: Binding[] | BindingObject): Promise<boolean> {
         return this.session().insert(query, bindings);
     }
 
@@ -497,7 +541,7 @@ class Connection implements DriverConnectionI {
      */
     public async insertGetId<T = number | bigint | string>(
         query: string,
-        bindings?: Binding[],
+        bindings?: Binding[] | BindingObject,
         sequence?: string | null
     ): Promise<T | null> {
         return this.session().insertGetId(query, bindings, sequence);
@@ -506,28 +550,28 @@ class Connection implements DriverConnectionI {
     /**
      * Run an update statement against the databasxe.
      */
-    public async update(query: string, bindings?: Binding[]): Promise<number> {
+    public async update(query: string, bindings?: Binding[] | BindingObject): Promise<number> {
         return this.session().update(query, bindings);
     }
 
     /**
      * Run a delete statement against the database.
      */
-    public async delete(query: string, bindings?: Binding[]): Promise<number> {
+    public async delete(query: string, bindings?: Binding[] | BindingObject): Promise<number> {
         return this.session().delete(query, bindings);
     }
 
     /**
      * Execute an SQL statement and return the boolean result.
      */
-    public async statement(query: string, bindings?: Binding[]): Promise<boolean> {
+    public async statement(query: string, bindings?: Binding[] | BindingObject): Promise<boolean> {
         return this.session().statement(query, bindings);
     }
 
     /**
      * Run an SQL statement and get the number of rows affected.
      */
-    public async affectingStatement(query: string, bindings?: Binding[]): Promise<number> {
+    public async affectingStatement(query: string, bindings?: Binding[] | BindingObject): Promise<number> {
         return this.session().affectingStatement(query, bindings);
     }
 

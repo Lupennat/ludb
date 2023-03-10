@@ -1,5 +1,5 @@
 import { ConnectionSessionI } from '../types/connection';
-import { Binding } from '../types/query/builder';
+import { Binding, BindingObject } from '../types/query/builder';
 import ConnectionEvent from './connection-event';
 
 class QueryExecuted extends ConnectionEvent {
@@ -11,7 +11,7 @@ class QueryExecuted extends ConnectionEvent {
     constructor(
         connection: ConnectionSessionI,
         public sql: string,
-        public bindings: Binding[],
+        public bindings: Binding[] | BindingObject,
         public time: number,
         public sessionTime: number,
         public inTransaction: boolean

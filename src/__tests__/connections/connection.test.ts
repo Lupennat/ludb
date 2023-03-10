@@ -127,21 +127,36 @@ describe('Connection', () => {
 
     it('Works Bind Values', async () => {
         const connection = getConnection();
-        const statement = await pdo.prepare('select * from users where name = ?');
-        const spiedBindValue = jest.spyOn(statement, 'bindValue');
+        let statement = await pdo.prepare('select * from users where name = ?');
+        let spiedBindValue = jest.spyOn(statement, 'bindValue');
         const date = bindTo.date(new Date());
         connection.bindValues(statement, [null, date]);
         expect(spiedBindValue).toHaveBeenNthCalledWith(1, 1, null);
         expect(spiedBindValue).toHaveBeenNthCalledWith(2, 2, date);
         await statement.close();
+
+        statement = await pdo.prepare('select * from users where name = ?');
+        spiedBindValue = jest.spyOn(statement, 'bindValue');
+        connection.bindValues(statement, { name: null, date });
+        expect(spiedBindValue).toHaveBeenNthCalledWith(1, 'name', null);
+        expect(spiedBindValue).toHaveBeenNthCalledWith(2, 'date', date);
+        await statement.close();
     });
 
     it('Works Bind Expression Value Throw An Error', async () => {
         const connection = getConnection();
-        const statement = await pdo.prepare('select * from users where name = ?');
+        let statement = await pdo.prepare('select * from users where name = ?');
         expect(() => {
             // @ts-expect-error test wrong binding
             connection.bindValues(statement, [new Raw('wrong')]);
+        }).toThrowError('Expression binding can not be binded directly to statement.');
+
+        await statement.close();
+
+        statement = await pdo.prepare('select * from users where name = ?');
+        expect(() => {
+            // @ts-expect-error test wrong binding
+            connection.bindValues(statement, { wrong: new Raw('wrong') });
         }).toThrowError('Expression binding can not be binded directly to statement.');
 
         await statement.close();
@@ -150,6 +165,10 @@ describe('Connection', () => {
     it('Works Prepare Bindings', () => {
         const connection = getConnection();
         expect(connection.prepareBindings([null, new Raw('expression')])).toEqual([null, 'expression']);
+        expect(connection.prepareBindings({ name: null, expression: new Raw('expression') })).toEqual({
+            name: null,
+            expression: 'expression'
+        });
     });
 
     it('Works Before Executing', () => {
