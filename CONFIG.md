@@ -106,7 +106,7 @@ To enable strict modes you need to define `strict: 'new' | 'old'`. Mysql Databas
 
 ## Read & Write Connections
 
-Sometimes you may wish to use one database connection for SELECT statements, and another for INSERT, UPDATE, and DELETE statements. Ludb makes this a breeze, and the proper connections will always be used whether you are using raw queries, the query builder, or the Eloquent ORM.
+Sometimes you may wish to use one database connection for SELECT statements, and another for INSERT, UPDATE, and DELETE statements. Ludb makes this a breeze, and the proper connections will always be used whether you are using raw queries and the query builder.
 
 To see how read / write connections should be configured, let's look at this example:
 
