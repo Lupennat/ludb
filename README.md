@@ -2,14 +2,6 @@
 
 > Ludb offers an (almost) identical api to [Laravel Database](https://laravel.com/docs/database).
 
-If you want to perform a schema operation on a database connection that is not your application's default connection, use the `connection` method:
-
-```ts
-    Schema.connection('sqlite').create('users', (query) {
-        table.id();
-    });
-```
-
 # Database: Getting Started
 
 -   [Introduction](#introduction)
