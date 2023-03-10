@@ -28,7 +28,7 @@ The Ludb `Schema` provides database agnostic support for creating and manipulati
 
 ### Creating Tables
 
-To create a new database table, use the `create` method on the `Schema`. The `create` method accepts two arguments: the first is the name of the table, while the second is a closure which receives a `Blueprint` object that may be used to define the new table:
+To create a new database table, use the `create` method on the `Schema`. The `create` method accepts two arguments: the first is the name of the table, while the second is a closure which receives a `Blueprint` instance that may be used to define the new table:
 
 ```ts
 await Schema.create('users', table => {
@@ -126,7 +126,7 @@ await Schema.dropIfExists('users');
 
 #### Renaming Tables With Foreign Keys
 
-Before renaming a table, you should verify that any foreign key constraints on the table have an explicit name in your migration files instead of letting Ludb assign a convention based name. Otherwise, the foreign key constraint name will refer to the old table name.
+Before renaming a table, you should verify that any foreign key constraints on the table have an explicit name instead of letting Ludb assign a convention based name. Otherwise, the foreign key constraint name will refer to the old table name.
 
 ## Columns
 
@@ -144,70 +144,70 @@ await Schema.table('users', table => {
 
 The schema builder blueprint offers a variety of methods that correspond to the different types of columns you can add to your database tables. Each of the available methods are listed in the table below:
 
--   [bigIncrements](#big-increments)
--   [bigInteger](#big-integer)
+-   [bigIncrements](#bigincrements)
+-   [bigInteger](#biginteger)
 -   [binary](#binary)
 -   [boolean](#boolean)
 -   [char](#char)
--   [dateTimeTz](#date-time-tz)
--   [dateTime](#date-time)
+-   [dateTimeTz](#datetimetz)
+-   [dateTime](#datetime)
 -   [date](#date)
 -   [decimal](#decimal)
 -   [double](#double)
 -   [enum](#enum)
 -   [float](#float)
--   [foreignId](#foreign-id)
--   [foreignIdFor](#foreign-id-for)
--   [foreignUlid](#foreign-ulid)
--   [foreignUuid](#foreign-uuid)
--   [geometryCollection](#geometry-collection)
+-   [foreignId](#foreignid)
+-   [foreignIdFor](#foreignidfor)
+-   [foreignUlid](#foreignulid)
+-   [foreignUuid](#foreignuuid)
+-   [geometryCollection](#geometrycollection)
 -   [geometry](#geometry)
 -   [id](#id)
 -   [increments](#increments)
 -   [integer](#integer)
--   [ipAddress](#ip-address)
+-   [ipAddress](#ipaddress)
 -   [json](#json)
 -   [jsonb](#jsonb)
--   [lineString](#line-string)
--   [longText](#long-text)
--   [macAddress](#mac-address)
--   [mediumIncrements](#medium-increments)
--   [mediumInteger](#medium-integer)
--   [mediumText](#medium-text)
+-   [lineString](#linestring)
+-   [longText](#longtext)
+-   [macAddress](#macaddress)
+-   [mediumIncrements](#mediumincrements)
+-   [mediumInteger](#mediuminteger)
+-   [mediumText](#mediumtext)
 -   [morphs](#morphs)
--   [multiLineString](#multi-line-string)
--   [multiPoint](#multi-point)
--   [multiPolygon](#multi-polygon)
--   [nullableMorphs](#nullable-morphs)
--   [nullableTimestamps](#nullable-timestamps)
--   [nullableUlidMorphs](#nullable-ulid-morphs)
--   [nullableUuidMorphs](#nullable-uuid-morphs)
+-   [multiLineString](#multilinestring)
+-   [multiPoint](#multipoint)
+-   [multiPolygon](#multipolygon)
+-   [nullableMorphs](#nullablemorphs)
+-   [nullableTimestamps](#nullabletimestamps)
+-   [nullableUlidMorphs](#nullableulidmorphs)
+-   [nullableUuidMorphs](#nullableuuidmorphs)
 -   [point](#point)
 -   [polygon](#polygon)
 -   [set](#set)
--   [smallIncrements](#small-increments)
--   [smallInteger](#small-integer)
--   [softDeletesTz](#soft-deletes-tz)
--   [softDeletes](#soft-deletes)
+-   [smallIncrements](#smallincrements)
+-   [smallInteger](#smallinteger)
+-   [softDeletesTz](#softdeletestz)
+-   [softDeletes](#softdeletes)
 -   [string](#string)
 -   [text](#text)
--   [timeTz](#time-tz)
+-   [timeTz](#timetz)
 -   [time](#time)
--   [timestampTz](#timestamp-tz)
+-   [timestampTz](#timestamptz)
 -   [timestamp](#timestamp)
--   [timestampsTz](#timestamps-tz)
+-   [timestampsTz](#timestampstz)
 -   [timestamps](#timestamps)
--   [tinyIncrements](#tiny-increments)
--   [tinyInteger](#tiny-integer)
--   [tinyText](#tiny-text)
--   [unsignedBigInteger](#unsigned-big-integer)
--   [unsignedDecimal](#unsigned-decimal)
--   [unsignedInteger](#unsigned-integer)
--   [unsignedMediumInteger](#unsigned-medium-integer)
--   [unsignedSmallInteger](#unsigned-small-integer)
--   [unsignedTinyInteger](#unsigned-tiny-integer)
--   [ulidMorphs](#ulid-morphs)
--   [uuidMorphs](#uuid-morphs)
+-   [tinyIncrements](#tinyincrements)
+-   [tinyInteger](#tinyinteger)
+-   [tinyText](#tinytext)
+-   [unsignedBigInteger](#unsignedbiginteger)
+-   [unsignedDecimal](#unsigneddecimal)
+-   [unsignedInteger](#unsignedinteger)
+-   [unsignedMediumInteger](#unsignedmediuminteger)
+-   [unsignedSmallInteger](#unsignedsmallinteger)
+-   [unsignedTinyInteger](#unsignedtinyinteger)
+-   [ulidMorphs](#ulidmorphs)
+-   [uuidMorphs](#uuidmorphs)
 -   [ulid](#ulid)
 -   [uuid](#uuid)
 -   [year](#year)
@@ -940,7 +940,7 @@ Ludb's schema builder blueprint class provides methods for creating each type of
 
 #### Index Lengths & MySQL / MariaDB
 
-By default, Ludb uses the `utf8mb4` character set. If you are running a version of MySQL older than the 5.7.7 release or MariaDB older than the 10.2.2 release, you may need to manually configure the default string length generated by migrations in order for MySQL to create indexes for them. You may configure the default string length by calling the `Schema.withDefaultStringLength` method:
+By default, Ludb uses the `utf8mb4` character set. If you are running a version of MySQL older than the 5.7.7 release or MariaDB older than the 10.2.2 release, you may need to manually configure the default string length in order for MySQL to create indexes for them. You may configure the default string length by calling the `Schema.withDefaultStringLength` method:
 
 ```ts
 Schema.withDefaultStringLength(191);
@@ -1048,7 +1048,7 @@ Alternatively, you may pass an array containing the column name that holds the f
 
 #### Toggling Foreign Key Constraints
 
-You may enable or disable foreign key constraints within your migrations by using the following methods:
+You may enable or disable foreign key constraints by using the following methods:
 
 ```ts
     Schema.enableForeignKeyConstraints();

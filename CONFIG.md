@@ -5,7 +5,7 @@
 ## Differences With Laravel
 
 -   you can not define connection `url`
--   you can not define connection `options` use `attributes` or `lupdo_options` to define Lupdo options and attributes.
+-   you can not define connection `options`; use `attributes` or `lupdo_options` to define Lupdo options and attributes.
 -   every connection can define Lupdo [`attributes`](https://www.npmjs.com/package/lupdo#pdo-constants--attributes), defaults:
 
     -   ATTR_CASE: CASE_NATURAL

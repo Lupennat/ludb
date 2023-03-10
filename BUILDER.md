@@ -720,7 +720,7 @@ incomes = DB.table('incomes')
 > **Warning**  
 > Full text where clauses are currently supported by MySQL and PostgreSQL.
 
-The `whereFullText` and `orWhereFullText` methods may be used to add full text "where" clauses to a query for columns that have [full text indexes](SCHEMA.md). These methods will be transformed into the appropriate SQL for the underlying database system by Ludb. For example, a `MATCH AGAINST` clause will be generated for applications utilizing MySQL:
+The `whereFullText` and `orWhereFullText` methods may be used to add full text "where" clauses to a query for columns that have [full text indexes](SCHEMA.md#available-index-types). These methods will be transformed into the appropriate SQL for the underlying database system by Ludb. For example, a `MATCH AGAINST` clause will be generated for applications utilizing MySQL:
 
 ```ts
 users = await DB.table('users').whereFullText('bio', 'web developer').get();
