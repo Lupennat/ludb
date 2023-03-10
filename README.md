@@ -8,7 +8,7 @@
     -   [Configuration](#configuration)
     -   [Query Builder](#query-builder)
     -   [Schema Builder](#schema-builder)
--   [Running SQL Queries](#running-queries)
+-   [Running SQL Queries](#running-sql-queries)
     -   [Using Multiple Database Connections](#using-multiple-database-connections)
     -   [Listening For Query Events](#listening-for-query-events)
     -   [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time)
