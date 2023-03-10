@@ -17,11 +17,12 @@ class SQLiteConnector extends Connector implements ConnectorI {
         const originalCreated = poolOptions.created;
 
         poolOptions.created = async (uuid: string, connection: PdoConnectionI) => {
-            await this.configureForeignKeyConstraints(connection, config);
+            const promises = [this.configureForeignKeyConstraints(connection, config)];
 
             if (typeof originalCreated === 'function') {
-                await originalCreated(uuid, connection);
+                promises.push(originalCreated(uuid, connection));
             }
+            await Promise.all(promises);
         };
 
         const options = deepmerge({ path: config.database }, config.lupdo_options ?? {});
@@ -55,7 +56,7 @@ class SQLiteConnector extends Connector implements ConnectorI {
      */
     public async configureForeignKeyConstraints(connection: PdoConnectionI, config: SQLiteConfig): Promise<void> {
         if (typeof config.foreign_key_constraints === 'boolean') {
-            await connection.query(`foreign_keys = ${Boolean(config.foreign_key_constraints) ? 'ON' : 'OFF'}`);
+            connection.query(`foreign_keys = ${Boolean(config.foreign_key_constraints) ? 'ON' : 'OFF'}`);
         }
     }
 }
