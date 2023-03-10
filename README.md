@@ -2,6 +2,12 @@
 
 > Ludb offers an (almost) identical api to [Laravel Database](https://laravel.com/docs/database).
 
+# Installation
+
+> npm install ludb
+
+The Ludb type definitions are included in the lucontainer npm package.
+
 # Database: Getting Started
 
 -   [Introduction](#introduction)
