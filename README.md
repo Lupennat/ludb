@@ -10,6 +10,7 @@
     -   [Schema Builder](#schema-builder)
 -   [Running SQL Queries](#running-sql-queries)
     -   [Using Multiple Database Connections](#using-multiple-database-connections)
+    -   [Events](#events)
     -   [Listening For Query Events](#listening-for-query-events)
     -   [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time)
 -   [Database Transactions](#database-transactions)
@@ -169,11 +170,36 @@ const dbManager = new DatabaseManager(config);
 const DB = dbManager.connection('sqlite').select(/* ... */);
 ```
 
-You may access the raw, underlying PDO instance of a connection using the `getPdo` method on a connection instance:
+You may access the raw, underlying Lupdo instance of a connection using the `getPdo` method on a connection instance:
 
 ```ts
 pdo = DB.connection().getPdo();
 ```
+
+### Events
+
+Ludb emit an event for each query executed, the `QueryExecuted` event instance expose 6 properties:
+
+-   connection: the `ConnectionSession` instance who generate the query
+-   sql: the sql executed
+-   bindings: the bindings of the query executed
+-   time: time of execution in milliseconds
+-   sessionTime: total time of session execution in millisecond
+-   inTransaction: the sql executed is in a transaction
+
+When a query is executed in a transaction, all the query executed inside a committed transaction will generate two Event, the first one will have the property `inTransaction` true, the second will be emitted only after the commit will have property `inTransaction` false.
+
+Ludb emit an event every time a Lupdo Statement is prepared, the `StatementPrepared` event instance expose 2 properties:
+
+-   connection: the `ConnectionSession` instance who generate the query
+-   statement: the Lupdo Statement
+
+Lupdo emit 4 event when a transaction is used, every transaction event expose only the connection property.
+
+-   TransactionBeginning
+-   TransactionCommitted
+-   TransactionCommitting
+-   TransactionRolledBack
 
 ### Listening For Query Events
 
@@ -229,8 +255,8 @@ A common performance bottleneck of modern web applications is the amount of time
 The `DB` `listen` method can be helpful to make any kind of monitoring. An example of monitoring single query time execution:
 
 ```ts
-const DB = dbManager.connection('sqlite').listen(query => {
-    if (query.time > 500) {
+dbManager.connection('sqlite').listen(query => {
+    if (query.time > 500 && !query.inTransaction) {
         console.log('warning');
     }
 });
@@ -239,8 +265,8 @@ const DB = dbManager.connection('sqlite').listen(query => {
 An example of monitoring a session query time execution (all transaction queries are executed in a single session):
 
 ```ts
-const DB = dbManager.connection('sqlite').listen(query => {
-    if (query.sessionTime > 500) {
+dbManager.connection('sqlite').listen(query => {
+    if (query.sessionTime > 500 && !query.inTransaction) {
         console.log('warning');
     }
 });
@@ -260,7 +286,7 @@ const beforeMiddleware = (req: Request, res: Response, next: NextFunction) => {
     let hasRun = false;
     const queryExecuted = [];
     req.queryLogListener = (query: QueryExecuted) => {
-        if (!hasRun && query.inTransaction) {
+        if (!hasRun && !query.inTransaction) {
             totalTime += query.time;
             queryExecuted.push(query);
 
@@ -293,25 +319,25 @@ app.get('/', beforeMiddleware, responseHandler, afterMiddleware);
 You may use the `transaction` method provided by the `DB` to run a set of operations within a database transaction. If an exception is thrown within the transaction closure, the transaction will automatically be rolled back and the exception is re-thrown. If the closure executes successfully, the transaction will automatically be committed. You don't need to worry about manually rolling back or committing while using the `transaction` method:
 
 ```ts
-await DB.transaction(async dbTrx => {
-    await dbTrx.update('update users set votes = 1');
+await DB.transaction(async session => {
+    await session.update('update users set votes = 1');
 
-    await dbTrx.delete('delete from posts');
+    await session.delete('delete from posts');
 });
 ```
 
 > **Warning**  
-> Since Transaction will generate a new session you should always use the connection provided as first parameter of callback. Query executed on default connection will do not be exectued within the transaction.
+> Since Transaction will generate a new session you should always use the ConnectioSession provided as first parameter of callback. Query executed on default connection will do not be exectued within the transaction.
 
 #### Handling Deadlocks
 
 The `transaction` method accepts an optional second argument which defines the number of times a transaction should be retried when a deadlock occurs. Once these attempts have been exhausted, an exception will be thrown:
 
 ```ts
-await DB.transaction(async dbTrx => {
-    await dbTrx.update('update users set votes = 1');
+await DB.transaction(async session => {
+    await session.update('update users set votes = 1');
 
-    await dbTrx.delete('delete from posts');
+    await session.delete('delete from posts');
 }, 5);
 ```
 
@@ -320,34 +346,31 @@ await DB.transaction(async dbTrx => {
 If you would like to begin a transaction manually and have complete control over rollbacks and commits, you may use the `beginTransaction` method provided by the `DB`:
 
 ```ts
-dbTrx = await DB.beginTransaction();
+session = await DB.beginTransaction();
 ```
 
 You can rollback the transaction via the `rollBack` method:
 
 ```ts
-dbTrx.rollBack();
+session.rollBack();
 ```
 
 Lastly, you can commit a transaction via the `commit` method:
 
 ```ts
-dbTrx.commit();
+session.commit();
 ```
 
 > **Warning**  
-> Since Transaction will generate a new session you should always use the connection returned by `beginTransacion`. Query executed on default connection will do not be executed within the transaction.
+> Since Transaction will generate a new session you should always use the ConnectioSession returned by `beginTransacion`. Query executed on default connection will do not be executed within the transaction.
 
 ## Differences With Laravel
 
 -   The `DatabaseManager` instance do not proxy methods to default connection, you always need to call `connection(name)` method to access method of `Connection`.
 -   Methods `whenQueryingForLongerThan` and `allowQueryDurationHandlersToRunAgain` do not exist, [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time) offer a valid alternative.
 -   Methods `getQueryLog` does not exists, logging query is used only internally for `pretend` method.
--   Methods `beginTransaction` and `useWriteConnectionWhenReading` return a `ConnectionSession` you must use the session instead the original connection for the queries you want to execute within the transaction or against the write pdo.
+-   Methods `beginTransaction` and `useWriteConnectionWhenReading` return a `ConnectionSession` you must use the session instead the original connection for the queries you want to execute them within the transaction or against the write pdo.
 -   Callbacks for methods `transaction` and `pretend` are called with a `ConnectionSession` you must use the session instead the original connection inside the callback if you want to execute the queries within the transaction or to pretend the execution.
--   Event `QueryExecuted` contains new properties
-    -   `sessionTime` cumulative session query time
-    -   `inTransaction` query event is inside a transaction when true.
 
 ## Under The Hood
 
@@ -431,7 +454,7 @@ An example of `temporary` with Schema:
 
 ```ts
 import { DatabaseManager } from 'ludb';
-// import * as crypto from 'crypto';
+import * as crypto from 'crypto';
 
 const dbManager = new DatabaseManager(config);
 const DB = dbManager.connection(connectionName);
@@ -453,8 +476,9 @@ const connection = Schema.getConnection();
 await connection.table('orders').chunkById(1000, async orders => {
     const values = orders
         .map(order => {
+            const hash = crypto.createHash('sha1').update(order.id).digest('hex');
             /* Prepare the value string for the SQL statement */
-            return `(${order.id}, '${crypto.createHash('sha1').update(order.id).digest('hex')}')`;
+            return `(${order.id}, '${hash}')`;
         })
         .join(',');
 

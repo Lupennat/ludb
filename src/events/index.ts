@@ -1,3 +1,4 @@
+export { default as ConnectionEvent } from './connection-event';
 export { default as QueryExecuted } from './query-executed';
 export { default as StatementPrepared } from './statement-prepared';
 export { default as TransactionBeginning } from './transaction-beginning';
