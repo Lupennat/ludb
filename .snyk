@@ -1,0 +1,4 @@
+# Snyk (https://snyk.io) policy file
+exclude:
+  global:
+    - src/__tests__/fixtures/config.ts

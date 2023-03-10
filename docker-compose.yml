@@ -1,0 +1,90 @@
+version: '3'
+services:
+    mysql8:
+        image: 'mysql:8'
+        command: --init-file /data/application/mysql.sql --default-authentication-plugin=mysql_native_password --sync_binlog=0 --innodb_doublewrite=OFF  --innodb-flush-log-at-trx-commit=0 --innodb-flush-method=nosync
+        ports:
+            - '5308:3306'
+        environment:
+            MYSQL_DATABASE: 'test_db'
+            MYSQL_ROOT_PASSWORD: "root"
+            MYSQL_USER: "lupdo"
+            MYSQL_PASSWORD: "lupdo@s3cRet"
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    '/usr/bin/mysql',
+                    '-hlocalhost',
+                    '-ulupdo',
+                    '-plupdo@s3cRet',
+                    '-e',
+                    'SELECT 1'
+                ]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+        restart: always
+        volumes:
+            - ./src/__tests__/data/mysql57.sql:/data/application/mysql.sql
+
+    waitmysql8:
+        image: 'mysql:8'
+        links:
+            - mysql8
+        depends_on:
+            - mysql8
+        entrypoint:
+            - bash
+            - -c
+            - 'until /usr/bin/mysql -hmysql8 -ulupdo -plupdo@s3cRet -e "SELECT 1"; do sleep 5; done'
+
+    postgres15:
+        image: postgres:15-alpine
+        command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
+        ports:
+            - '25435:5432'
+        environment:
+            - PGUSER=ludpo
+            - PGPASSWORD=lupdos3cRet
+            - PGDATABASE=test_db
+            - POSTGRES_USER=lupdo
+            - POSTGRES_PASSWORD=lupdos3cRet
+            - POSTGRES_DB=test_db
+        volumes:
+            - ./src/__tests__/data/pg13.sql:/docker-entrypoint-initdb.d/init.sql
+
+    waitpostgres15:
+        image: postgres:15-alpine
+        links:
+            - postgres15
+        depends_on:
+            - postgres15
+        entrypoint:
+            - bash
+            - -c
+            - 'until /usr/local/bin/psql postgres://lupdo:lupdos3cRet@postgres15/test_db -c "SELECT 1"; do sleep 5; done'
+    
+    mssql22:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+            - '21435:1433'
+        environment:
+            - ACCEPT_EULA=Y
+            - SA_PASSWORD=lupdo@s3cRet
+        healthcheck:
+            test: /opt/mssql-tools/bin/sqlcmd -S mssql22 -U sa -P 'lupdo@s3cRet' -Q 'select 1'
+
+    waitmssql22:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        volumes:
+            - ./src/__tests__/data/mssql.sql:/init-script.sql
+        links:
+            - mssql22
+        depends_on:
+            - mssql22
+        entrypoint:
+            - bash
+            - -c
+            - 'until /opt/mssql-tools/bin/sqlcmd -S mssql22 -U sa -P lupdo@s3cRet -d master -i init-script.sql; do sleep 5; done'
+

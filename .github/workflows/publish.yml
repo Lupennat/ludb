@@ -1,0 +1,33 @@
+name: Publish
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  publish_to_npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "14.x"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install deps
+        run: npm install
+        env:
+          CI: true
+
+      - name: Set NPM Token Action
+        uses: filipstefansson/set-npm-token-action@v1.1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish new version
+        run: npm publish
+        env:
+          CI: true
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
