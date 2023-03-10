@@ -257,7 +257,7 @@ table.char('name', 100);
 The `dateTimeTz` method creates a `DATETIME` (with timezone) equivalent column with an optional precision (total digits):
 
 ```ts
-    table.dateTimeTz('created_at', precision? :number);
+table.dateTimeTz('created_at', precision? :number);
 ```
 
 #### `dateTime()`
@@ -265,7 +265,7 @@ The `dateTimeTz` method creates a `DATETIME` (with timezone) equivalent column w
 The `dateTime` method creates a `DATETIME` equivalent column with an optional precision (total digits):
 
 ```ts
-    table.dateTime('created_at', precision? :number);
+table.dateTime('created_at', precision? :number);
 ```
 
 #### `date()`
@@ -321,7 +321,7 @@ table.foreignId('user_id');
 The `foreignIdFor` method adds a `{column}_id UNSIGNED BIGINT` equivalent column for a given model class:
 
 ```ts
-    table.foreignIdFor(User::class);
+table.foreignIdFor(User::class);
 ```
 
 #### `foreignUlid()`
@@ -1017,7 +1017,7 @@ An alternative, expressive syntax is also provided for these actions:
 
 | Method                      | Description                                            |
 | --------------------------- | ------------------------------------------------------ |
-| `able.cascadeOnUpdate();`   | Updates should cascade.                                |
+| `table.cascadeOnUpdate();`   | Updates should cascade.                                |
 | `table.restrictOnUpdate();` | Updates should be restricted.                          |
 | `table.cascadeOnDelete();`  | Deletes should cascade.                                |
 | `table.restrictOnDelete();` | Deletes should be restricted.                          |
@@ -1027,9 +1027,9 @@ An alternative, expressive syntax is also provided for these actions:
 Any additional [column modifiers](#column-modifiers) must be called before the `constrained` method:
 
 ```ts
-    table.foreignId('user_id')
-          .nullable()
-          .constrained();
+table.foreignId('user_id')
+        .nullable()
+        .constrained();
 ```
 
 #### Dropping Foreign Keys
@@ -1037,13 +1037,13 @@ Any additional [column modifiers](#column-modifiers) must be called before the `
 To drop a foreign key, you may use the `dropForeign` method, passing the name of the foreign key constraint to be deleted as an argument. Foreign key constraints use the same naming convention as indexes. In other words, the foreign key constraint name is based on the name of the table and the columns in the constraint, followed by a "\_foreign" suffix:
 
 ```ts
-    table.dropForeign('posts_user_id_foreign');
+table.dropForeign('posts_user_id_foreign');
 ```
 
 Alternatively, you may pass an array containing the column name that holds the foreign key to the `dropForeign` method. The array will be converted to a foreign key constraint name using Ludb's constraint naming conventions:
 
 ```ts
-    table.dropForeign(['user_id']);
+table.dropForeign(['user_id']);
 ```
 
 #### Toggling Foreign Key Constraints
@@ -1051,14 +1051,14 @@ Alternatively, you may pass an array containing the column name that holds the f
 You may enable or disable foreign key constraints by using the following methods:
 
 ```ts
-    Schema.enableForeignKeyConstraints();
+Schema.enableForeignKeyConstraints();
 
-    Schema.disableForeignKeyConstraints();
+Schema.disableForeignKeyConstraints();
 
-    Schema.withoutForeignKeyConstraints(() => {
-        // Constraints disabled within this closure...
-    });
+Schema.withoutForeignKeyConstraints(() => {
+    // Constraints disabled within this closure...
+});
 ```
 
 > **Warning**  
-> SQLite disables foreign key constraints by default. When using SQLite, make sure to [enable foreign key support](CONFIGURATION.md) in your database configuration before attempting to create them. In addition, SQLite only supports foreign keys upon creation of the table and [not when tables are altered](https://www.sqlite.org/omitted.html).
+> SQLite disables foreign key constraints by default. When using SQLite, make sure to [enable foreign key support](CONFIG.md#sqlite-configuration) in your database configuration before attempting to create them. In addition, SQLite only supports foreign keys upon creation of the table and [not when tables are altered](https://www.sqlite.org/omitted.html).
