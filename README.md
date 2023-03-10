@@ -1,3 +1,18 @@
+<p align="center">
+	<a href="https://www.npmjs.com/package/ludb" target="_blank">
+        <img src="https://img.shields.io/npm/v/ludb?color=0476bc&label=" alt="NPM version">
+    </a>
+	<a href="https://www.npmjs.com/package/ludb" target="_blank">
+        <img alt="NPM Downloads" src="https://img.shields.io/npm/dm/ludb?color=3890aa&label=">
+    </a>
+    <a href="https://app.codecov.io/github/Lupennat/ludb" target="_blank">
+        <img src="https://codecov.io/github/Lupennat/ludb/branch/main/graph/badge.svg?token=FOECLCWQ7F"/>
+    </a>
+    <a href="https://snyk.io/test/github/lupennat/ludb" target="_blank">
+        <img src="https://snyk.io/test/github/lupennat/ludb/badge.svg">
+    </a>
+</p>
+
 # Ludb
 
 > Ludb offers an (almost) identical api to [Laravel Database](https://laravel.com/docs/database).
