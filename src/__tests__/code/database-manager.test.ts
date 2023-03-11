@@ -4,7 +4,7 @@ import SQLiteConnection from '../../connections/sqlite-connection';
 import DatabaseManager from '../../database-manager';
 import Expression from '../../query/expression';
 import { FlattedConnectionConfig } from '../../types/config';
-import { pdo, schemaPdo } from './fixtures/mocked';
+import { MockedDatabaseManager, pdo, schemaPdo } from './fixtures/mocked';
 
 describe('Database Manager', () => {
     it('Works Connection Return Connection', () => {
@@ -50,6 +50,18 @@ describe('Database Manager', () => {
         expect(db.getConnections()).toEqual({});
         db.connection();
         expect('test' in db.getConnections()).toBeTruthy();
+    });
+
+    it('Works Connection Should Be Created Once', () => {
+        const db = new MockedDatabaseManager({
+            default: 'test',
+            connections: { test: { driver: 'sqlite', database: ':memory:' } }
+        });
+
+        const spiedConfigure = jest.spyOn(db, 'configure');
+        db.connection();
+        db.connection();
+        expect(spiedConfigure).toBeCalledTimes(1);
     });
 
     it('Works Purge Connection Should Disconnect And Remove From Cache', async () => {

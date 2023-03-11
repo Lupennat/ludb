@@ -1,7 +1,7 @@
 import DatabaseManager from '../../../database-manager';
 import { DatabaseConfig } from '../../../types';
 
-const currentDB: string = process.env.DB as string;
+export const currentDB: string = process.env.DB as string;
 
 const config: DatabaseConfig = {
     default: currentDB,

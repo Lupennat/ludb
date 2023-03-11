@@ -55,7 +55,7 @@ class DatabaseManager implements DatabaseI {
         // If we haven't created this connection, we'll create it based on the config
         // provided in the application. Once we've created the connections we will
         // set the "fetch mode" for PDO which determines the query return types.
-        if (!(name in this.connection)) {
+        if (!(name in this.connections)) {
             this.connections[name] = this.configure(this.makeConnection(database), type);
         }
 

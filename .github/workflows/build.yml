@@ -28,6 +28,6 @@ jobs:
       - name: Build and test
         run: |
           npm run build
-          npm run test:all
+          npm run test:code
         env:
           CI: true

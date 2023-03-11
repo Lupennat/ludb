@@ -45,20 +45,20 @@
         "build:esm": "tsc -p ./typescript/tsconfig.esm.json",
         "build:types": "tsc -p ./typescript/tsconfig.types.json",
         "clean": "rimraf ./dist",
-        "test:all": "npm run lint && jest --config test/jest.config.js --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/'",
-        "test:coverage": "npm run lint && jest --config test/jest.config.js --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --coverage",
-        "test:integration": "npm run lint && jest --config test/jest.config.js --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
-        "test:integration:mysql": "npm run lint && cross-env DB=mysql jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
-        "test:integration:maria": "npm run lint && cross-env DB=maria jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
-        "test:integration:sqlite": "npm run lint && cross-env DB=sqlite jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
-        "test:integration:postgres": "npm run lint && cross-env DB=postgres jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
-        "test:integration:sqlsrv": "npm run lint && cross-env DB=sqlsrv jest --config test/jest.config.js  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/'",
+        "test:code": "npm run lint && jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --config test/jest.config.js ",
+        "test:coverage": "npm run lint && jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --coverage --config test/jest.config.js",
+        "test:integration": "npm run lint && jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
+        "test:integration:mysql": "cross-env DB=mysql jest  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
+        "test:integration:maria": "cross-env DB=maria jest  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
+        "test:integration:sqlite": "cross-env DB=sqlite jest  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
+        "test:integration:postgres": "cross-env DB=postgres jest  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
+        "test:integration:sqlsrv": "cross-env DB=sqlsrv jest  --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
         "lint": "eslint --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
         "lint:fix": "eslint --fix --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
         "sqlite:up": "touch .sqlite3.db",
         "sqlite:down": "rimraf .sqlite3.db",
-        "db:up": "sqlite:up && docker compose -f docker-compose.yml up --build -d mysql postgres sqlsrv maria && docker-compose -f docker-compose.yml up waitmysql waitpostgres waitsqlsrv waitmaria",
-        "db:down": "sqlite:down && docker compose -f docker-compose.yml down -v"
+        "db:up": "npm run sqlite:up && docker compose -f docker-compose.yml up --build -d mysql postgres sqlsrv maria && docker-compose -f docker-compose.yml up waitmysql waitpostgres waitsqlsrv waitmaria",
+        "db:down": "npm run sqlite:down && docker compose -f docker-compose.yml down -v"
     },
     "engines": {
         "node": "^14.19.0 || ^16.10.0 || >=18.0.0"
@@ -80,6 +80,7 @@
         "rimraf": "^3.0.2",
         "safe-publish-latest": "^2.0.0",
         "ts-jest": "^29.0.3",
+        "ts-node": "^10.9.1",
         "typescript": "^4.9.4"
     },
     "dependencies": {
@@ -89,7 +90,7 @@
         "@types/set-value": "^4.0.1",
         "deepmerge": "^4.3.0",
         "get-value": "^3.0.1",
-        "lupdo": "^3.1.4",
+        "lupdo": "^3.1.5",
         "pluralize": "^8.0.0",
         "set-value": "^4.1.0",
         "snake-case": "^3.0.4",
