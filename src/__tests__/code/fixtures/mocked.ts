@@ -4,6 +4,7 @@ import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import Connection from '../../../connections/connection';
 import ConnectionSession, { RunCallback } from '../../../connections/connection-session';
 import ConnectionFactory from '../../../connectors/connection-factory';
+import DatabaseManager from '../../../database-manager';
 import Builder from '../../../query/builder';
 import Grammar from '../../../query/grammars/grammar';
 import MySqlGrammar from '../../../query/grammars/mysql-grammar';
@@ -20,7 +21,7 @@ import MySqlSchemaGrammar from '../../../schema/grammars/mysql-grammar';
 import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
 import SQLiteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
 import SqlServerSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
-import { DriverFLattedConfig } from '../../../types/config';
+import { DriverFLattedConfig, ReadWriteType } from '../../../types/config';
 import DriverConnectionI from '../../../types/connection';
 import ConnectorI from '../../../types/connector';
 import BuilderI, { Arrayable, Binding } from '../../../types/query/builder';
@@ -445,5 +446,11 @@ export class MockedGrammar extends SchemaGrammar {
      */
     public compileModifyVirtualAs(blueprint: BlueprintI, column: ColumnDefinition): string {
         return super.compileModifyVirtualAs(blueprint, column);
+    }
+}
+
+export class MockedDatabaseManager extends DatabaseManager {
+    public configure(connection: DriverConnectionI, type: ReadWriteType | null): DriverConnectionI {
+        return super.configure(connection, type);
     }
 }
