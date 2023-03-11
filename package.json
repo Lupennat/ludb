@@ -57,7 +57,7 @@
         "lint:fix": "eslint --fix --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
         "sqlite:up": "touch .sqlite3.db",
         "sqlite:down": "rimraf .sqlite3.db",
-        "db:up": "npm run sqlite:up && docker compose -f docker-compose.yml up --build -d mysql mysql2 postgres sqlsrv maria && docker-compose -f docker-compose.yml up waitmysql waitmysql2 waitpostgres waitsqlsrv waitmaria",
+        "db:up": "npm run sqlite:up && docker compose -f docker-compose.yml up --build -d mysql postgres sqlsrv maria && docker-compose -f docker-compose.yml up waitmysql waitpostgres waitsqlsrv waitmaria",
         "db:down": "npm run sqlite:down && docker compose -f docker-compose.yml down -v"
     },
     "engines": {
