@@ -1,8 +1,7 @@
-import deepmerge from 'deepmerge';
 import set from 'set-value';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereDateTime } from '../../types/query/registry';
-import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
+import { isPrimitiveBinding, merge, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -214,7 +213,7 @@ class SQLiteGrammar extends Grammar {
         for (const key in groupKeys) {
             let value = groupKeys[key];
             if (key in groups) {
-                value = deepmerge(value, groups[key]);
+                value = merge(value, groups[key]);
                 delete groups[key];
             }
 

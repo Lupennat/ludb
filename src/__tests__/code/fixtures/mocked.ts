@@ -14,6 +14,7 @@ import SqlServerGrammar from '../../../query/grammars/sqlserver-grammar';
 import JoinClause from '../../../query/join-clause';
 import Blueprint from '../../../schema/blueprint';
 import SchemaBuilder from '../../../schema/builders/builder';
+import PostgresBuilder from '../../../schema/builders/postgres-builder';
 import { default as SQLiteSchemaBuilder } from '../../../schema/builders/sqlite-builder';
 import ColumnDefinition from '../../../schema/definitions/column-definition';
 import SchemaGrammar from '../../../schema/grammars/grammar';
@@ -452,5 +453,11 @@ export class MockedGrammar extends SchemaGrammar {
 export class MockedDatabaseManager extends DatabaseManager {
     public configure(connection: DriverConnectionI, type: ReadWriteType | null): DriverConnectionI {
         return super.configure(connection, type);
+    }
+}
+
+export class MockedPostgresBuilder extends PostgresBuilder {
+    public async getAllTablesFromConnection(): Promise<Array<{ tablename: string; qualifiedname: string | null }>> {
+        return super.getAllTablesFromConnection();
     }
 }

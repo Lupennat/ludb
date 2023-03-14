@@ -316,9 +316,7 @@ class Connection implements DriverConnectionI {
         if (option == null) {
             return this.config as T;
         }
-        return get(this.config, option, {
-            default: defaultValue
-        }) as T;
+        return (get(this.config, option) ?? defaultValue) as T;
     }
 
     /**

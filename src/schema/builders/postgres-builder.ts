@@ -38,13 +38,15 @@ class PostgresBuilder extends Builder {
      */
     public async dropAllTables(): Promise<void> {
         const tables: string[] = [];
-        const dbTables = await this.getAllTables();
+        const dbTables = await this.getAllTablesFromConnection();
         const excludedTables = this.grammar.escapeNames(this.connection.getConfig('dont_drop', ['spatial_ref_sys']));
 
         for (const dbTable of dbTables) {
-            const tablesToMatch = this.grammar.escapeNames([dbTable]);
+            const tablesToMatch = this.grammar.escapeNames(
+                [dbTable.tablename].concat(dbTable.qualifiedname ? [dbTable.qualifiedname] : [])
+            );
             if (tablesToMatch.filter(value => excludedTables.includes(value)).length === 0) {
-                tables.push(dbTable);
+                tables.push(dbTable.qualifiedname ? dbTable.qualifiedname : dbTable.tablename);
             }
         }
 
@@ -72,12 +74,11 @@ class PostgresBuilder extends Builder {
             await this.connection.statement(this.grammar.compileDropAllTypes(types));
         }
     }
-
     /**
-     * Get all of the table names for the database.
+     * Get all of the table names and qualifiednames for the database.
      */
-    public async getAllTables(): Promise<string[]> {
-        const results = await this.connection.select<{ tablename: string; qualifiedname: string | null }>(
+    protected async getAllTablesFromConnection(): Promise<Array<{ tablename: string; qualifiedname: string | null }>> {
+        return this.connection.select<{ tablename: string; qualifiedname: string | null }>(
             this.grammar.compileGetAllTables(
                 this.parseSearchPath(
                     this.connection.getConfig<string | string[]>('search_path') ||
@@ -86,6 +87,13 @@ class PostgresBuilder extends Builder {
                 )
             )
         );
+    }
+
+    /**
+     * Get all of the table names for the database.
+     */
+    public async getAllTables(): Promise<string[]> {
+        const results = await this.getAllTablesFromConnection();
         return results.map(result => (result.qualifiedname ? result.qualifiedname : result.tablename));
     }
 

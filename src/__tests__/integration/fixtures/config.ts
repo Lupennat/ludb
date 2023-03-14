@@ -1,9 +1,25 @@
 import DatabaseManager from '../../../database-manager';
-import { DatabaseConfig } from '../../../types';
+import { MySqlConfig, PostgresConfig, SQLiteConfig, SqlServerConfig } from '../../../types/config';
 
 export const currentDB: string = process.env.DB as string;
 
-const config: DatabaseConfig = {
+export function isMySql(): boolean {
+    return currentDB === 'mysql' || currentDB === 'maria';
+}
+
+export function isSQLite(): boolean {
+    return currentDB === 'sqlite';
+}
+
+export function isPostgres(): boolean {
+    return currentDB === 'postgres';
+}
+
+export function isSqlServer(): boolean {
+    return currentDB === 'sqlsrv';
+}
+
+export const config = {
     default: currentDB,
     connections: {
         mysql: {
@@ -13,7 +29,7 @@ const config: DatabaseConfig = {
             username: 'lupdo',
             password: 'lupdo@s3cRet',
             database: 'tempdb'
-        },
+        } as MySqlConfig,
         maria: {
             driver: 'mysql',
             host: 'localhost',
@@ -21,12 +37,12 @@ const config: DatabaseConfig = {
             username: 'lupdo',
             password: 'lupdo@s3cRet',
             database: 'tempdb'
-        },
+        } as MySqlConfig,
         sqlite: {
             driver: 'sqlite',
             database: __dirname + '/../../../../.sqlite3.db',
             foreign_key_constraints: true
-        },
+        } as SQLiteConfig,
         postgres: {
             driver: 'pgsql',
             username: 'lupdo',
@@ -34,7 +50,7 @@ const config: DatabaseConfig = {
             host: 'localhost',
             database: 'tempdb',
             port: 25435
-        },
+        } as PostgresConfig,
         sqlsrv: {
             port: 21435,
             driver: 'sqlsrv',
@@ -43,7 +59,7 @@ const config: DatabaseConfig = {
             password: 'lupdo@s3cRet',
             host: 'localhost',
             trust_server_certificate: true
-        }
+        } as SqlServerConfig
     }
 };
 

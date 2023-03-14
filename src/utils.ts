@@ -1,3 +1,5 @@
+import deepmerge from 'deepmerge';
+import { isPlainObject } from 'is-plain-object';
 import { TypedBinding } from 'lupdo';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
@@ -213,4 +215,13 @@ export function parseSearchPath(searchPath: string | string[]): string[] {
     } else {
         return searchPath.map(schema => trimChar(schema, '\'"'));
     }
+}
+
+export function merge<T>(x: Partial<T>, y: Partial<T>): T;
+export function merge<T1, T2>(x: Partial<T1>, y: Partial<T2>): T1 & T2 {
+    return deepmerge(x, y, {
+        isMergeableObject: value => {
+            return Array.isArray(value) || isPlainObject(value);
+        }
+    });
 }

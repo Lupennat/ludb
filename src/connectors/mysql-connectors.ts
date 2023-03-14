@@ -1,8 +1,8 @@
-import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { MysqlOptions } from 'lupdo-mysql';
 import { MySqlConfig, MySqlStrict } from '../types/config';
 import ConnectorI from '../types/connector';
+import { merge } from '../utils';
 import Connector from './connector';
 
 class MySqlConnector extends Connector implements ConnectorI {
@@ -31,7 +31,7 @@ class MySqlConnector extends Connector implements ConnectorI {
             await Promise.all(promises);
         };
 
-        const options: MysqlOptions = deepmerge(
+        const options: MysqlOptions = merge(
             {
                 user: config.username,
                 password: config.password,

@@ -182,14 +182,14 @@ class MySqlGrammar extends Grammar {
      * Compile the query to determine the data type of column.
      */
     public compileColumnType(): string {
-        return 'select column_name, data_type from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?';
+        return 'select column_name as `column_name`, data_type as `data_type` from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?';
     }
 
     /**
      * Compile the query to determine the list of columns.
      */
     public compileColumnListing(): string {
-        return 'select column_name from information_schema.columns where table_schema = ? and table_name = ?';
+        return 'select column_name as `column_name` from information_schema.columns where table_schema = ? and table_name = ?';
     }
 
     /**

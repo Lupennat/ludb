@@ -1,10 +1,9 @@
-import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
 import { PostgresConfig } from '../types/config';
 import ConnectorI from '../types/connector';
-import { parseSearchPath } from '../utils';
+import { merge, parseSearchPath } from '../utils';
 import Connector from './connector';
 
 class PostgresConnector extends Connector implements ConnectorI {
@@ -61,7 +60,7 @@ class PostgresConnector extends Connector implements ConnectorI {
                 ssl = Object.values(ssl).filter(Boolean).length === 0 ? undefined : ssl;
         }
 
-        const options: PostgresOptions = deepmerge(
+        const options: PostgresOptions = merge<PostgresOptions>(
             {
                 user: config.username,
                 database: config.database,
