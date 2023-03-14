@@ -1,6 +1,6 @@
 import PostgresBuilder from '../../../schema/builders/postgres-builder';
 import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
-import { getConnection } from '../fixtures/mocked';
+import { MockedPostgresBuilder, getConnection } from '../fixtures/mocked';
 
 describe('Postgres Schema Builder Test', () => {
     it('Works Enable Foreign Key Constraints', async () => {
@@ -259,17 +259,25 @@ describe('Postgres Schema Builder Test', () => {
                 return true;
             })
             .mockImplementationOnce(async (sql, bindings) => {
-                expect(sql).toBe('drop table "users","spatial_ref_sys" cascade');
+                expect(sql).toBe('drop table "users","public"."spatial_ref_sys" cascade');
                 expect(bindings).toBeUndefined();
                 return true;
             });
 
-        const builder = new PostgresBuilder(session);
+        const builder = new MockedPostgresBuilder(session);
         jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
         const getAllSpied = jest
-            .spyOn(builder, 'getAllTables')
-            .mockResolvedValueOnce(['users', 'companies', 'spatial_ref_sys'])
-            .mockResolvedValueOnce(['users', 'companies', 'spatial_ref_sys'])
+            .spyOn(builder, 'getAllTablesFromConnection')
+            .mockResolvedValueOnce([
+                { tablename: 'users', qualifiedname: null },
+                { tablename: 'companies', qualifiedname: null },
+                { tablename: 'spatial_ref_sys', qualifiedname: "'public'.'spatial_ref_sys'" }
+            ])
+            .mockResolvedValueOnce([
+                { tablename: 'users', qualifiedname: null },
+                { tablename: 'companies', qualifiedname: null },
+                { tablename: 'spatial_ref_sys', qualifiedname: "'public'.'spatial_ref_sys'" }
+            ])
             .mockResolvedValueOnce([]);
 
         await builder.dropAllTables();

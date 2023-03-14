@@ -26,6 +26,32 @@ describe('Query Builder Pdo Methods Modify', () => {
         expect(await builder.from('users').insert([])).toBeTruthy();
     });
 
+    it('Works Insert Method With Not Primitive Bindings', async () => {
+        const builder = getBuilder();
+
+        jest.spyOn(builder.getConnection(), 'insert')
+            .mockImplementationOnce(async (query, bindings) => {
+                expect(query).toBe('insert into "users" ("json_col") values (?)');
+                expect(bindings).toEqual(['{"nested":{"value":[0,"null","922323312312312312312"]}}']);
+                return true;
+            })
+            .mockImplementationOnce(async (query, bindings) => {
+                expect(query).toBe('insert into "users" ("json_col") values (?)');
+                expect(bindings).toEqual(['[null,"test",[null,"invalid"]]']);
+                return true;
+            });
+        expect(
+            await builder
+                .from('users')
+                .insert({ json_col: { nested: { value: [0, 'null', BigInt('922323312312312312312')] } } })
+        ).toBeTruthy();
+        expect(
+            await builder.from('users').insert({ json_col: [undefined, new Raw('test'), [null, 'invalid']] })
+        ).toBeTruthy();
+        expect(await builder.from('users').insert({})).toBeTruthy();
+        expect(await builder.from('users').insert([])).toBeTruthy();
+    });
+
     it('Works Insert Using Method', async () => {
         const builder = getBuilder();
 

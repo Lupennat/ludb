@@ -1,12 +1,12 @@
-import { DB, currentDB } from '../fixtures/config';
+import { DB, isMySql } from '../fixtures/config';
 
-const maybe = currentDB === 'mysql' || currentDB === 'maria' ? describe : describe.skip;
+const maybe = isMySql() ? describe : describe.skip;
 
 maybe('MySql FullText', () => {
     const Schema = DB.connection().getSchemaBuilder();
 
     beforeAll(async () => {
-        await Schema.create('articles', table => {
+        await Schema.create('test_fulltext_articles', table => {
             table.id('id');
             table.string('title', 200);
             table.text('body');
@@ -14,7 +14,7 @@ maybe('MySql FullText', () => {
         });
 
         await DB.connection()
-            .table('articles')
+            .table('test_fulltext_articles')
             .insert([
                 { title: 'MySQL Tutorial', body: 'DBMS stands for DataBase ...' },
                 { title: 'How To Use MySQL Well', body: 'After you went through a ...' },
@@ -26,13 +26,16 @@ maybe('MySql FullText', () => {
     });
 
     afterAll(async () => {
-        await Schema.drop('articles');
+        await Schema.drop('test_fulltext_articles');
         await DB.disconnect();
     });
 
     /** @link https://dev.mysql.com/doc/refman/8.0/en/fulltext-natural-language.html */
-    it('Works WhereFulltext', async () => {
-        const articles = await DB.connection().table('articles').whereFulltext(['title', 'body'], 'database').get();
+    it('Works Where Fulltext', async () => {
+        const articles = await DB.connection()
+            .table('test_fulltext_articles')
+            .whereFulltext(['title', 'body'], 'database')
+            .get();
 
         expect(articles).toHaveLength(2);
         expect('MySQL Tutorial').toBe(articles[0].title);
@@ -40,9 +43,9 @@ maybe('MySql FullText', () => {
     });
 
     /** @link https://dev.mysql.com/doc/refman/8.0/en/fulltext-boolean.html */
-    it('Works WhereFulltextWithBooleanMode', async () => {
+    it('Works Where Fulltext With Boolean Mode', async () => {
         const articles = await DB.connection()
-            .table('articles')
+            .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], '+MySQL -YourSQL', { mode: 'boolean' })
             .get();
 
@@ -50,9 +53,9 @@ maybe('MySql FullText', () => {
     });
 
     /** @link https://dev.mysql.com/doc/refman/8.0/en/fulltext-query-expansion.html */
-    it('Works WhereFulltextWithExpandedQuery', async () => {
+    it('Works Where Fulltext With Expanded Query', async () => {
         const articles = await DB.connection()
-            .table('articles')
+            .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'database', { expanded: true })
             .get();
 

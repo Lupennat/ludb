@@ -1,4 +1,3 @@
-import deepmerge from 'deepmerge';
 import { Pdo } from 'lupdo';
 import Connection from '../connections/connection';
 import MySqlConnection from '../connections/mysql-connection';
@@ -19,6 +18,7 @@ import {
 } from '../types/config';
 import DriverConnectionI from '../types/connection';
 import ConnectorI from '../types/connector';
+import { merge } from '../utils';
 import Connector from './connector';
 import MySqlConnector from './mysql-connectors';
 import PostgresConnector from './postgres-connector';
@@ -108,9 +108,9 @@ class ConnectionFactory {
      */
     protected mergeReadWriteConfig(
         config: PreparedConnectionConfig,
-        merge?: DriverConnectionOptions
+        toMerge?: DriverConnectionOptions
     ): DriverFLattedConfig {
-        const merged = deepmerge<PreparedConnectionConfig>(config, merge ?? {});
+        const merged = merge<PreparedConnectionConfig>(config, toMerge ?? {});
         delete merged.read;
         delete merged.write;
 

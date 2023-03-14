@@ -409,7 +409,7 @@ describe('Query Builder Utilities', () => {
         }).toThrowError('Invalid binding type: noway.');
     });
 
-    it('Works Merge Builders', () => {
+    it('Works Merge Builders Bindings', () => {
         const builder = getBuilder();
         builder.addBinding(['foo', 'bar']);
         const otherBuilder = getBuilder();

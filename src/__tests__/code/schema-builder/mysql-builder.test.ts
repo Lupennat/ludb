@@ -119,14 +119,14 @@ describe('Mysql Schema Builder Test', () => {
         jest.spyOn(session, 'selectFromWriteConnection')
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name from information_schema.columns where table_schema = ? and table_name = ?'
+                    'select column_name as `column_name` from information_schema.columns where table_schema = ? and table_name = ?'
                 );
                 expect(bindings).toEqual(['db', 'prefix_table']);
                 return [{ column_name: 'column' }];
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name from information_schema.columns where table_schema = ? and table_name = ?'
+                    'select column_name as `column_name` from information_schema.columns where table_schema = ? and table_name = ?'
                 );
                 expect(bindings).toEqual(['db2', 'prefix_table2']);
                 return [{ column_name: 'column' }];
@@ -146,14 +146,14 @@ describe('Mysql Schema Builder Test', () => {
         jest.spyOn(session, 'selectOne')
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name, data_type from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?'
+                    'select column_name as `column_name`, data_type as `data_type` from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?'
                 );
                 expect(bindings).toEqual(['db', 'prefix_table', 'column']);
                 return { column_name: 'column', data_type: 'int' };
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name, data_type from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?'
+                    'select column_name as `column_name`, data_type as `data_type` from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?'
                 );
                 expect(bindings).toEqual(['db2', 'prefix_table2', 'column']);
                 return { column_name: 'column', data_type: 'int' };

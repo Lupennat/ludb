@@ -1,9 +1,9 @@
-import deepmerge from 'deepmerge';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { SqliteOptions } from 'lupdo-sqlite';
 import { existsSync } from 'node:fs';
 import { SQLiteConfig } from '../types/config';
 import ConnectorI from '../types/connector';
+import { merge } from '../utils';
 import Connector from './connector';
 
 class SQLiteConnector extends Connector implements ConnectorI {
@@ -25,7 +25,7 @@ class SQLiteConnector extends Connector implements ConnectorI {
             await Promise.all(promises);
         };
 
-        const options = deepmerge({ path: config.database }, config.lupdo_options ?? {});
+        const options = merge({ path: config.database }, config.lupdo_options ?? {});
 
         if (!options.path) {
             throw new Error('Database file path is required.');

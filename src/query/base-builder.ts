@@ -1,4 +1,3 @@
-import deepmerge from 'deepmerge';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { snakeCase } from 'snake-case';
 import { ConnectionSessionI } from '../types/connection';
@@ -27,7 +26,7 @@ import {
 import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
 import RegistryI, { BindingTypes, Order, Where } from '../types/query/registry';
-import { isArrayable, isExpression, isPrimitiveBinding, isStringable, raw } from '../utils';
+import { isArrayable, isExpression, isPrimitiveBinding, isStringable, merge, raw, stringifyReplacer } from '../utils';
 import BuilderContract from './builder-contract';
 import ExpressionContract from './expression-contract';
 import IndexHint from './index-hint';
@@ -3781,7 +3780,7 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public async updateOrInsert(attributes: RowValues, values: RowValues = {}): Promise<boolean> {
         if (!(await this.where(attributes).exists())) {
-            return this.insert(deepmerge(attributes, values));
+            return this.insert(merge(attributes, values));
         }
 
         if (Object.keys(values).length === 0) {
@@ -3865,7 +3864,7 @@ abstract class BaseBuilder extends BuilderContract {
             processed[column] = this.raw(`${this.getGrammar().wrap(column)} + ${amount.toString()}`);
         }
 
-        return this.update(deepmerge(processed, extra));
+        return this.update(merge(processed, extra));
     }
 
     /**
@@ -3893,7 +3892,7 @@ abstract class BaseBuilder extends BuilderContract {
             processed[column] = this.raw(`${this.getGrammar().wrap(column)} - ${amount.toString()}`);
         }
 
-        return this.update(deepmerge(processed, extra));
+        return this.update(merge(processed, extra));
     }
 
     /**
@@ -4055,7 +4054,10 @@ abstract class BaseBuilder extends BuilderContract {
     /**
      * Cast the given binding value.
      */
-    public castBinding(value: Binding): Binding {
+    public castBinding(value: any): Binding {
+        if (!isPrimitiveBinding(value)) {
+            return JSON.stringify(value, stringifyReplacer(this.getGrammar()));
+        }
         return value;
     }
 
@@ -4063,7 +4065,7 @@ abstract class BaseBuilder extends BuilderContract {
      * Merge an array of bindings into our bindings.
      */
     public mergeBindings(query: BuilderContract): this {
-        this.registry.bindings = deepmerge(this.registry.bindings, query.getRegistry().bindings);
+        this.registry.bindings = merge(this.registry.bindings, query.getRegistry().bindings);
 
         return this;
     }

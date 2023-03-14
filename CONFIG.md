@@ -83,14 +83,22 @@ const config: DatabaseConfig = {
             host: 'DB_HOST',
             port: 'DB_PORT',
             database: 'DB_DATABASE',
-            username: 'DB_USERNAME',
-            password: 'DB_PASSWORD',
             charset: 'utf8',
             prefix: '',
             prefix_indexes: true,
             encrypt: true,
             trust_server_certificate: true,
-            attributes: {}
+            attributes: {},
+            lupdo_options: {
+                authentication: {
+                    type: 'azure-active-directory-service-principal-secret',
+                    options: {
+                        clientId: "value",
+                        clientSecret: "value",
+                        tenantId: "(Optional)"
+                    }
+                }
+            }
         }
     }
 };
