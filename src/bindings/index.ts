@@ -15,126 +15,243 @@ import {
     TypedBinding
 } from 'lupdo';
 import { TypeBindingOptions } from 'lupdo/dist/typings/typed-binding';
-
-import { ValidBindingsPrimitive } from 'lupdo/dist/typings/types/pdo-prepared-statement';
+import ExpressionContract from '../query/expression-contract';
 import BindToI from '../types/bind-to';
+import { BindingExclude } from '../types/query/builder';
 
 export const bindTo: BindToI = {
-    bigInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_BIGINT, value, options);
+    bigInteger: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_BIGINT, value, options);
     },
-    binary: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_BINARY, value, options);
+    binary: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_BINARY, value, options);
     },
-    boolean: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_BOOLEAN, value, options);
+    boolean: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_BOOLEAN, value, options);
     },
-    char: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_CHAR, value, options);
+    char: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_CHAR, value, options);
     },
-    dateTime: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_TIMESTAMP, value, options);
+    dateTime: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_TIMESTAMP, value, options);
     },
-    dateTimeTz: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_DATETIMEZONE, value, options);
+    dateTimeTz: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_DATETIMEZONE, value, options);
     },
-    date: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_DATE, value, options);
+    date: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_DATE, value, options);
     },
-    decimal: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_DECIMAL, value, options);
+    decimal: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_DECIMAL, value, options);
     },
-    double: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_FLOAT, value, options);
+    double: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_FLOAT, value, options);
     },
-    enum: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    enum: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    float: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_FLOAT, value, options);
+    float: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_FLOAT, value, options);
     },
-    geometryCollection: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    geometryCollection: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    geometry: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    geometry: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    id: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_BIGINT, value, options);
+    id: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_BIGINT, value, options);
     },
-    integer: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_INTEGER, value, options);
+    integer: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_INTEGER, value, options);
     },
-    ipAddress: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    ipAddress: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    json: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    json: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    jsonb: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    jsonb: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    lineString: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    lineString: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    longText: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    longText: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    macAddress: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    macAddress: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    mediumInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_INTEGER, value, options);
+    mediumInteger: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_INTEGER, value, options);
     },
-    mediumText: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    mediumText: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    multiLineString: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    multiLineString: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    multiPoint: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    multiPoint: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    multiPolygon: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    multiPolygon: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    point: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    point: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    polygon: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_GEOMETRY, value, options);
+    polygon: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_GEOMETRY, value, options);
     },
-    smallInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_INTEGER, value, options);
+    smallInteger: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_INTEGER, value, options);
     },
-    string: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    string: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    text: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    text: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    time: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_TIME, value, options);
+    time: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_TIME, value, options);
     },
-    timestamp: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_TIMESTAMP, value, options);
+    timestamp: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_TIMESTAMP, value, options);
     },
-    timestampTZ: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_DATETIMEZONE, value, options);
+    timestampTZ: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_DATETIMEZONE, value, options);
     },
-    tinyInteger: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_INTEGER, value, options);
+    tinyInteger: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_INTEGER, value, options);
     },
-    tinyText: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    tinyText: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    ulid: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    ulid: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    uuid: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_VARCHAR, value, options);
+    uuid: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_VARCHAR, value, options);
     },
-    year: (value: ValidBindingsPrimitive, options?: TypeBindingOptions | undefined): TypedBinding => {
-        return TypedBinding.create(PARAM_INTEGER, value, options);
+    year: (
+        value: BindingExclude<TypedBinding | ExpressionContract>,
+        options?: TypeBindingOptions | undefined
+    ): TypedBinding => {
+        return new TypedBinding(PARAM_INTEGER, value, options);
     }
 };

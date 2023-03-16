@@ -41,7 +41,8 @@ export const config = {
         sqlite: {
             driver: 'sqlite',
             database: __dirname + '/../../../../.sqlite3.db',
-            foreign_key_constraints: true
+            foreign_key_constraints: true,
+            journal_mode_wal: true
         } as SQLiteConfig,
         postgres: {
             driver: 'pgsql',

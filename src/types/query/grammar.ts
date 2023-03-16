@@ -20,11 +20,6 @@ export default interface GrammarI extends BaseGrammarI {
     prepareBindingForJsonContains(binding: Binding | Binding[]): Binding | Binding[];
 
     /**
-     * Compile a "JSON value cast" statement into SQL.
-     */
-    compileJsonValueCast(value: string): string;
-
-    /**
      * Compile the random statement into SQL.
      */
     compileRandom(seed: string | number): string;
@@ -77,12 +72,12 @@ export default interface GrammarI extends BaseGrammarI {
     /**
      * Prepare the bindings for an update statement.
      */
-    prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[];
+    prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[];
 
     /**
      * Prepare the bindings for an update statement.
      */
-    prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): Binding[];
+    prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): any[];
 
     /**
      * Compile a delete statement into SQL.

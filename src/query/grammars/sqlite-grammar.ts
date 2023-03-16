@@ -1,7 +1,7 @@
 import set from 'set-value';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereDateTime } from '../../types/query/registry';
-import { isPrimitiveBinding, merge, stringifyReplacer } from '../../utils';
+import { merge, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -102,13 +102,6 @@ class SQLiteGrammar extends Grammar {
     }
 
     /**
-     * Compile a "JSON value cast" statement into SQL.
-     */
-    public compileJsonValueCast(value: string): string {
-        return `json(${super.compileJsonValueCast(value)})`;
-    }
-
-    /**
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
@@ -168,8 +161,8 @@ class SQLiteGrammar extends Grammar {
 
         sql += ` on conflict (${this.columnize(uniqueBy)}) do update set `;
 
-        const stringUpdate = update.filter(binding => isPrimitiveBinding(binding)) as string[];
-        const rowValues = update.filter(binding => !isPrimitiveBinding(binding)) as RowValues[];
+        const stringUpdate = update.filter(binding => typeof binding === 'string') as string[];
+        const rowValues = update.filter(binding => typeof binding !== 'string') as RowValues[];
 
         const columns = stringUpdate
             .map(item => {
@@ -248,7 +241,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
+    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
         const [, patchedValues] = this.groupJsonColumnsForUpdate(values);
         const valuesOfValues = Object.keys(patchedValues).map(key => {
             return this.mustBeJsonStringified(patchedValues[key])

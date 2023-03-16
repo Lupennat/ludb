@@ -25,7 +25,16 @@ class SQLiteConnector extends Connector implements ConnectorI {
             await Promise.all(promises);
         };
 
-        const options = merge({ path: config.database }, config.lupdo_options ?? {});
+        const options = merge(
+            {
+                path: config.database,
+                wal: config.journal_mode_wal,
+                walMaxSize: config.wal_max_size,
+                walSynchronous: config.wal_synchronous,
+                onWalError: config.wal_on_error
+            },
+            config.lupdo_options ?? {}
+        );
 
         if (!options.path) {
             throw new Error('Database file path is required.');

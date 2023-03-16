@@ -1,9 +1,5 @@
 import ExpressionContract from '../query/expression-contract';
-import { Binding, Stringable } from './query/builder';
-
-export interface KeyValues {
-    [key: string]: Binding;
-}
+import { Stringable } from './query/builder';
 
 export default interface BaseGrammarI {
     /**
@@ -29,12 +25,12 @@ export default interface BaseGrammarI {
     /**
      * Create query parameter place-holders for an array.
      */
-    parameterize(values: Binding[]): string;
+    parameterize(values: any[]): string;
 
     /**
      * Get the appropriate query parameter place-holder for a value.
      */
-    parameter(value: Binding | Binding[]): string;
+    parameter(value: any): string;
 
     /**
      * Quote the given string literal.

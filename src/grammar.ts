@@ -2,7 +2,7 @@
 
 import ExpressionContract from './query/expression-contract';
 import BaseGrammarI from './types/base-grammar';
-import { Binding, Stringable } from './types/query/builder';
+import { Stringable } from './types/query/builder';
 import { beforeLast, isExpression } from './utils';
 
 abstract class Grammar implements BaseGrammarI {
@@ -162,14 +162,14 @@ abstract class Grammar implements BaseGrammarI {
     /**
      * Create query parameter place-holders for an array.
      */
-    public parameterize(values: Binding[]): string {
-        return values.map((value: Binding) => this.parameter(value)).join(', ');
+    public parameterize(values: any[]): string {
+        return values.map((value: any) => this.parameter(value)).join(', ');
     }
 
     /**
      * Get the appropriate query parameter place-holder for a value.
      */
-    public parameter(value: Binding | Binding[]): string {
+    public parameter(value: any): string {
         return this.isExpression(value) ? this.getValue(value).toString() : '?';
     }
 

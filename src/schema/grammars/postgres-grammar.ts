@@ -12,6 +12,7 @@ import {
     RenameFullRegistryI,
     RenameRegistryI
 } from '../../types/schema/registry';
+import { escapeQuoteForSql } from '../../utils';
 import ColumnDefinition from '../definitions/column-definition';
 import CommandDefinition from '../definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../definitions/commands/command-foreign-key-definition';
@@ -255,7 +256,7 @@ class PostgresGrammar extends Grammar {
 
         if (comment || change) {
             return `comment on column ${this.wrapTable(blueprint)}.${this.wrap(column.name)} is ${
-                comment ? "'" + comment.replace(/'/g, "''") + "'" : 'NULL'
+                comment ? "'" + escapeQuoteForSql(comment) + "'" : 'NULL'
             }`;
         }
 
@@ -400,9 +401,7 @@ class PostgresGrammar extends Grammar {
      * Compile a table comment command.
      */
     public compileTableComment(blueprint: BlueprintI, command: CommandDefinition<CommentRegistryI>): string {
-        return `comment on table ${this.wrapTable(blueprint)} is '${command
-            .getRegistry()
-            .comment.replace(/'/g, "''")}'`;
+        return `comment on table ${this.wrapTable(blueprint)} is '${escapeQuoteForSql(command.getRegistry().comment)}'`;
     }
 
     /**

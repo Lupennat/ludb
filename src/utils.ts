@@ -1,5 +1,6 @@
 import deepmerge from 'deepmerge';
 import { isPlainObject } from 'is-plain-object';
+
 import { TypedBinding } from 'lupdo';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
@@ -140,21 +141,21 @@ export function trimChar(value: string, character: string): string {
 }
 
 /**
- * Parameter is a Primitive Binding
+ * Parameter is a Valid Binding
  */
-export function isPrimitiveBinding(value: any): boolean {
+export function isValidBinding(value: any): boolean {
     return (
         value === null ||
         Buffer.isBuffer(value) ||
         ['number', 'boolean', 'bigint', 'string'].includes(typeof value) ||
-        isPrimitiveObject(value)
+        isValidObjectBinding(value)
     );
 }
 
 /**
- * Parameter is a Primitive Object
+ * Parameter is a Valid Object Binding
  */
-export function isPrimitiveObject(value: any): boolean {
+export function isValidObjectBinding(value: any): boolean {
     return (
         typeof value === 'object' &&
         (value instanceof TypedBinding || value instanceof ExpressionContract || value instanceof Date)
@@ -183,6 +184,13 @@ export function isExpression(value: any): value is ExpressionContract {
 }
 
 /**
+ * Determine if the value is TypedBinding
+ */
+export function isTypedBinding(value: any): value is TypedBinding {
+    return typeof value === 'object' && value instanceof TypedBinding;
+}
+
+/**
  * Get the portion of a string before the last occurrence of a given value.
  */
 export function beforeLast(subject: string, search: string): string {
@@ -204,6 +212,13 @@ export function addslashes(str: string): string {
 }
 
 /**
+ * Escape quote for sql
+ */
+export function escapeQuoteForSql(string: string): string {
+    return string.replace(/'/g, "''");
+}
+
+/**
  * Parse the Postgres "search_path" configuration value into an array.
  */
 export function parseSearchPath(searchPath: string | string[]): string[] {
@@ -216,7 +231,9 @@ export function parseSearchPath(searchPath: string | string[]): string[] {
         return searchPath.map(schema => trimChar(schema, '\'"'));
     }
 }
-
+/**
+ * merge objects
+ */
 export function merge<T>(x: Partial<T>, y: Partial<T>): T;
 export function merge<T1, T2>(x: Partial<T1>, y: Partial<T2>): T1 & T2 {
     return deepmerge(x, y, {

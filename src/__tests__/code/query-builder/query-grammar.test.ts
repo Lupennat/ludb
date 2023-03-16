@@ -101,18 +101,18 @@ describe('Query Builder Select-From', () => {
             .update({
                 options: { '2fa': false, presets: ['laravel', 'vue'] },
                 'meta->tags': ['white', 'large'],
-                'options->language': 'english',
+                'options->language': { name: 'english', code: 'en' },
                 group_id: new Raw('45'),
                 created_at: date
             });
 
         expect(spiedUpdate).toBeCalledTimes(1);
         expect(spiedUpdate).toBeCalledWith(
-            'update `users` set `options` = ?, `meta` = json_set(`meta`, \'$."tags"\', cast(? as json)), `options` = json_set(`options`, \'$."language"\', ?), `group_id` = 45, `created_at` = ? where `active` = ?',
+            "update `users` set `options` = ?, `meta` = json_set(`meta`, '$.\"tags\"', json_merge_patch('[]', ?)), `options` = json_set(`options`, '$.\"language\"', json_merge_patch('{}', ?)), `group_id` = 45, `created_at` = ? where `active` = ?",
             [
                 JSON.stringify({ '2fa': false, presets: ['laravel', 'vue'] }, stringifyReplacer(builder.getGrammar())),
                 JSON.stringify(['white', 'large'], stringifyReplacer(builder.getGrammar())),
-                'english',
+                JSON.stringify({ name: 'english', code: 'en' }, stringifyReplacer(builder.getGrammar())),
                 date,
                 1
             ]
@@ -133,13 +133,6 @@ describe('Query Builder Select-From', () => {
             'update `users` set `options` = json_set(`options`, \'$[1]."2fa"\', false), `meta` = json_set(`meta`, \'$."tags"[0][2]\', ?) where `active` = ?',
             ['large', 1]
         );
-    });
-
-    it('Works Prepares Bindings For Update From', () => {
-        const builder = getBuilder();
-        expect(() => {
-            builder.getGrammar().prepareBindingsForUpdateFrom(builder.getRegistry().bindings, {});
-        }).toThrowError('This database engine does not support the updateFrom method.');
     });
 
     it('Works MySql Update With Json Prepares Bindings Correctly', async () => {
@@ -184,6 +177,13 @@ describe('Query Builder Select-From', () => {
         await builder.from('users').update({ 'options->size': new Raw('45') });
         expect(spiedUpdate).toBeCalledTimes(1);
         expect(spiedUpdate).toBeCalledWith('update `users` set `options` = json_set(`options`, \'$."size"\', 45)', []);
+    });
+
+    it('Works Prepares Bindings For Update From', () => {
+        const builder = getBuilder();
+        expect(() => {
+            builder.getGrammar().prepareBindingsForUpdateFrom(builder.getRegistry().bindings, {});
+        }).toThrowError('This database engine does not support the updateFrom method.');
     });
 
     it('Works Postgres Update Wrapping Json', async () => {
@@ -313,6 +313,74 @@ describe('Query Builder Select-From', () => {
             ['{"[1]":{"2fa":false}}', '{"tags[0][2]":"large"}']
         );
     });
+
+    // it('Works SqlServer Update Wrapping Json Array', async () => {
+    //     const builder = getSqlServerBuilder();
+    //     const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+    //     const date = new Date('2019-08-06');
+
+    //     await builder.from('users').update({
+    //         options: { '2fa': false, presets: ['laravel', 'vue'] },
+    //         'meta->tags': ['white', 'large'],
+    //         'options->language': 'english',
+    //         'text->title': 'title',
+    //         group_id: new Raw('45'),
+    //         created_at: date
+    //     });
+    //     expect(spiedUpdate).toBeCalledTimes(1);
+    //     expect(spiedUpdate).toBeCalledWith(
+    //         'update [users] set [group_id] = 45, [created_at] = ?, [meta] = json_modify([meta],\'$."tags"\',?), [options] = json_modify(json_modify(json_modify([options],\'$."language"\',?),\'$."2fa"\',?),\'$."presets"\',?), [text] = json_modify([text],\'$."title"\',?)',
+    //         [
+    //             date,
+    //             JSON.stringify(['white', 'large'], stringifyReplacer(builder.getGrammar())),
+    //             'english',
+    //             false,
+    //             JSON.stringify(['laravel', 'vue'], stringifyReplacer(builder.getGrammar())),
+    //             'title'
+    //         ]
+    //     );
+    // });
+
+    // it('Works SqlServer Update Wrapping Nested Json Array', async () => {
+    //     const builder = getSqlServerBuilder();
+    //     const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+    //     const date = new Date('2019-08-06');
+
+    //     await builder.from('users').update({
+    //         'users.options->name': 'Lupennat',
+    //         group_id: new Raw('45'),
+    //         'options->security': { '2fa': false, presets: ['laravel', 'vue'] },
+    //         'options->sharing->twitter': 'username',
+    //         'options->sharing->facebook': 'username',
+    //         created_at: date
+    //     });
+    //     expect(spiedUpdate).toBeCalledTimes(1);
+    //     expect(spiedUpdate).toBeCalledWith(
+    //         'update [users] set [group_id] = 45, [created_at] = ?, [options] = json_modify(json_modify(json_modify([options],\'$."name"\',?),\'$."security"\',?),\'$."sharing"\',?)',
+    //         [
+    //             date,
+    //             'Lupennat',
+    //             JSON.stringify({ '2fa': false, presets: ['laravel', 'vue'] }, stringifyReplacer(builder.getGrammar())),
+    //             JSON.stringify({ twitter: 'username', facebook: 'username' }, stringifyReplacer(builder.getGrammar()))
+    //         ]
+    //     );
+    // });
+
+    // it.only('Works SqlServer Update Wrapping Json Path Array Index', async () => {
+    //     const builder = getSqlServerBuilder();
+    //     const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+
+    //     await builder.from('users').where('options->[1]->2fa', true).update({
+    //         'options->[1]->2fa': false,
+    //         'options->[0]->2fa': true,
+    //         'meta->tags[0][2]': 'large'
+    //     });
+    //     expect(spiedUpdate).toBeCalledTimes(1);
+    //     expect(spiedUpdate).toBeCalledWith(
+    //         "update [users] set [options] = json_modify([options],'$[1]',?), [meta] = json_modify([meta],'$.\"tags\"[0][2]',?) where json_value([options], '$[1].\"2fa\"') = 'true'",
+    //         [JSON.stringify([{ '2fa': true }, { '2fa': false }], stringifyReplacer(builder.getGrammar())), 'large']
+    //     );
+    // });
 
     it('Works MySql Wrapping Json With String', () => {
         const builder = getMySqlBuilder();
@@ -599,38 +667,5 @@ describe('Query Builder Select-From', () => {
         builder = getBuilder();
         builder.select('*').from('users').where('name', '=', 'Taylor', 'Or');
         expect('select * from "users" where "name" = ?').toBe(builder.toSql());
-    });
-
-    it('Works Compile Json Value Cast', () => {
-        const builder = getBuilder();
-        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(`'{"test": "apos''dude"}'`);
-    });
-
-    it('Works Compile Json Value Cast MySql', () => {
-        const builder = getMySqlBuilder();
-        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
-            `cast('{"test": "apos''dude"}' as json)`
-        );
-    });
-
-    it('Works Compile Json Value Cast SQLite', () => {
-        const builder = getSQLiteBuilder();
-        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
-            `json('{"test": "apos''dude"}')`
-        );
-    });
-
-    it('Works Compile Json Value Cast Postgres', () => {
-        const builder = getPostgresBuilder();
-        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
-            `to_json('{"test": "apos''dude"}'::text)`
-        );
-    });
-
-    it('Works Compile Json Value Cast SqlServer', () => {
-        const builder = getSqlServerBuilder();
-        expect(builder.getGrammar().compileJsonValueCast(`{"test": "apos'dude"}`)).toBe(
-            `json_query('{"test": "apos''dude"}')`
-        );
     });
 });
