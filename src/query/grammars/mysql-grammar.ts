@@ -1,6 +1,6 @@
-import { Binding, RowValues, Stringable } from '../../types/query/builder';
+import { RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereNull, whereFulltext } from '../../types/query/registry';
-import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
+import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -89,13 +89,6 @@ class MySqlGrammar extends Grammar {
     }
 
     /**
-     * Compile a "JSON value cast" statement into SQL.
-     */
-    public compileJsonValueCast(value: string): string {
-        return `cast(${super.compileJsonValueCast(value)} as json)`;
-    }
-
-    /**
      * Compile the random statement into SQL.
      */
     public compileRandom(seed: string | number): string {
@@ -157,8 +150,8 @@ class MySqlGrammar extends Grammar {
 
         sql += ' on duplicate key update ';
 
-        const stringUpdate = update.filter(binding => isPrimitiveBinding(binding)) as string[];
-        const rowValues = update.filter(binding => !isPrimitiveBinding(binding)) as RowValues[];
+        const stringUpdate = update.filter(binding => typeof binding === 'string') as string[];
+        const rowValues = update.filter(binding => typeof binding !== 'string') as RowValues[];
 
         const columns = stringUpdate
             .map(item => {
@@ -182,18 +175,20 @@ class MySqlGrammar extends Grammar {
     /**
      * Prepare a JSON column being updated using the JSON_SET function.
      */
-    protected compileJsonUpdateColumn(key: Stringable, value: Binding): string {
+    protected compileJsonUpdateColumn(key: Stringable, value: any): string {
+        let stringValue = '';
         if (typeof value === 'boolean') {
-            value = value ? 'true' : 'false';
+            stringValue = value ? 'true' : 'false';
         } else if (this.mustBeJsonStringified(value)) {
-            value = 'cast(? as json)';
+            console.log(value);
+            stringValue = `json_merge_patch(${Array.isArray(value) ? "'[]'" : "'{}'"}, ?)`;
         } else {
-            value = this.parameter(value);
+            stringValue = this.parameter(value);
         }
 
         const [field, path] = this.wrapJsonFieldAndPath(key);
 
-        return `${field} = json_set(${field}${path}, ${value})`;
+        return `${field} = json_set(${field}${path}, ${stringValue})`;
     }
 
     /**
@@ -218,7 +213,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
+    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
         values = Object.keys(values)
             .filter(key => !this.isJsonSelector(key) || typeof values[key] !== 'boolean')
             .reduce(

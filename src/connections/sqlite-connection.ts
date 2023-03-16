@@ -24,19 +24,6 @@ class SQLiteConnection extends Connection {
     protected getDefaultSchemaGrammar(): SchemaGrammar {
         return new SchemaGrammar();
     }
-
-    // /**
-    //  * Get the schema state for the connection.
-    //  *
-    //  * @param  \Illuminate\Filesystem\Filesystem|null  $files
-    //  * @param  callable|null  $processFactory
-    //  *
-    //  * @throws \RuntimeException
-    //  */
-    // public function getSchemaState(Filesystem $files = null, callable $processFactory = null)
-    // {
-    //     return new SqliteSchemaState($this, $files, $processFactory);
-    // }
 }
 
 export default SQLiteConnection;

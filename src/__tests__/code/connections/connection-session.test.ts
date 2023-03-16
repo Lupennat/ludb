@@ -755,7 +755,7 @@ describe('Connection Session', () => {
             throw new Error('fake error');
         });
         await expect(session.run('delete from "users" where "email" = ?', ['foo'], callback)).rejects.toThrowError(
-            'fake error (Connection: fake, SQL: delete from "users" where "email" = "foo")'
+            `fake error (Connection: fake, SQL: delete from "users" where "email" = 'foo')`
         );
         expect(callback).toBeCalledTimes(1);
     });
@@ -767,7 +767,7 @@ describe('Connection Session', () => {
             throw new Error('server has gone away');
         });
         await expect(session.run('delete from "users" where "email" = ?', ['foo'], callback)).rejects.toThrowError(
-            'server has gone away (Connection: fake, SQL: delete from "users" where "email" = "foo")'
+            `server has gone away (Connection: fake, SQL: delete from "users" where "email" = 'foo')`
         );
         expect(callback).toBeCalledTimes(2);
     });
@@ -780,7 +780,7 @@ describe('Connection Session', () => {
             throw new Error('server has gone away');
         });
         await expect(session.run('delete from "users" where "email" = ?', ['foo'], callback)).rejects.toThrowError(
-            'server has gone away (Connection: fake, SQL: delete from "users" where "email" = "foo")'
+            `server has gone away (Connection: fake, SQL: delete from "users" where "email" = 'foo')`
         );
         expect(callback).toBeCalledTimes(1);
     });

@@ -35,7 +35,7 @@ import {
     WhereSub,
     whereFulltext
 } from '../../types/query/registry';
-import { isPrimitiveBinding, stringifyReplacer } from '../../utils';
+import { isValidBinding, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import JoinClause from '../join-clause';
@@ -577,13 +577,6 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
-     * Compile a "JSON value cast" statement into SQL.
-     */
-    public compileJsonValueCast(value: string): string {
-        return `'${value.replace(/'/g, "''")}'`;
-    }
-
-    /**
      * Compile a "where fulltext" clause.
      */
     protected compilewhereFulltext(query: BuilderContract, where: whereFulltext): string {
@@ -824,7 +817,7 @@ class Grammar extends BaseGrammar implements GrammarI {
             return `insert into ${table} default values`;
         }
 
-        const processed = !Array.isArray(values) ? [values] : values;
+        const processed: RowValues[] = !Array.isArray(values) ? [values] : values;
 
         const columns = this.columnize(Object.keys(processed[0]));
 
@@ -929,7 +922,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
+    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
         const cleanBindings = Object.keys(bindings)
             .filter(key => !['select', 'join'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
@@ -940,7 +933,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdateFrom(_bindings: BindingTypes, _values: RowValues): Binding[] {
+    public prepareBindingsForUpdateFrom(_bindings: BindingTypes, _values: RowValues): any[] {
         throw new Error('This database engine does not support the updateFrom method.');
     }
 
@@ -1063,7 +1056,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Parameter must be converted to String with JSON.stringify
      */
     protected mustBeJsonStringified(value: any): boolean {
-        return Array.isArray(value) || !isPrimitiveBinding(value);
+        return Array.isArray(value) || !isValidBinding(value);
     }
 }
 

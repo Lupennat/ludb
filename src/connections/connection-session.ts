@@ -30,9 +30,9 @@ import DriverConnectionI, {
 } from '../types/connection';
 import BuilderI, {
     Binding,
+    BindingExclude,
+    BindingExcludeObject,
     BindingObject,
-    NotExpressionBinding,
-    NotExpressionBindingObject,
     SubQuery
 } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
@@ -870,7 +870,7 @@ class ConnectionSession implements ConnectionSessionI {
      */
     public bindValues(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
-        bindings: NotExpressionBinding[] | NotExpressionBindingObject
+        bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
     ): void {
         this.driverConnection.bindValues(statement, bindings);
     }
@@ -878,7 +878,9 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Prepare the query bindings for execution.
      */
-    public prepareBindings(bindings: Binding[] | BindingObject): NotExpressionBinding[] | NotExpressionBindingObject {
+    public prepareBindings(
+        bindings: Binding[] | BindingObject
+    ): BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract> {
         return this.driverConnection.prepareBindings(bindings);
     }
 

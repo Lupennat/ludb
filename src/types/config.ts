@@ -204,6 +204,22 @@ export interface SQLiteConnectionOptions
      */
     foreign_key_constraints?: boolean;
     /**
+     * Enable journal_mode WAL.
+     */
+    journal_mode_wal?: boolean;
+    /**
+     * WAL file will max size in mb.
+     */
+    wal_max_size?: number;
+    /**
+     * Define WAL synchronous type.
+     */
+    wal_synchronous?: 'OFF' | 'NORMAL' | 'FULL' | 'EXTRA';
+    /**
+     * error WAL interceptor for wal_max_size watcher error
+     */
+    wal_on_error?: (err: any) => void | Promise<void>;
+    /**
      * lupdo-sqlite options
      */
     lupdo_options?: SqliteOptions;

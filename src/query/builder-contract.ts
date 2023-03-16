@@ -5,11 +5,10 @@ import {
     BetweenColumnsTuple,
     BetweenTuple,
     Binding,
+    BindingExclude,
     BooleanCallback,
     ConditionBoolean,
     FulltextOptions,
-    NotExpressionBinding,
-    NotNullableBinding,
     NumericValues,
     OrderDirection,
     QueryAbleCallback,
@@ -128,7 +127,7 @@ abstract class BuilderContract {
     public abstract joinWhere(
         table: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract joinWhere(
         table: Stringable,
@@ -140,7 +139,7 @@ abstract class BuilderContract {
         table: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract joinWhere(
         table: Stringable,
@@ -198,7 +197,7 @@ abstract class BuilderContract {
         query: SubQuery<JoinClauseI>,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract joinWhereSub(
         query: SubQuery<JoinClauseI>,
@@ -212,7 +211,7 @@ abstract class BuilderContract {
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract joinWhereSub(
         query: SubQuery<JoinClauseI>,
@@ -251,7 +250,7 @@ abstract class BuilderContract {
     public abstract leftJoinWhere(
         table: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract leftJoinWhere(
         table: Stringable,
@@ -263,7 +262,7 @@ abstract class BuilderContract {
         table: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract leftJoinWhere(
         table: Stringable,
@@ -319,7 +318,7 @@ abstract class BuilderContract {
         query: SubQuery<JoinClauseI>,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract leftJoinWhereSub(
         query: SubQuery<JoinClauseI>,
@@ -333,7 +332,7 @@ abstract class BuilderContract {
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract leftJoinWhereSub(
         query: SubQuery<JoinClauseI>,
@@ -371,7 +370,7 @@ abstract class BuilderContract {
     public abstract rightJoinWhere(
         table: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract rightJoinWhere(
         table: Stringable,
@@ -383,7 +382,7 @@ abstract class BuilderContract {
         table: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract rightJoinWhere(
         table: Stringable,
@@ -439,7 +438,7 @@ abstract class BuilderContract {
         query: SubQuery<JoinClauseI>,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract rightJoinWhereSub(
         query: SubQuery<JoinClauseI>,
@@ -453,7 +452,7 @@ abstract class BuilderContract {
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | BuilderContract,
         operator: string,
-        second: NotNullableBinding | QueryAbleCallback<JoinClauseI>
+        second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public abstract rightJoinWhereSub(
         query: SubQuery<JoinClauseI>,
@@ -494,13 +493,13 @@ abstract class BuilderContract {
     public abstract where(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public abstract where(
         column: QueryAbleCallback<this> | BuilderContract,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract where(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public abstract where(
         column: QueryAbleCallback<this> | BuilderContract,
         operator: string,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract where(
         column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
@@ -517,13 +516,13 @@ abstract class BuilderContract {
     public abstract orWhere(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public abstract orWhere(
         column: QueryAbleCallback<this> | BuilderContract,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract orWhere(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public abstract orWhere(
         column: QueryAbleCallback<this> | BuilderContract,
         operator: string,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract orWhere(
         column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
@@ -538,13 +537,13 @@ abstract class BuilderContract {
     public abstract whereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public abstract whereNot(
         column: QueryAbleCallback<this> | BuilderContract,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract whereNot(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public abstract whereNot(
         column: QueryAbleCallback<this> | BuilderContract,
         operator: string,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract whereNot(
         column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
@@ -560,13 +559,13 @@ abstract class BuilderContract {
     public abstract orWhereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public abstract orWhereNot(
         column: QueryAbleCallback<this> | BuilderContract,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract orWhereNot(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public abstract orWhereNot(
         column: QueryAbleCallback<this> | BuilderContract,
         operator: string,
-        value: NotNullableBinding | QueryAbleCallback<this>
+        value: BindingExclude<null> | QueryAbleCallback<this>
     ): this;
     public abstract orWhereNot(
         column: Stringable | QueryAbleCallback<this> | BuilderContract | WhereTuple[] | WhereObject,
@@ -1905,7 +1904,7 @@ abstract class BuilderContract {
     /**
      * Remove all of the expressions from a list of bindings.
      */
-    public abstract cleanBindings(bindings: Binding[]): NotExpressionBinding[];
+    public abstract cleanBindings(bindings: any[]): BindingExclude<ExpressionContract>[];
 
     /**
      * Use the "write" PDO connection when executing the query.

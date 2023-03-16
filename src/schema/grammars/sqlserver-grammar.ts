@@ -10,7 +10,7 @@ import {
     RenameFullRegistryI,
     RenameRegistryI
 } from '../../types/schema/registry';
-import { isStringable } from '../../utils';
+import { escapeQuoteForSql, isStringable } from '../../utils';
 import ColumnDefinition from '../definitions/column-definition';
 import CommandDefinition from '../definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../definitions/commands/command-foreign-key-definition';
@@ -310,7 +310,7 @@ class SqlServerGrammar extends Grammar {
      * Compile a drop table (if exists) command.
      */
     public compileDropIfExists(blueprint: BlueprintI): string {
-        const table = `${this.getTablePrefix()}${this.getValue(blueprint.getTable()).toString()}`.replace(/'/g, "''");
+        const table = escapeQuoteForSql(`${this.getTablePrefix()}${this.getValue(blueprint.getTable()).toString()}`);
         return `if exists (select * from sys.sysobjects where id = object_id('${table}', 'U')) drop table ${this.wrapTable(
             blueprint
         )}`;

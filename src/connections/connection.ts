@@ -22,9 +22,9 @@ import DriverConnectionI, {
 } from '../types/connection';
 import BuilderI, {
     Binding,
+    BindingExclude,
+    BindingExcludeObject,
     BindingObject,
-    NotExpressionBinding,
-    NotExpressionBindingObject,
     SubQuery
 } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
@@ -141,7 +141,7 @@ class Connection implements DriverConnectionI {
      */
     public bindValues(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
-        bindings: NotExpressionBinding[] | NotExpressionBindingObject
+        bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
     ): void {
         if (Array.isArray(bindings)) {
             for (let x = 0; x < bindings.length; x++) {
@@ -160,7 +160,7 @@ class Connection implements DriverConnectionI {
     protected bindValue(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
         key: string | number,
-        binding: NotExpressionBinding
+        binding: BindingExclude<ExpressionContract>
     ): void {
         if (binding instanceof ExpressionContract) {
             throw new Error('Expression binding can not be binded directly to statement.');
@@ -171,20 +171,22 @@ class Connection implements DriverConnectionI {
     /**
      * Prepare the query bindings for execution.
      */
-    public prepareBindings(bindings: Binding[] | BindingObject): NotExpressionBinding[] | NotExpressionBindingObject {
+    public prepareBindings(
+        bindings: Binding[] | BindingObject
+    ): BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract> {
         if (Array.isArray(bindings)) {
             return bindings.map(binding => {
                 return this.prepareBinding(binding);
             });
         } else {
-            return Object.keys(bindings).reduce((carry: NotExpressionBindingObject, key) => {
+            return Object.keys(bindings).reduce((carry: BindingExcludeObject<ExpressionContract>, key) => {
                 carry[key] = this.prepareBinding(bindings[key]);
                 return carry;
             }, {});
         }
     }
 
-    protected prepareBinding(binding: Binding): NotExpressionBinding {
+    protected prepareBinding(binding: Binding): BindingExclude<ExpressionContract> {
         if (this.queryGrammar.isExpression(binding)) {
             return this.queryGrammar.getValue(binding).toString();
         }

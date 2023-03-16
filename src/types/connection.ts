@@ -7,14 +7,7 @@ import BuilderContract from '../query/builder-contract';
 import ExpressionContract from '../query/expression-contract';
 import BindToI from './bind-to';
 import { FlattedConnectionConfig, ReadWriteType } from './config';
-import {
-    Binding,
-    BindingObject,
-    NotExpressionBinding,
-    NotExpressionBindingObject,
-    Stringable,
-    SubQuery
-} from './query/builder';
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable, SubQuery } from './query/builder';
 import GrammarI from './query/grammar';
 import SchemaBuilderI from './schema/builder';
 import SchemaGrammarI from './schema/grammar';
@@ -295,13 +288,15 @@ export interface ConnectionSessionI {
      */
     bindValues(
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
-        bindings: NotExpressionBinding[] | NotExpressionBindingObject
+        bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
     ): void;
 
     /**
      * Prepare the query bindings for execution.
      */
-    prepareBindings(bindings: Binding[] | BindingObject): NotExpressionBinding[] | NotExpressionBindingObject;
+    prepareBindings(
+        bindings: Binding[] | BindingObject
+    ): BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>;
 
     /**
      * Get the current Schema PDO connection.

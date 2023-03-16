@@ -1,6 +1,6 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime, whereFulltext } from '../../types/query/registry';
-import { beforeLast, isPrimitiveBinding, stringifyReplacer } from '../../utils';
+import { beforeLast, escapeQuoteForSql, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import Grammar from './grammar';
 
@@ -216,7 +216,7 @@ class PostgresGrammar extends Grammar {
             } else false end`;
         }
 
-        const key = `'${lastSegment.replace(/'/g, "''")}'`;
+        const key = `'${escapeQuoteForSql(lastSegment)}'`;
 
         return `coalesce((${column})::jsonb ?? ${key}, false)`;
     }
@@ -228,13 +228,6 @@ class PostgresGrammar extends Grammar {
         column = this.wrap(column).replace(/->>/g, '->');
 
         return `jsonb_array_length((${column})::jsonb) ${operator} ${value}`;
-    }
-
-    /**
-     * Compile a "JSON value cast" statement into SQL.
-     */
-    public compileJsonValueCast(value: string): string {
-        return `to_json(${super.compileJsonValueCast(value)}::text)`;
     }
 
     /**
@@ -313,8 +306,8 @@ class PostgresGrammar extends Grammar {
 
         sql += ` on conflict (${this.columnize(uniqueBy)}) do update set `;
 
-        const stringUpdate = update.filter(binding => isPrimitiveBinding(binding)) as string[];
-        const rowValues = update.filter(binding => !isPrimitiveBinding(binding)) as RowValues[];
+        const stringUpdate = update.filter(binding => typeof binding === 'string') as string[];
+        const rowValues = update.filter(binding => typeof binding !== 'string') as RowValues[];
 
         const columns = stringUpdate
             .map(item => {
@@ -336,7 +329,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Prepares a JSON column being updated using the JSONB_SET function.
      */
-    protected compileJsonUpdateColumn(key: string, value: Binding): string {
+    protected compileJsonUpdateColumn(key: string, value: any): string {
         const segments = key.split('->');
         const field = this.wrap(segments.shift() as string);
         const path = `'{${this.wrapJsonPathAttributes(segments, '"').join(',')}}'`;
@@ -420,7 +413,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): Binding[] {
+    public prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): any[] {
         const valuesOfValues = Object.keys(values).map(key => {
             return this.isJsonSelector(key) && !this.isExpression(values[key])
                 ? JSON.stringify(values[key], stringifyReplacer(this))
@@ -454,7 +447,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
+    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
         const valuesOfValues = Object.keys(values).map(key => {
             return this.mustBeJsonStringified(values[key]) ||
                 (this.isJsonSelector(key) && !this.isExpression(values[key]))

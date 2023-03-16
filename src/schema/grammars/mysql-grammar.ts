@@ -12,7 +12,7 @@ import {
     RenameFullRegistryI,
     RenameRegistryI
 } from '../../types/schema/registry';
-import { addslashes } from '../../utils';
+import { addslashes, escapeQuoteForSql } from '../../utils';
 import ColumnDefinition from '../definitions/column-definition';
 import CommandDefinition from '../definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../definitions/commands/command-foreign-key-definition';
@@ -378,9 +378,9 @@ class MySqlGrammar extends Grammar {
      * Compile a table comment command.
      */
     public compileTableComment(blueprint: BlueprintI, command: CommandDefinition<CommentRegistryI>): string {
-        return `alter table ${this.wrapTable(blueprint)} comment = '${command
-            .getRegistry()
-            .comment.replace(/'/g, "''")}'`;
+        return `alter table ${this.wrapTable(blueprint)} comment = '${escapeQuoteForSql(
+            command.getRegistry().comment
+        )}'`;
     }
 
     /**

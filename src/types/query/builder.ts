@@ -1,24 +1,20 @@
 import { TypedBinding } from 'lupdo';
 import BuilderContract from '../../query/builder-contract';
-
+import ExpressionContract from '../../query/expression-contract';
 import GrammarI from '../base-grammar';
 import { ConnectionSessionI } from '../connection';
-
-import ExpressionContract from '../../query/expression-contract';
 import RegistryI, { BindingTypes } from './registry';
 
 export type Stringable = string | ExpressionContract;
-export type PrimitiveBinding = string | number | bigint | Date | boolean | Buffer | TypedBinding;
-export type NotExpressionBinding = PrimitiveBinding | null;
-export type NotNullableBinding = PrimitiveBinding | ExpressionContract;
-export type Binding = NotNullableBinding | null | ExpressionContract;
+
+export type Binding = string | number | bigint | Date | boolean | Buffer | null | ExpressionContract | TypedBinding;
+export type BindingExclude<T> = Exclude<Binding, T>;
 
 export type BindingObject = {
     [key: string]: Binding;
 };
-
-export type NotExpressionBindingObject = {
-    [key: string]: NotExpressionBinding;
+export type BindingExcludeObject<T> = {
+    [key: string]: BindingExclude<T>;
 };
 
 export type BooleanCallback<T, U extends BuilderContract> = (query: U) => T;
