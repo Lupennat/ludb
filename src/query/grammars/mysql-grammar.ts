@@ -121,6 +121,7 @@ class MySqlGrammar extends Grammar {
      * Compile the columns for an update statement.
      */
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+        this.validateJsonColumnsForUpdate(values);
         return Object.keys(values)
             .map((key: keyof RowValues & Stringable) => {
                 if (this.isJsonSelector(key)) {
@@ -180,7 +181,6 @@ class MySqlGrammar extends Grammar {
         if (typeof value === 'boolean') {
             stringValue = value ? 'true' : 'false';
         } else if (this.mustBeJsonStringified(value)) {
-            console.log(value);
             stringValue = `json_merge_patch(${Array.isArray(value) ? "'[]'" : "'{}'"}, ?)`;
         } else {
             stringValue = this.parameter(value);

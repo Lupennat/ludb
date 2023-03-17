@@ -1058,6 +1058,50 @@ class Grammar extends BaseGrammar implements GrammarI {
     protected mustBeJsonStringified(value: any): boolean {
         return Array.isArray(value) || !isValidBinding(value);
     }
+
+    /**
+     * Group the nested JSON columns.
+     */
+    protected validateJsonColumnsForUpdate(values: RowValues): void {
+        const jsonColumns: string[] = [];
+        const columns: string[] = [];
+
+        for (const key in values) {
+            if (this.isJsonSelector(key)) {
+                const exploded = this.getColumnKey(key).split('->');
+                const column = exploded.shift() as string;
+                if (!jsonColumns.includes(column)) {
+                    jsonColumns.push(column);
+                }
+            } else {
+                const column = this.getColumnKey(key);
+                if (!columns.includes(column)) {
+                    columns.push(column);
+                }
+            }
+        }
+
+        const wrongColumn = jsonColumns.filter(column => columns.includes(column));
+
+        if (wrongColumn.length > 0) {
+            throw new Error(
+                `Incorrect update for json columns (${wrongColumn.join(
+                    ', '
+                )}), is not allowed to overwrite the column is simultaneously a json content value.`
+            );
+        }
+    }
+
+    /**
+     * Remove table name from key
+     */
+    protected getColumnKey(key: string): string {
+        const exploded = key.split('.');
+        if (exploded.length > 1) {
+            exploded.shift();
+        }
+        return exploded.join('.');
+    }
 }
 
 export default Grammar;
