@@ -79,7 +79,7 @@ maybe('Json', () => {
                 { json_col: { foo: ['bar'] } },
                 { json_col: { foo: ['baz'] } },
                 { json_col: { foo: [['array']] } },
-                { json_col: { test: {} } }
+                { json_col: { test: [] } }
             ]);
 
         await DB.connection()
@@ -103,9 +103,6 @@ maybe('Json', () => {
     });
 
     it('Works Update Wrapping Json', async () => {
-        DB.connection().listen(query => {
-            console.log(query.sql, query.bindings);
-        });
         let updatedCount = await DB.connection()
             .table('test_json_table')
             .whereJsonContainsKey('json_col->test')
@@ -123,8 +120,8 @@ maybe('Json', () => {
         ).toEqual({ test: [0, 1] });
 
         updatedCount = await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').update({
-            'json_col->test[4]': 4,
-            'json_col->test[5]': 5
+            'json_col->test[2]': 2,
+            'json_col->test[3]': 3
         });
 
         expect(updatedCount).toBe(1);
@@ -133,7 +130,7 @@ maybe('Json', () => {
                 (await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').sole<Json>())
                     .json_col
             )
-        ).toEqual({ test: [0, 1, 4, 5] });
+        ).toEqual({ test: [0, 1, 2, 3] });
 
         updatedCount = await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').update({
             'json_col->test': {}
@@ -182,7 +179,8 @@ maybe('Json', () => {
         const updatedCount = await DB.connection()
             .table('test_json_table_multi')
             .update({
-                options: { '2fa': false, presets: ['laravel', 'vue'] },
+                'test_json_table_multi.options->2fa': false,
+                'test_json_table_multi.options->presets': ['laravel', 'vue'],
                 'meta->tags': ['white', 'large'],
                 'options->language': 'english',
                 group_id: new Raw('45'),

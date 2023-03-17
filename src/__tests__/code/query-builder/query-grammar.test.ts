@@ -90,6 +90,26 @@ describe('Query Builder Select-From', () => {
         );
     });
 
+    it('Works MySql Prevent Wrong Json Update', async () => {
+        const builder = getMySqlBuilder();
+        const date = new Date('2019-08-06');
+        await expect(
+            builder
+                .from('users')
+                .where('active', 1)
+                .update({
+                    options: {},
+                    'users.meta': [],
+                    'meta->tags': ['white', 'large'],
+                    'options->language': { name: 'english', code: 'en' },
+                    group_id: new Raw('45'),
+                    created_at: date
+                })
+        ).rejects.toThrowError(
+            'Incorrect update for json columns (meta, options), is not allowed to overwrite the column is simultaneously a json content value.'
+        );
+    });
+
     it('Works MySql Update Wrapping Json Array', async () => {
         const builder = getMySqlBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
@@ -99,7 +119,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', 1)
             .update({
-                options: { '2fa': false, presets: ['laravel', 'vue'] },
+                'options->2fa': false,
+                'options->presets': ['laravel', 'vue'],
                 'meta->tags': ['white', 'large'],
                 'options->language': { name: 'english', code: 'en' },
                 group_id: new Raw('45'),
@@ -108,9 +129,9 @@ describe('Query Builder Select-From', () => {
 
         expect(spiedUpdate).toBeCalledTimes(1);
         expect(spiedUpdate).toBeCalledWith(
-            "update `users` set `options` = ?, `meta` = json_set(`meta`, '$.\"tags\"', json_merge_patch('[]', ?)), `options` = json_set(`options`, '$.\"language\"', json_merge_patch('{}', ?)), `group_id` = 45, `created_at` = ? where `active` = ?",
+            "update `users` set `options` = json_set(`options`, '$.\"2fa\"', false), `options` = json_set(`options`, '$.\"presets\"', json_merge_patch('[]', ?)), `meta` = json_set(`meta`, '$.\"tags\"', json_merge_patch('[]', ?)), `options` = json_set(`options`, '$.\"language\"', json_merge_patch('{}', ?)), `group_id` = 45, `created_at` = ? where `active` = ?",
             [
-                JSON.stringify({ '2fa': false, presets: ['laravel', 'vue'] }, stringifyReplacer(builder.getGrammar())),
+                JSON.stringify(['laravel', 'vue'], stringifyReplacer(builder.getGrammar())),
                 JSON.stringify(['white', 'large'], stringifyReplacer(builder.getGrammar())),
                 JSON.stringify({ name: 'english', code: 'en' }, stringifyReplacer(builder.getGrammar())),
                 date,
