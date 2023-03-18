@@ -1,5 +1,5 @@
 import Raw from '../../query/expression';
-import { DB, isMySql } from './fixtures/config';
+import { DB, isMySql, isSQLite } from './fixtures/config';
 
 interface JsonMulti {
     options: string;
@@ -12,7 +12,7 @@ interface Json {
     json_col: string;
 }
 
-const maybe = isMySql() ? describe : describe.skip;
+const maybe = isMySql() || isSQLite() ? describe : describe.skip;
 
 maybe('Json', () => {
     const data: Array<[string, boolean, string, any?]> = [
@@ -43,7 +43,7 @@ maybe('Json', () => {
         ['nested key exists', 2, 'json_col->foo->bar'],
         ['string key missing', 0, 'json_col->none'],
         ['integer key with arrow ', 0, 'json_col->foo->bar->0'],
-        ['integer key with braces', 2, 'json_col->foo->bar[0]'],
+        ['integer key with braces', 1, 'json_col->foo->bar[0]'],
         ['integer key missing', 0, 'json_col->foo->bar[1]'],
         ['mixed keys', 1, 'json_col->foo[1]->baz'],
         ['null value', 1, 'json_col->bar']

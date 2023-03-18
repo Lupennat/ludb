@@ -50,6 +50,26 @@ describe('Query Builder Select-From', () => {
         expect('select * from `users`').toBe(builder.toSql());
     });
 
+    it('Works MySql Prevent Wrong Json Update', async () => {
+        const builder = getMySqlBuilder();
+        const date = new Date('2019-08-06');
+        await expect(
+            builder
+                .from('users')
+                .where('active', 1)
+                .update({
+                    options: {},
+                    'users.meta': [],
+                    'meta->tags': ['white', 'large'],
+                    'options->language': { name: 'english', code: 'en' },
+                    group_id: new Raw('45'),
+                    created_at: date
+                })
+        ).rejects.toThrowError(
+            'Incorrect update for json columns (meta, options), is not allowed to overwrite the column is simultaneously a json content value.'
+        );
+    });
+
     it('Works MySql Update Wrapping Json', async () => {
         let builder = getMySqlBuilder();
         let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
@@ -87,26 +107,6 @@ describe('Query Builder Select-From', () => {
         expect(spiedUpdate).toBeCalledWith(
             'update `users` set `meta` = json_set(`meta`, \'$."name"."first_name"\', ?), `meta` = json_set(`meta`, \'$."name"."last_name"\', ?) where `active` = ?',
             ['John', 'Doe', 1]
-        );
-    });
-
-    it('Works MySql Prevent Wrong Json Update', async () => {
-        const builder = getMySqlBuilder();
-        const date = new Date('2019-08-06');
-        await expect(
-            builder
-                .from('users')
-                .where('active', 1)
-                .update({
-                    options: {},
-                    'users.meta': [],
-                    'meta->tags': ['white', 'large'],
-                    'options->language': { name: 'english', code: 'en' },
-                    group_id: new Raw('45'),
-                    created_at: date
-                })
-        ).rejects.toThrowError(
-            'Incorrect update for json columns (meta, options), is not allowed to overwrite the column is simultaneously a json content value.'
         );
     });
 
@@ -265,57 +265,94 @@ describe('Query Builder Select-From', () => {
         );
     });
 
-    it('Works SQLite Update Wrapping Json Array', async () => {
+    it('Works SQLite Prevent Wrong Json Update', async () => {
         const builder = getSQLiteBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         const date = new Date('2019-08-06');
-
-        await builder.from('users').update({
-            options: { '2fa': false, presets: ['laravel', 'vue'] },
-            'meta->tags': ['white', 'large'],
-            'options->language': 'english',
-            group_id: new Raw('45'),
-            created_at: date
-        });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
-            'update "users" set "group_id" = 45, "created_at" = ?, "meta" = json_patch(ifnull("meta", json(\'{}\')), json(?)), "options" = json_patch(ifnull("options", json(\'{}\')), json(?))',
-            [
-                date,
-                JSON.stringify({ tags: ['white', 'large'] }, stringifyReplacer(builder.getGrammar())),
-                JSON.stringify(
-                    { language: 'english', '2fa': false, presets: ['laravel', 'vue'] },
-                    stringifyReplacer(builder.getGrammar())
-                )
-            ]
+        await expect(
+            builder
+                .from('users')
+                .where('active', 1)
+                .update({
+                    options: {},
+                    'users.meta': [],
+                    'meta->tags': ['white', 'large'],
+                    'options->language': { name: 'english', code: 'en' },
+                    group_id: new Raw('45'),
+                    created_at: date
+                })
+        ).rejects.toThrowError(
+            'Incorrect update for json columns (meta, options), is not allowed to overwrite the column is simultaneously a json content value.'
         );
     });
 
-    it('Works SQLite Update Wrapping Nested Json Array', async () => {
-        const builder = getSQLiteBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
-        const date = new Date('2019-08-06');
-
-        await builder.from('users').update({
-            'users.options->name': 'Lupennat',
-            group_id: new Raw('45'),
-            'options->security': { '2fa': false, presets: ['laravel', 'vue'] },
-            'options->sharing->twitter': 'username',
-            created_at: date
-        });
+    it('Works SQLite Update Wrapping Json', async () => {
+        let builder = getSQLiteBuilder();
+        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        await builder
+            .from('users')
+            .where('active', '=', 1)
+            .update({ 'name->first_name': 'John', 'name->last_name': 'Doe' });
         expect(spiedUpdate).toBeCalledTimes(1);
         expect(spiedUpdate).toBeCalledWith(
-            'update "users" set "group_id" = 45, "created_at" = ?, "options" = json_patch(ifnull("options", json(\'{}\')), json(?))',
+            'update "users" set "name" = json_set(json_set(name, \'$."first_name"\', ?), \'$."last_name"\', ?) where "active" = ?',
+            ['John', 'Doe', 1]
+        );
+
+        builder = getSQLiteBuilder();
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        await builder
+            .from('users')
+            .where('active', '=', 1)
+            .update({ 'name->first_name': true, 'name->last_name': false });
+        expect(spiedUpdate).toBeCalledTimes(1);
+        expect(spiedUpdate).toBeCalledWith(
+            'update "users" set "name" = json_set(json_set(name, \'$."first_name"\', json(\'true\')), \'$."last_name"\', json(\'false\')) where "active" = ?',
+            [1]
+        );
+    });
+
+    it('Works SQLite Update Wrapping Nested Json', async () => {
+        const builder = getSQLiteBuilder();
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        await builder
+            .from('users')
+            .where('active', '=', 1)
+            .update({ 'meta->name->first_name': 'John', 'meta->name->last_name': 'Doe' });
+        expect(spiedUpdate).toBeCalledTimes(1);
+        expect(spiedUpdate).toBeCalledWith(
+            'update "users" set "meta" = json_set(json_set(meta, \'$."name"."first_name"\', ?), \'$."name"."last_name"\', ?) where "active" = ?',
+            ['John', 'Doe', 1]
+        );
+    });
+
+    it('Works SQLite Update Wrapping Json Array', async () => {
+        const builder = getSQLiteBuilder();
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+
+        const date = new Date('2019-08-06');
+        await builder
+            .from('users')
+            .where('active', 1)
+            .update({
+                list: [1, 2, 3, 4, 5, 6],
+                'options->2fa': false,
+                'options->presets': ['laravel', 'vue'],
+                'meta->tags': ['white', 'large'],
+                'options->language': { name: 'english', code: 'en' },
+                group_id: new Raw('45'),
+                created_at: date
+            });
+
+        expect(spiedUpdate).toBeCalledTimes(1);
+        expect(spiedUpdate).toBeCalledWith(
+            'update "users" set "list" = ?, "group_id" = 45, "created_at" = ?, "options" = json_set(json_set(json_set(options, \'$."2fa"\', json(\'false\')), \'$."presets"\', json(?)), \'$."language"\', json(?)), "meta" = json_set(meta, \'$."tags"\', json(?)) where "active" = ?',
             [
+                JSON.stringify([1, 2, 3, 4, 5, 6], stringifyReplacer(builder.getGrammar())),
                 date,
-                JSON.stringify(
-                    {
-                        name: 'Lupennat',
-                        security: { '2fa': false, presets: ['laravel', 'vue'] },
-                        sharing: { twitter: 'username' }
-                    },
-                    stringifyReplacer(builder.getGrammar())
-                )
+                JSON.stringify(['laravel', 'vue'], stringifyReplacer(builder.getGrammar())),
+                JSON.stringify({ name: 'english', code: 'en' }, stringifyReplacer(builder.getGrammar())),
+                JSON.stringify(['white', 'large'], stringifyReplacer(builder.getGrammar())),
+                1
             ]
         );
     });
@@ -324,14 +361,15 @@ describe('Query Builder Select-From', () => {
         const builder = getSQLiteBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
-        await builder.from('users').where('options->[1]->2fa', true).update({
+        await builder.from('users').where('active', 1).update({
             'options->[1]->2fa': false,
             'meta->tags[0][2]': 'large'
         });
+
         expect(spiedUpdate).toBeCalledTimes(1);
         expect(spiedUpdate).toBeCalledWith(
-            'update "users" set "options" = json_patch(ifnull("options", json(\'{}\')), json(?)), "meta" = json_patch(ifnull("meta", json(\'{}\')), json(?)) where json_extract("options", \'$[1]."2fa"\') = true',
-            ['{"[1]":{"2fa":false}}', '{"tags[0][2]":"large"}']
+            'update "users" set "options" = json_set(options, \'$[1]."2fa"\', json(\'false\')), "meta" = json_set(meta, \'$."tags"[0][2]\', ?) where "active" = ?',
+            ['large', 1]
         );
     });
 

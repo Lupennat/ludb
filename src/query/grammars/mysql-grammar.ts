@@ -75,8 +75,15 @@ class MySqlGrammar extends Grammar {
      */
     protected compileJsonContainsKey(column: Stringable): string {
         const [field, path] = this.wrapJsonFieldAndPath(column);
+        const regex = new RegExp(/(\[[^\]]+\])/, 'g');
+        let sql = '';
+        if (regex.test(path)) {
+            sql += `json_contains_path(${field}, 'one'${path.replace(regex, '[*]')}) and `;
+        }
 
-        return `ifnull(json_contains_path(${field}, 'one'${path}), 0)`;
+        sql += `json_contains_path(${field}, 'one'${path})`;
+
+        return `ifnull(${sql}, 0)`;
     }
 
     /**
