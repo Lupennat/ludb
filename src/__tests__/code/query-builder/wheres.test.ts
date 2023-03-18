@@ -1743,9 +1743,9 @@ describe('Query Builder Wheres', () => {
 
         builder = getPostgresBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
-        expect(
-            'select * from "users" where case when jsonb_typeof(("options"->\'languages\')::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\')::jsonb) >= 1 else false end'
-        ).toBe(builder.toSql());
+        expect('select * from "users" where coalesce(("options"->\'languages\')::jsonb ?? \'0\', false)').toBe(
+            builder.toSql()
+        );
 
         builder = getPostgresBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[-1]');

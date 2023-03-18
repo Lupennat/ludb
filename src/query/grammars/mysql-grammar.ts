@@ -222,7 +222,10 @@ class MySqlGrammar extends Grammar {
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
         values = Object.keys(values)
-            .filter(key => !this.isJsonSelector(key) || typeof values[key] !== 'boolean')
+            .filter(
+                key =>
+                    !this.isJsonSelector(key) || (typeof values[key] !== 'boolean' && !this.isExpression(values[key]))
+            )
             .reduce(
                 (acc: RowValues, key) => ({
                     ...acc,

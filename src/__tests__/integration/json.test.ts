@@ -1,5 +1,5 @@
 import Raw from '../../query/expression';
-import { DB, isMySql, isSQLite } from './fixtures/config';
+import { DB, isSqlServer } from './fixtures/config';
 
 interface JsonMulti {
     options: string;
@@ -12,7 +12,7 @@ interface Json {
     json_col: string;
 }
 
-const maybe = isMySql() || isSQLite() ? describe : describe.skip;
+const maybe = !isSqlServer() ? describe : describe.skip;
 
 maybe('Json', () => {
     const data: Array<[string, boolean, string, any?]> = [
@@ -294,7 +294,7 @@ maybe('Json', () => {
 
         updatedCount = await DB.connection()
             .table('test_json_table_multi')
-            .update({ 'options->size': 45, created_at: DB.bindTo.dateTime('2015-05-26 22:02:08') });
+            .update({ 'options->size': BigInt('45'), created_at: DB.bindTo.dateTime('2015-05-26 22:02:08') });
 
         expect(updatedCount).toBe(1);
 

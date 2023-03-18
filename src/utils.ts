@@ -13,7 +13,8 @@ export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) 
             return value.toString();
         }
         if (typeof value === 'object' && value instanceof ExpressionContract) {
-            return value.getValue(grammar);
+            value = value.getValue(grammar);
+            return typeof value === 'bigint' ? value.toString() : value;
         }
         return value;
     };

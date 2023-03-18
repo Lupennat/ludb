@@ -193,26 +193,6 @@ class SQLiteGrammar extends Grammar {
     }
 
     /**
-     * Group the nested JSON columns.
-     */
-    protected groupJsonColumnsForUpdate(values: RowValues): RowValues {
-        const groups: RowValues = {};
-
-        for (const key in values) {
-            if (this.isJsonSelector(key)) {
-                const exploded = this.getColumnKey(key).split('->');
-                const column = exploded.shift() as string;
-                if (!(column in groups)) {
-                    groups[column] = {};
-                }
-                groups[column][exploded.join('->')] = values[key];
-            }
-        }
-
-        return groups;
-    }
-
-    /**
      * Compile a "JSON" patch statement into SQL.
      */
     protected compileJsonUpdateColumn(column: string, values: RowValues): string {
