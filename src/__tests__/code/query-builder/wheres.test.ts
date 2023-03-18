@@ -1712,7 +1712,7 @@ describe('Query Builder Wheres', () => {
         builder = getMySqlBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
         expect(
-            "select * from `users` where ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
+            "select * from `users` where ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[*][*]') and json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
         ).toBe(builder.toSql());
     });
 
@@ -1822,7 +1822,7 @@ describe('Query Builder Wheres', () => {
         builder = getMySqlBuilder();
         builder.select('*').from('users').whereJsonDoesntContainKey('options->languages[0][1]');
         expect(
-            "select * from `users` where not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
+            "select * from `users` where not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[*][*]') and json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
         ).toBe(builder.toSql());
     });
 

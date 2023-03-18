@@ -1,4 +1,3 @@
-import set from 'set-value';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereDateTime } from '../../types/query/registry';
 import { merge, stringifyReplacer } from '../../utils';
@@ -134,14 +133,26 @@ class SQLiteGrammar extends Grammar {
      * Compile the columns for an update statement.
      */
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
-        const [groupKeys, patchedValues] = this.groupJsonColumnsForUpdate(values);
+        this.validateJsonColumnsForUpdate(values);
+        const groups = this.groupJsonColumnsForUpdate(values);
 
-        return Object.keys(patchedValues)
+        const notJsonValues = Object.keys(values)
+            .filter(key => !this.isJsonSelector(key))
+            .reduce(
+                (acc: RowValues, key) => ({
+                    ...acc,
+                    [key]: values[key]
+                }),
+                {}
+            );
+
+        values = merge(notJsonValues, groups);
+
+        return Object.keys(values)
             .map(key => {
                 const column = key.split('.').pop() as string;
-                const value = groupKeys.includes(key)
-                    ? this.compileJsonPatch(column, patchedValues[key])
-                    : this.parameter(patchedValues[key]);
+                const value =
+                    column in groups ? this.compileJsonUpdateColumn(column, values[key]) : this.parameter(values[key]);
 
                 return `${this.wrap(column)} = ${value}`;
             })
@@ -184,43 +195,44 @@ class SQLiteGrammar extends Grammar {
     /**
      * Group the nested JSON columns.
      */
-    protected groupJsonColumnsForUpdate(values: RowValues): [string[], RowValues] {
+    protected groupJsonColumnsForUpdate(values: RowValues): RowValues {
         const groups: RowValues = {};
-        const groupKeys: RowValues = {};
 
         for (const key in values) {
-            let newKey = key;
             if (this.isJsonSelector(key)) {
-                const exploded = key.split('.');
-                if (exploded.length > 1) {
-                    exploded.shift();
+                const exploded = this.getColumnKey(key).split('->');
+                const column = exploded.shift() as string;
+                if (!(column in groups)) {
+                    groups[column] = {};
                 }
-                newKey = exploded.join('.').replace(/->/g, '.');
-                set(groupKeys, newKey, values[key]);
-                continue;
+                groups[column][exploded.join('->')] = values[key];
             }
-
-            set(groups, newKey, values[key]);
         }
 
-        for (const key in groupKeys) {
-            let value = groupKeys[key];
-            if (key in groups) {
-                value = merge(value, groups[key]);
-                delete groups[key];
-            }
-
-            set(groups, key, value);
-        }
-
-        return [Object.keys(groupKeys), groups];
+        return groups;
     }
 
     /**
      * Compile a "JSON" patch statement into SQL.
      */
-    protected compileJsonPatch(column: string, value: Binding | Binding[]): string {
-        return `json_patch(ifnull(${this.wrap(column)}, json('{}')), json(${this.parameter(value)}))`;
+    protected compileJsonUpdateColumn(column: string, values: RowValues): string {
+        let sql = '';
+        for (const key in values) {
+            const path = this.wrapJsonPath(key, '->');
+            const value = values[key];
+            let stringValue = '';
+            if (typeof value === 'boolean') {
+                stringValue = `json(${value ? "'true'" : "'false'"})`;
+            } else if (this.mustBeJsonStringified(value)) {
+                stringValue = `json(?)`;
+            } else {
+                stringValue = this.parameter(value);
+            }
+
+            sql = `json_set(${sql === '' ? column : sql}, ${path}, ${stringValue})`;
+        }
+
+        return sql;
     }
 
     /**
@@ -242,18 +254,59 @@ class SQLiteGrammar extends Grammar {
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
-        const [, patchedValues] = this.groupJsonColumnsForUpdate(values);
-        const valuesOfValues = Object.keys(patchedValues).map(key => {
-            return this.mustBeJsonStringified(patchedValues[key])
-                ? JSON.stringify(patchedValues[key], stringifyReplacer(this))
-                : patchedValues[key];
-        });
+        const groups = this.groupJsonColumnsForUpdate(values);
+
+        const filteredGroups = Object.keys(groups).reduce((acc: RowValues, key) => {
+            acc[key] = Object.keys(groups[key])
+                .filter(subkey => typeof groups[key][subkey] !== 'boolean')
+                .reduce(
+                    (acc: RowValues, subkey) => ({
+                        ...acc,
+                        [subkey]: groups[key][subkey]
+                    }),
+                    {}
+                );
+
+            return acc;
+        }, {});
+
+        const notJsonValues = Object.keys(values)
+            .filter(key => !this.isJsonSelector(key))
+            .reduce(
+                (acc: RowValues, key) => ({
+                    ...acc,
+                    [key]: values[key]
+                }),
+                {}
+            );
+
+        values = merge(notJsonValues, filteredGroups);
+
+        const valuesOfValues = Object.keys(values)
+            .map(key => {
+                const column = key.split('.').pop() as string;
+                if (column in filteredGroups) {
+                    const values = [];
+                    for (const key in filteredGroups[column]) {
+                        const value = filteredGroups[column][key];
+                        values.push(
+                            this.mustBeJsonStringified(value) ? JSON.stringify(value, stringifyReplacer(this)) : value
+                        );
+                    }
+                    return values;
+                } else {
+                    return this.mustBeJsonStringified(values[key])
+                        ? JSON.stringify(values[key], stringifyReplacer(this))
+                        : values[key];
+                }
+            })
+            .flat(1);
 
         const cleanBindings = Object.keys(bindings)
             .filter(key => !['select'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
 
-        return Object.values(valuesOfValues).concat(cleanBindings.flat(Infinity) as Binding[]);
+        return valuesOfValues.concat(cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**

@@ -194,7 +194,7 @@ Please refer to the MySQL manual for [a list of all statements](https://dev.mysq
 
 ### Bindings Caveat
 
-Ludb and Lupdo can detect the right type of binded value through the Javascript type of a variable, but SqlServer Ludpo driver need to know the exact type of the database column to make an insert or an update, and in some case it can fail (for instance when a binded value is `null`).\
+Ludb and Lupdo can detect the right type of binded value through the Javascript type of a variable, but SqlServer Ludpo driver need to know the exact type of the database column to make an insert or an update, and in some case it can fail (for instance when a binded value is `null`, or when you are working with time or date).\
 You can bypass the problem using the `TypedBinding` object of Lupdo; Ludb make it super easy to implement it providing a complete set of TypedBinding through `bindTo` Api, an example:
 
 ```ts
