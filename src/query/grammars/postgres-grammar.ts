@@ -1,6 +1,6 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime, whereFulltext } from '../../types/query/registry';
-import { beforeLast, escapeQuoteForSql, stringifyReplacer } from '../../utils';
+import { beforeLast, escapeQuoteForSql, merge, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import Grammar from './grammar';
 
@@ -201,9 +201,7 @@ class PostgresGrammar extends Grammar {
         let index: null | number = null;
         const matches = lastSegment.match(/\[(-?[0-9]+)\]$/);
 
-        if (Number.isInteger(Number(lastSegment))) {
-            index = Number(lastSegment);
-        } else if (matches !== null) {
+        if (matches !== null) {
             segments.push(beforeLast(lastSegment, matches[0]));
             index = Number(matches[1]);
         }
@@ -282,13 +280,28 @@ class PostgresGrammar extends Grammar {
      * Compile the columns for an update statement.
      */
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+        this.validateJsonColumnsForUpdate(values);
+        const groups = this.groupJsonColumnsForUpdate(values);
+
+        const notJsonValues = Object.keys(values)
+            .filter(key => !this.isJsonSelector(key))
+            .reduce(
+                (acc: RowValues, key) => ({
+                    ...acc,
+                    [key]: values[key]
+                }),
+                {}
+            );
+
+        values = merge(notJsonValues, groups);
+
         return Object.keys(values)
-            .map((key: keyof RowValues & Stringable) => {
-                const column = this.getValue(key).toString().split('.').pop() as string;
-                if (this.isJsonSelector(key)) {
-                    return this.compileJsonUpdateColumn(column, values[key]);
-                }
-                return `${this.wrap(column)} = ${this.parameter(values[key])}`;
+            .map(key => {
+                const column = key.split('.').pop() as string;
+                const value =
+                    column in groups ? this.compileJsonUpdateColumn(column, values[key]) : this.parameter(values[key]);
+
+                return `${this.wrap(column)} = ${value}`;
             })
             .join(', ');
     }
@@ -327,14 +340,16 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
-     * Prepares a JSON column being updated using the JSONB_SET function.
+     * Compile a "JSON" patch statement into SQL.
      */
-    protected compileJsonUpdateColumn(key: string, value: any): string {
-        const segments = key.split('->');
-        const field = this.wrap(segments.shift() as string);
-        const path = `'{${this.wrapJsonPathAttributes(segments, '"').join(',')}}'`;
-
-        return `${field} = jsonb_set(${field}::jsonb, ${path}, ${this.parameter(value)})`;
+    protected compileJsonUpdateColumn(column: string, values: RowValues): string {
+        let sql = '';
+        for (const key in values) {
+            const path = `'{${this.wrapJsonPathAttributes(key.split('->'), '"').join(',')}}'`;
+            const value = this.isExpression(values[key]) ? `'${this.parameter(values[key])}'` : '?::jsonb';
+            sql = `jsonb_set(${sql === '' ? column + '::jsonb' : sql}, ${path}, ${value})`;
+        }
+        return sql;
     }
 
     /**
@@ -411,23 +426,6 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
-     * Prepare the bindings for an update statement.
-     */
-    public prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): any[] {
-        const valuesOfValues = Object.keys(values).map(key => {
-            return this.isJsonSelector(key) && !this.isExpression(values[key])
-                ? JSON.stringify(values[key], stringifyReplacer(this))
-                : values[key];
-        });
-
-        const bindingsWithoutWhere = Object.keys(bindings)
-            .filter(key => !['select', 'where'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return valuesOfValues.concat(bindings.where, bindingsWithoutWhere.flat(Infinity) as Binding[]);
-    }
-
-    /**
      * Compile an update statement with joins or limit into SQL.
      */
     protected compileUpdateWithJoinsOrLimit(query: BuilderContract, values: RowValues): string {
@@ -445,21 +443,82 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
+     * Prepare Values For Update
+     */
+    protected prepareValuesForUpdate(values: RowValues): any[] {
+        const groups = this.groupJsonColumnsForUpdate(values);
+        const filteredGroups = Object.keys(groups).reduce((acc: RowValues, key) => {
+            acc[key] = Object.keys(groups[key])
+                .filter(subkey => !this.isExpression(groups[key][subkey]))
+                .reduce(
+                    (acc: RowValues, subkey) => ({
+                        ...acc,
+                        [subkey]: groups[key][subkey]
+                    }),
+                    {}
+                );
+
+            return acc;
+        }, {});
+
+        const notJsonValues = Object.keys(values)
+            .filter(key => !this.isJsonSelector(key))
+            .reduce(
+                (acc: RowValues, key) => ({
+                    ...acc,
+                    [key]: values[key]
+                }),
+                {}
+            );
+
+        values = merge(notJsonValues, filteredGroups);
+
+        return Object.keys(values)
+            .map(key => {
+                const column = key.split('.').pop() as string;
+                if (column in filteredGroups) {
+                    const values = [];
+                    for (const key in filteredGroups[column]) {
+                        const value = filteredGroups[column][key];
+                        values.push(
+                            typeof value === 'bigint'
+                                ? value.toString()
+                                : JSON.stringify(value, stringifyReplacer(this))
+                        );
+                    }
+                    return values;
+                } else {
+                    return this.mustBeJsonStringified(values[key])
+                        ? JSON.stringify(values[key], stringifyReplacer(this))
+                        : values[key];
+                }
+            })
+            .flat(1);
+    }
+
+    /**
+     * Prepare the bindings for an update statement.
+     */
+    public prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): any[] {
+        const bindingsWithoutWhere = Object.keys(bindings)
+            .filter(key => !['select', 'where'].includes(key))
+            .map(key => bindings[key as keyof BindingTypes]);
+
+        return this.prepareValuesForUpdate(values).concat(
+            bindings.where,
+            bindingsWithoutWhere.flat(Infinity) as Binding[]
+        );
+    }
+
+    /**
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
-        const valuesOfValues = Object.keys(values).map(key => {
-            return this.mustBeJsonStringified(values[key]) ||
-                (this.isJsonSelector(key) && !this.isExpression(values[key]))
-                ? JSON.stringify(values[key], stringifyReplacer(this))
-                : values[key];
-        });
-
         const cleanBindings = Object.keys(bindings)
             .filter(key => !['select'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
 
-        return valuesOfValues.concat(cleanBindings.flat(Infinity) as Binding[]);
+        return this.prepareValuesForUpdate(values).concat(cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**

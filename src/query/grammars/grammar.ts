@@ -1060,7 +1060,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
-     * Group the nested JSON columns.
+     * Validate Json Update Values.
      */
     protected validateJsonColumnsForUpdate(values: RowValues): void {
         const jsonColumns: string[] = [];
@@ -1090,6 +1090,26 @@ class Grammar extends BaseGrammar implements GrammarI {
                 )}), is not allowed to overwrite the column is simultaneously a json content value.`
             );
         }
+    }
+
+    /**
+     * Group the nested JSON columns.
+     */
+    protected groupJsonColumnsForUpdate(values: RowValues): RowValues {
+        const groups: RowValues = {};
+
+        for (const key in values) {
+            if (this.isJsonSelector(key)) {
+                const exploded = this.getColumnKey(key).split('->');
+                const column = exploded.shift() as string;
+                if (!(column in groups)) {
+                    groups[column] = {};
+                }
+                groups[column][exploded.join('->')] = values[key];
+            }
+        }
+
+        return groups;
     }
 
     /**

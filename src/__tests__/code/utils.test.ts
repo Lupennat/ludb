@@ -29,6 +29,7 @@ describe('Utils', () => {
     it('Works Stringify Replacer', () => {
         expect(JSON.stringify({ a: BigInt('10') }, stringifyReplacer(new Grammar()))).toBe('{"a":"10"}');
         expect(JSON.stringify({ a: raw('Test') }, stringifyReplacer(new Grammar()))).toBe('{"a":"Test"}');
+        expect(JSON.stringify({ a: raw(BigInt('100')) }, stringifyReplacer(new Grammar()))).toBe('{"a":"100"}');
     });
 
     it('Works Get Messages From Error', () => {
