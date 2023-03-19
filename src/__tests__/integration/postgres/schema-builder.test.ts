@@ -1,16 +1,17 @@
+import { PostgresConfig } from '../../../types/config';
 import { DB, config, currentDB, isPostgres } from '../fixtures/config';
 
 const maybe = isPostgres() ? describe : describe.skip;
 
 maybe('Postgres Schema Builder', () => {
-    config.connections.postgres.search_path = 'public,test_schema_private';
+    (config.connections[currentDB] as PostgresConfig).search_path = 'public,test_schema_private';
 
     let Schema = DB.connection().getSchemaBuilder();
 
     const hasView = async (schema: string, table: string): Promise<boolean> => {
         return await DB.connection()
             .table('information_schema.views')
-            .where('table_catalog', config.connections.postgres.database)
+            .where('table_catalog', (config.connections[currentDB] as PostgresConfig).database)
             .where('table_schema', schema)
             .where('table_name', table)
             .exists();
@@ -52,7 +53,7 @@ maybe('Postgres Schema Builder', () => {
     });
 
     it('Works Drop All Tables Uses Dont Drop Config On All Schemas', async () => {
-        config.connections.postgres.dont_drop = ['spatial_ref_sys', 'test_schema_table'];
+        (config.connections[currentDB] as PostgresConfig).dont_drop = ['spatial_ref_sys', 'test_schema_table'];
         await purge();
 
         await Schema.create('public.test_schema_table', table => {
@@ -68,13 +69,16 @@ maybe('Postgres Schema Builder', () => {
         expect(await Schema.hasTable('public.test_schema_table')).toBeTruthy();
         expect(await Schema.hasTable('test_schema_private.test_schema_table')).toBeTruthy();
 
-        config.connections.postgres.dont_drop = undefined;
+        (config.connections[currentDB] as PostgresConfig).dont_drop = undefined;
         await purge();
         await Schema.dropAllTables();
     });
 
     it('Works Drop All Tables Uses Dont Drop Config On One Schemas', async () => {
-        config.connections.postgres.dont_drop = ['spatial_ref_sys', 'test_schema_private.test_schema_table'];
+        (config.connections[currentDB] as PostgresConfig).dont_drop = [
+            'spatial_ref_sys',
+            'test_schema_private.test_schema_table'
+        ];
         await purge();
 
         await Schema.create('public.test_schema_table', table => {
@@ -90,7 +94,7 @@ maybe('Postgres Schema Builder', () => {
         expect(await Schema.hasTable('public.test_schema_table')).toBeFalsy();
         expect(await Schema.hasTable('test_schema_private.test_schema_table')).toBeTruthy();
 
-        config.connections.postgres.dont_drop = undefined;
+        (config.connections[currentDB] as PostgresConfig).dont_drop = undefined;
         await purge();
         await Schema.dropAllTables();
     });

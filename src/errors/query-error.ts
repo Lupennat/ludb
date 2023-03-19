@@ -23,8 +23,21 @@ class QueryError extends PdoError {
      */
     protected getStringQuoteValue(binding: BindingExclude<null | ExpressionContract>): string {
         if (isTypedBinding(binding)) {
-            return binding.value === null ? 'null' : `'${escapeQuoteForSql(binding.value.toString())}'`;
+            const value = binding.value;
+            if (value == null) {
+                return 'null';
+            }
+            binding = value;
         }
+
+        if (Buffer.isBuffer(binding)) {
+            return `<Buffer[${Buffer.byteLength(binding)}]>`;
+        }
+
+        if (['boolean', 'number', 'bigint'].includes(typeof binding)) {
+            return binding.toString();
+        }
+
         return `'${escapeQuoteForSql(binding.toString())}'`;
     }
 

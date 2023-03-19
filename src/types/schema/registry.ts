@@ -237,7 +237,7 @@ export interface ColumnRegistryI {
     /**
      * Specify Date/Time precision
      */
-    precision?: number;
+    precision?: number | null;
     /**
      * Add a spatial index
      */
