@@ -430,62 +430,62 @@ export default interface BlueprintI {
     /**
      * Create a new date-time column on the table.
      */
-    dateTime(column: Stringable, precision?: number): ColumnDefinition;
+    dateTime(column: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Create a new date-time column (with time zone) on the table.
      */
-    dateTimeTz(column: Stringable, precision?: number): ColumnDefinition;
+    dateTimeTz(column: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Create a new time column on the table.
      */
-    time(column: Stringable, precision?: number): ColumnDefinition;
+    time(column: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Create a new time column (with time zone) on the table.
      */
-    timeTz(column: Stringable, precision?: number): ColumnDefinition;
+    timeTz(column: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Create a new timestamp column on the table.
      */
-    timestamp(column: Stringable, precision?: number): ColumnDefinition;
+    timestamp(column: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Create a new timestamp (with time zone) column on the table.
      */
-    timestampTz(column: Stringable, precision?: number): ColumnDefinition;
+    timestampTz(column: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Add nullable creation and update timestamps to the table.
      */
-    timestamps(precision?: number): void;
+    timestamps(precision?: number | null): void;
 
     /**
      * Add creation and update timestampTz columns to the table.
      */
-    timestampsTz(precision?: number): void;
+    timestampsTz(precision?: number | null): void;
 
     /**
      * Add creation and update datetime columns to the table.
      */
-    datetimes(precision?: number): void;
+    datetimes(precision?: number | null): void;
 
     /**
      * Add a "deleted at" timestamp for the table.
      */
-    softDeletes(column?: Stringable, precision?: number): ColumnDefinition;
+    softDeletes(column?: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Add a "deleted at" timestampTz for the table.
      */
-    softDeletesTz(column?: Stringable, precision?: number): ColumnDefinition;
+    softDeletesTz(column?: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Add a "deleted at" datetime column to the table.
      */
-    softDeletesDatetime(column?: Stringable, precision?: number): ColumnDefinition;
+    softDeletesDatetime(column?: Stringable, precision?: number | null): ColumnDefinition;
 
     /**
      * Create a new year column on the table.

@@ -1131,16 +1131,16 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Date Time', () => {
         const connection = getConnection().sessionSchema();
         let blueprint = getMySqlBlueprint('users');
-        blueprint.dateTime('foo');
+        blueprint.dateTime('foo', null);
         let statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table `users` add `foo` datetime not null').toBe(statements[0]);
 
         blueprint = getMySqlBlueprint('users');
-        blueprint.dateTime('foo', 1);
+        blueprint.dateTime('foo');
         statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `foo` datetime(1) not null').toBe(statements[0]);
+        expect('alter table `users` add `foo` datetime(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Date Time With Default Current', () => {
@@ -1149,7 +1149,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.dateTime('foo').useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `foo` datetime not null default CURRENT_TIMESTAMP').toBe(statements[0]);
+        expect('alter table `users` add `foo` datetime(0) not null default CURRENT_TIMESTAMP').toBe(statements[0]);
     });
 
     it('Works Adding Date Time With On Update Current', () => {
@@ -1158,7 +1158,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.dateTime('foo').useCurrentOnUpdate();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `foo` datetime not null on update CURRENT_TIMESTAMP').toBe(statements[0]);
+        expect('alter table `users` add `foo` datetime(0) not null on update CURRENT_TIMESTAMP').toBe(statements[0]);
     });
 
     it('Works Adding Date Time With Default Current And On Update Current', () => {
@@ -1168,7 +1168,7 @@ describe('MySql Schema Grammar', () => {
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect(
-            'alter table `users` add `foo` datetime not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP'
+            'alter table `users` add `foo` datetime(0) not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP'
         ).toBe(statements[0]);
     });
 
@@ -1186,13 +1186,13 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Date Time Tz', () => {
         const connection = getConnection().sessionSchema();
         let blueprint = getMySqlBlueprint('users');
-        blueprint.dateTimeTz('foo', 1);
+        blueprint.dateTimeTz('foo');
         let statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `foo` datetime(1) not null').toBe(statements[0]);
+        expect('alter table `users` add `foo` datetime(0) not null').toBe(statements[0]);
 
         blueprint = getMySqlBlueprint('users');
-        blueprint.dateTimeTz('foo');
+        blueprint.dateTimeTz('foo', null);
         statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table `users` add `foo` datetime not null').toBe(statements[0]);
@@ -1201,7 +1201,7 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Time', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.time('created_at');
+        blueprint.time('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table `users` add `created_at` time not null').toBe(statements[0]);
@@ -1210,16 +1210,16 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Time With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.time('created_at', 1);
+        blueprint.time('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` time(1) not null').toBe(statements[0]);
+        expect('alter table `users` add `created_at` time(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Time Tz', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timeTz('created_at');
+        blueprint.timeTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table `users` add `created_at` time not null').toBe(statements[0]);
@@ -1228,16 +1228,16 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Time Tz With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timeTz('created_at', 1);
+        blueprint.timeTz('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` time(1) not null').toBe(statements[0]);
+        expect('alter table `users` add `created_at` time(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Timestamp', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timestamp('created_at');
+        blueprint.timestamp('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table `users` add `created_at` timestamp not null').toBe(statements[0]);
@@ -1246,16 +1246,16 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Timestamp With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timestamp('created_at', 1);
+        blueprint.timestamp('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` timestamp(1) not null').toBe(statements[0]);
+        expect('alter table `users` add `created_at` timestamp(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Timestamp With Default', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timestamp('created_at').default('2015-07-22 11:43:17');
+        blueprint.timestamp('created_at', null).default('2015-07-22 11:43:17');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect("alter table `users` add `created_at` timestamp not null default '2015-07-22 11:43:17'").toBe(
@@ -1266,10 +1266,10 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Timestamp With Default Current Specifying Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timestamp('created_at', 1).useCurrent();
+        blueprint.timestamp('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` timestamp(1) not null default CURRENT_TIMESTAMP(1)').toBe(
+        expect('alter table `users` add `created_at` timestamp(0) not null default CURRENT_TIMESTAMP').toBe(
             statements[0]
         );
     });
@@ -1299,7 +1299,7 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Timestamp Tz', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timestampTz('created_at');
+        blueprint.timestampTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table `users` add `created_at` timestamp not null').toBe(statements[0]);
@@ -1308,10 +1308,10 @@ describe('MySql Schema Grammar', () => {
     it('Works Adding Timestamp Tz With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.timestampTz('created_at', 1);
+        blueprint.timestampTz('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` timestamp(1) not null').toBe(statements[0]);
+        expect('alter table `users` add `created_at` timestamp(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Time Stamp Tz With Default', () => {
@@ -1320,7 +1320,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.timestampTz('created_at').default('2015-07-22 11:43:17');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect("alter table `users` add `created_at` timestamp not null default '2015-07-22 11:43:17'").toBe(
+        expect("alter table `users` add `created_at` timestamp(0) not null default '2015-07-22 11:43:17'").toBe(
             statements[0]
         );
     });
@@ -1331,7 +1331,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.datetimes();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` datetime null, add `updated_at` datetime null').toBe(
+        expect('alter table `users` add `created_at` datetime(0) null, add `updated_at` datetime(0) null').toBe(
             statements[0]
         );
     });
@@ -1342,7 +1342,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.timestamps();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` timestamp null, add `updated_at` timestamp null').toBe(
+        expect('alter table `users` add `created_at` timestamp(0) null, add `updated_at` timestamp(0) null').toBe(
             statements[0]
         );
     });
@@ -1353,7 +1353,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.timestampsTz();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `created_at` timestamp null, add `updated_at` timestamp null').toBe(
+        expect('alter table `users` add `created_at` timestamp(0) null, add `updated_at` timestamp(0) null').toBe(
             statements[0]
         );
     });
@@ -1364,7 +1364,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.softDeletesDatetime('column');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `column` datetime null').toBe(statements[0]);
+        expect('alter table `users` add `column` datetime(0) null').toBe(statements[0]);
     });
 
     it('Works Adding softDeletes', () => {
@@ -1373,7 +1373,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.softDeletes();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `deleted_at` timestamp null').toBe(statements[0]);
+        expect('alter table `users` add `deleted_at` timestamp(0) null').toBe(statements[0]);
     });
 
     it('Works Adding softDeletes Tz', () => {
@@ -1382,7 +1382,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.softDeletesTz();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table `users` add `deleted_at` timestamp null').toBe(statements[0]);
+        expect('alter table `users` add `deleted_at` timestamp(0) null').toBe(statements[0]);
     });
 
     it('Works Adding Binary', () => {

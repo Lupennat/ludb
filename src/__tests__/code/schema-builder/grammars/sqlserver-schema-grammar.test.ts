@@ -694,7 +694,7 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Date Time', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.dateTime('created_at');
+        blueprint.dateTime('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "created_at" datetime2 not null').toBe(statements[0]);
@@ -703,7 +703,7 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Date Time With Default Current', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.dateTime('foo').useCurrent();
+        blueprint.dateTime('foo', null).useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "foo" datetime2 not null default CURRENT_TIMESTAMP').toBe(statements[0]);
@@ -712,16 +712,16 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Date Time With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.dateTime('created_at', 1);
+        blueprint.dateTime('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add "created_at" datetime2(1) not null').toBe(statements[0]);
+        expect('alter table "users" add "created_at" datetime2(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Date Time Tz', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.dateTimeTz('foo');
+        blueprint.dateTimeTz('foo', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "foo" datetimeoffset not null').toBe(statements[0]);
@@ -730,7 +730,7 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Date Time Tz With Default Current', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.dateTimeTz('foo').useCurrent();
+        blueprint.dateTimeTz('foo', null).useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "foo" datetimeoffset not null default CURRENT_TIMESTAMP').toBe(statements[0]);
@@ -739,16 +739,16 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Date Time Tz With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.dateTimeTz('foo', 1);
+        blueprint.dateTimeTz('foo');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add "foo" datetimeoffset(1) not null').toBe(statements[0]);
+        expect('alter table "users" add "foo" datetimeoffset(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Time', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.time('created_at');
+        blueprint.time('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "created_at" time not null').toBe(statements[0]);
@@ -757,16 +757,16 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Time With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.time('created_at', 1);
+        blueprint.time('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add "created_at" time(1) not null').toBe(statements[0]);
+        expect('alter table "users" add "created_at" time(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Time Tz', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timeTz('created_at');
+        blueprint.timeTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "created_at" time not null').toBe(statements[0]);
@@ -775,16 +775,16 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Time Tz With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timeTz('created_at', 1);
+        blueprint.timeTz('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add "created_at" time(1) not null').toBe(statements[0]);
+        expect('alter table "users" add "created_at" time(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Timestamp', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timestamp('created_at');
+        blueprint.timestamp('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "created_at" datetime2 not null').toBe(statements[0]);
@@ -793,16 +793,16 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Timestamp With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timestamp('created_at', 1);
+        blueprint.timestamp('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add "created_at" datetime2(1) not null').toBe(statements[0]);
+        expect('alter table "users" add "created_at" datetime2(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Timestamp Tz', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timestampTz('created_at');
+        blueprint.timestampTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "created_at" datetimeoffset not null').toBe(statements[0]);
@@ -811,16 +811,16 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Timestamp Tz With Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timestampTz('created_at', 1);
+        blueprint.timestampTz('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add "created_at" datetimeoffset(1) not null').toBe(statements[0]);
+        expect('alter table "users" add "created_at" datetimeoffset(0) not null').toBe(statements[0]);
     });
 
     it('Works Adding Timestamps', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timestamps();
+        blueprint.timestamps(null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "created_at" datetime2 null, "updated_at" datetime2 null').toBe(statements[0]);
@@ -829,7 +829,7 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Adding Timestamps Tz', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.timestampsTz();
+        blueprint.timestampsTz(null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add "created_at" datetimeoffset null, "updated_at" datetimeoffset null').toBe(

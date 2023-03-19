@@ -1,9 +1,13 @@
-import { DB, isMySql } from '../fixtures/config';
+import { DB, currentDB, isMySql } from '../fixtures/config';
 
 const maybe = isMySql() ? describe : describe.skip;
 
 maybe('MySql Enum', () => {
     const Schema = DB.connection().getSchemaBuilder();
+
+    const isOld = (): boolean => {
+        return currentDB === 'mysql57' || currentDB === 'maria1003';
+    };
 
     beforeAll(async () => {
         await Schema.create('test_enum_users', table => {
@@ -20,9 +24,15 @@ maybe('MySql Enum', () => {
     });
 
     it('Works Rename Column On Table With Enum', async () => {
-        await Schema.table('test_enum_users', table => {
-            table.renameColumn('name', 'username');
-        });
+        if (isOld()) {
+            await Schema.table('test_enum_users', table => {
+                table.enum('name', ['red', 'blue']).renameTo('username').change();
+            });
+        } else {
+            await Schema.table('test_enum_users', table => {
+                table.renameColumn('name', 'username');
+            });
+        }
 
         expect(await Schema.hasColumn('test_enum_users', 'username')).toBeTruthy();
     });

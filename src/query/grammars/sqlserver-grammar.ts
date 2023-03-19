@@ -2,6 +2,7 @@ import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime } from '../../types/query/registry';
 import { beforeLast, escapeQuoteForSql, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
+import Expression from '../expression';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
@@ -164,7 +165,7 @@ class SqlServerGrammar extends Grammar {
             segments.push(beforeLast(lastSegment, matches[0]));
             key = matches[1];
         } else {
-            key = `'${escapeQuoteForSql(lastSegment)}'`;
+            key = Number.isInteger(Number(lastSegment)) ? lastSegment : `'${escapeQuoteForSql(lastSegment)}'`;
         }
 
         const [field, path] = this.wrapJsonFieldAndPath(segments.join('->'));
@@ -258,36 +259,107 @@ class SqlServerGrammar extends Grammar {
         return `${this.compileSelect(existsQuery.selectRaw('1 [exists]').limit(1))}`;
     }
 
-    // /**
-    //  * Compile the columns for an update statement.
-    //  */
-    // protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
-    //     const [groupKeys, modifiedValues] = this.groupJsonColumnsForUpdate(values);
+    /**
+     * Compile the columns for an update statement.
+     */
+    protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
+        return Object.keys(combinedValues)
+            .map(key => {
+                const value = jsonKeys.includes(key)
+                    ? this.compileJsonUpdateColumn(key, combinedValues[key])
+                    : this.parameter(combinedValues[key]);
 
-    //     return Object.keys(modifiedValues)
-    //         .map(key => {
-    //             const column = key.split('.').pop() as string;
-    //             const value = groupKeys.includes(key)
-    //                 ? this.compileJsonModify(column, modifiedValues[key])
-    //                 : this.parameter(modifiedValues[key]);
+                key = this.getColumnKey(key);
+                return `${this.wrap(key)} = ${value}`;
+            })
+            .join(', ');
+    }
 
-    //             return `${this.wrap(column)} = ${value}`;
-    //         })
-    //         .join(', ');
-    // }
+    /**
+     * Compile a "JSON modify" statement into SQL.
+     */
+    protected compileJsonUpdateColumn(column: string, values: RowValues): string {
+        let sql = '';
+        for (const key in values) {
+            const segments = key.split('->');
+            const lastSegment = segments.pop() as string;
+            const matches = lastSegment.match(/\[(-?[0-9]+)\]$/);
+            if (matches !== null) {
+                segments.push(beforeLast(lastSegment, matches[0]));
+                sql = this.compileJsonUpdateForArray(
+                    column,
+                    segments.join('->'),
+                    matches[1],
+                    sql === '' ? this.wrap(column) : sql,
+                    this.wrapJsonPath(key, '->'),
+                    values[key]
+                );
+            } else {
+                sql = this.compileJsonUpdateForPath(
+                    sql === '' ? this.wrap(column) : sql,
+                    this.wrapJsonPath(key, '->'),
+                    values[key]
+                );
+            }
+        }
+        return sql;
+    }
 
-    // /**
-    //  * Compile a "json_modify" statement into SQL.
-    //  */
-    // protected compileJsonModify(column: string, value: any): string {
-    //     let sql = '';
-    //     for (const key in value) {
-    //         const path = this.wrapJsonPath(key, '->');
-    //         sql = `json_modify(${sql === '' ? this.wrap(column) : sql},${path},${this.parameter(value[key])})`;
-    //     }
+    /**
+     * Compile "JSON modify" for array path
+     */
+    protected compileJsonUpdateForArray(
+        column: string,
+        before: string,
+        position: string,
+        expression: string,
+        path: string,
+        value: any
+    ): string {
+        const searchPath = before === '' ? "'$'" : this.wrapJsonPath(before, '->');
+        const appendPath = searchPath.replace("'", "'append ");
+        const condition = `(select count(*) from openjson(${this.wrap(column)}, ${searchPath})) >= ${
+            Number(position) + 1
+        }`;
 
-    //     return sql;
-    // }
+        const expressionPath = `case when ${condition} then ${path} else ${appendPath} end`;
+        return this.compileJsonNullPatch(this.compileJsonUpdate(expression, expressionPath, value), path, value);
+    }
+
+    /**
+     * Compile "JSON modify" for  path
+     */
+    protected compileJsonUpdateForPath(expression: string, path: string, value: any): string {
+        return this.compileJsonNullPatch(this.compileJsonUpdate(expression, path, value), path, value);
+    }
+
+    /**
+     * Compile "JSON modify" patch for null value
+     */
+    protected compileJsonNullPatch(expression: string, path: string, value: any): string {
+        if (value !== null) {
+            return expression;
+        }
+
+        return this.compileJsonUpdate(expression, path.replace("'", "'strict "), null, true);
+    }
+
+    /**
+     * Compile "JSON modify" base string
+     */
+    protected compileJsonUpdate(expression: string, path: string, value: any, validNull = false): string {
+        let stringValue = '';
+        if (!validNull && value === null) {
+            value = new Expression("''");
+        }
+        if (this.mustBeJsonStringified(value)) {
+            stringValue = `json_query(?)`;
+        } else {
+            stringValue = this.parameter(value);
+        }
+        return `json_query(json_modify(${expression}, ${path}, ${stringValue}))`;
+    }
 
     /**
      * Compile an update statement with joins into SQL.
@@ -356,80 +428,39 @@ class SqlServerGrammar extends Grammar {
         return sql;
     }
 
-    // /**
-    //  * Group the nested JSON columns.
-    //  */
-    // protected groupJsonColumnsForUpdate(values: RowValues): [string[], RowValues] {
-    //     const groups: RowValues = {};
-    //     const groupKeys: RowValues = {};
-
-    //     for (const key in values) {
-    //         let newKey = key;
-    //         if (this.isJsonSelector(key)) {
-    //             const exploded = key.split('.');
-    //             if (exploded.length > 1) {
-    //                 exploded.shift();
-    //             }
-    //             newKey = exploded.join('.').replace(/->/g, '.');
-
-    //             set(groupKeys, newKey, values[key]);
-    //             continue;
-    //         }
-
-    //         set(groups, newKey, values[key]);
-    //     }
-
-    //     for (const key in groupKeys) {
-    //         let value = groupKeys[key];
-    //         if (key in groups) {
-    //             value = merge(value, groups[key]);
-    //             delete groups[key];
-    //         }
-
-    //         set(groups, key, value);
-    //     }
-
-    //     return [Object.keys(groupKeys), groups];
-    // }
-
-    // /**
-    //  * Prepare the bindings for an update statement.
-    //  */
-    // public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
-    //     const [groupKeys, modifiedValues] = this.groupJsonColumnsForUpdate(values);
-    //     const valuesOfValues = Object.keys(modifiedValues)
-    //         .map(key => {
-    //             const value = modifiedValues[key];
-    //             if (groupKeys.includes(key) && !Array.isArray(value)) {
-    //                 const values = [];
-    //                 for (const firstKey in value) {
-    //                     const keyValue = value[firstKey];
-    //                     values.push(keyValue);
-    //                 }
-    //                 return values;
-    //             }
-    //             return value;
-    //         })
-    //         .flat(1);
-
-    //     const cleanBindings = Object.keys(bindings)
-    //         .filter(key => !['select'].includes(key))
-    //         .map(key => bindings[key as keyof BindingTypes]);
-
-    //     console.log(valuesOfValues);
-
-    //     return Object.values(valuesOfValues).concat(cleanBindings.flat(Infinity) as Binding[]);
-    // }
-
     /**
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
+
+        const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+            if (!jsonKeys.includes(key)) {
+                acc.push(
+                    this.mustBeJsonStringified(combinedValues[key])
+                        ? JSON.stringify(combinedValues[key], stringifyReplacer(this))
+                        : values[key]
+                );
+            } else {
+                for (const subkey in combinedValues[key]) {
+                    const value = combinedValues[key][subkey];
+                    if (this.isExpression(value)) {
+                        continue;
+                    }
+                    acc.push(
+                        this.mustBeJsonStringified(value) ? JSON.stringify(value, stringifyReplacer(this)) : value
+                    );
+                }
+            }
+
+            return acc;
+        }, []);
+
         const cleanBindings = Object.keys(bindings)
             .filter(key => !['select'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
 
-        return Object.values(values).concat(cleanBindings.flat(Infinity) as Binding[]);
+        return valuesOfValues.concat(cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**

@@ -941,7 +941,7 @@ await DB.table('users').updateOrInsert({ email: 'john@example.com', name: 'John'
 
 ### Updating JSON Columns
 
-When updating a JSON column, you should use `->` syntax to update the appropriate key in the JSON object. This operation is supported on MySQL 5.7+ and PostgreSQL 9.5+:
+When updating a JSON column, you should use `->` syntax to update the appropriate key in the JSON object
 
 ```ts
 affected = await DB.table('users').where('id', 1).update({ 'options->enabled': true });

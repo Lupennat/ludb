@@ -1710,6 +1710,12 @@ describe('Query Builder Wheres', () => {
         ).toBe(builder.toSql());
 
         builder = getMySqlBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
+        expect(
+            "select * from `users` where ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[*]') and json_contains_path(`options`, 'one', '$.\"languages\"[0]'), 0)"
+        ).toBe(builder.toSql());
+
+        builder = getMySqlBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
         expect(
             "select * from `users` where ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[*][*]') and json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
@@ -1743,9 +1749,9 @@ describe('Query Builder Wheres', () => {
 
         builder = getPostgresBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
-        expect('select * from "users" where coalesce(("options"->\'languages\')::jsonb ?? \'0\', false)').toBe(
-            builder.toSql()
-        );
+        expect(
+            'select * from "users" where case when jsonb_typeof(("options"->\'languages\')::jsonb) = \'array\' then jsonb_array_length(("options"->\'languages\')::jsonb) >= 1 else false end'
+        ).toBe(builder.toSql());
 
         builder = getPostgresBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[-1]');
@@ -1774,6 +1780,12 @@ describe('Query Builder Wheres', () => {
         );
 
         builder = getSQLiteBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
+        expect('select * from "users" where json_type("options", \'$."languages"[0]\') is not null').toBe(
+            builder.toSql()
+        );
+
+        builder = getSQLiteBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
         expect('select * from "users" where json_type("options", \'$."languages"[0][1]\') is not null').toBe(
             builder.toSql()
@@ -1796,6 +1808,12 @@ describe('Query Builder Wheres', () => {
         builder = getSqlServerBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
         expect("select * from [users] where [id] = ? or 'languages' in (select [key] from openjson([options]))").toBe(
+            builder.toSql()
+        );
+
+        builder = getSqlServerBuilder();
+        builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
+        expect('select * from [users] where 0 in (select [key] from openjson([options], \'$."languages"\'))').toBe(
             builder.toSql()
         );
 

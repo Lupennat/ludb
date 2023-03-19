@@ -1,28 +1,31 @@
 import DatabaseManager from '../../../database-manager';
 import { MySqlConfig, PostgresConfig, SQLiteConfig, SqlServerConfig } from '../../../types/config';
 
-export const currentDB: string = process.env.DB as string;
+type currentDB =
+    | 'mysql57'
+    | 'mysql8'
+    | 'maria1003'
+    | 'maria1011'
+    | 'sqlite'
+    | 'postgres11'
+    | 'postgres15'
+    | 'sqlsrv17'
+    | 'sqlsrv22';
 
-export function isMySql(): boolean {
-    return currentDB === 'mysql' || currentDB === 'maria';
-}
-
-export function isSQLite(): boolean {
-    return currentDB === 'sqlite';
-}
-
-export function isPostgres(): boolean {
-    return currentDB === 'postgres';
-}
-
-export function isSqlServer(): boolean {
-    return currentDB === 'sqlsrv';
-}
+export const currentDB: currentDB = process.env.DB as currentDB;
 
 export const config = {
     default: currentDB,
     connections: {
-        mysql: {
+        mysql57: {
+            driver: 'mysql',
+            host: 'localhost',
+            port: 5307,
+            username: 'lupdo',
+            password: 'lupdo@s3cRet',
+            database: 'tempdb'
+        } as MySqlConfig,
+        mysql8: {
             driver: 'mysql',
             host: 'localhost',
             port: 5308,
@@ -30,7 +33,15 @@ export const config = {
             password: 'lupdo@s3cRet',
             database: 'tempdb'
         } as MySqlConfig,
-        maria: {
+        maria1003: {
+            driver: 'mysql',
+            host: 'localhost',
+            port: 31003,
+            username: 'lupdo',
+            password: 'lupdo@s3cRet',
+            database: 'tempdb'
+        } as MySqlConfig,
+        maria1011: {
             driver: 'mysql',
             host: 'localhost',
             port: 31011,
@@ -44,7 +55,15 @@ export const config = {
             foreign_key_constraints: true,
             journal_mode_wal: true
         } as SQLiteConfig,
-        postgres: {
+        postgres11: {
+            driver: 'pgsql',
+            username: 'lupdo',
+            password: 'lupdos3cRet',
+            host: 'localhost',
+            database: 'tempdb',
+            port: 25431
+        } as PostgresConfig,
+        postgres15: {
             driver: 'pgsql',
             username: 'lupdo',
             password: 'lupdos3cRet',
@@ -52,7 +71,16 @@ export const config = {
             database: 'tempdb',
             port: 25435
         } as PostgresConfig,
-        sqlsrv: {
+        sqlsrv17: {
+            port: 21433,
+            driver: 'sqlsrv',
+            database: 'tempdb',
+            username: 'sa',
+            password: 'lupdo@s3cRet',
+            host: 'localhost',
+            trust_server_certificate: true
+        } as SqlServerConfig,
+        sqlsrv22: {
             port: 21435,
             driver: 'sqlsrv',
             database: 'tempdb',
@@ -65,3 +93,19 @@ export const config = {
 };
 
 export const DB = new DatabaseManager(config);
+
+export function isMySql(): boolean {
+    return config.connections[currentDB].driver === 'mysql';
+}
+
+export function isSQLite(): boolean {
+    return config.connections[currentDB].driver === 'sqlite';
+}
+
+export function isPostgres(): boolean {
+    return config.connections[currentDB].driver === 'pgsql';
+}
+
+export function isSqlServer(): boolean {
+    return config.connections[currentDB].driver === 'sqlsrv';
+}
