@@ -933,7 +933,7 @@ describe('Query Builder Pdo Methods Modify', () => {
         builder = getPostgresBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
-                'update "users" set "options" = jsonb_set(jsonb_set(options::jsonb, \'{"language"}\', ?::jsonb), \'{"size"}\', \'\'full\'\') from "orders" where "name" = ? and "users"."id" = "orders"."user_id" and "users"."id" = ?'
+                'update "users" set "options" = jsonb_set(jsonb_set("options"::jsonb, \'{"language"}\', ?::jsonb), \'{"size"}\', \'\'full\'\') from "orders" where "name" = ? and "users"."id" = "orders"."user_id" and "users"."id" = ?'
             );
             expect(bindings).toEqual(['["english","italian"]', 'baz', 1]);
             return 1;

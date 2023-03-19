@@ -1,8 +1,9 @@
 import Raw from '../../query/expression';
-import { DB, isSqlServer } from './fixtures/config';
+import { DB } from './fixtures/config';
 
 interface JsonMulti {
     options: string;
+    list: string;
     meta: string;
     group_id: number;
     created_at: string;
@@ -12,9 +13,7 @@ interface Json {
     json_col: string;
 }
 
-const maybe = !isSqlServer() ? describe : describe.skip;
-
-maybe('Json', () => {
+describe('Json', () => {
     const data: Array<[string, boolean, string, any?]> = [
         ['key not exists', true, 'invalid'],
         ['key exists and null', true, 'value', { value: null }],
@@ -42,7 +41,7 @@ maybe('Json', () => {
         ['string key', 4, 'json_col->foo'],
         ['nested key exists', 2, 'json_col->foo->bar'],
         ['string key missing', 0, 'json_col->none'],
-        ['integer key with arrow ', 0, 'json_col->foo->bar->0'],
+        ['integer key with arrow ', 1, 'json_col->foo->bar->0'],
         ['integer key with braces', 1, 'json_col->foo->bar[0]'],
         ['integer key missing', 0, 'json_col->foo->bar[1]'],
         ['mixed keys', 1, 'json_col->foo[1]->baz'],
@@ -58,6 +57,7 @@ maybe('Json', () => {
         await Schema.create('test_json_table_multi', table => {
             table.json('options').nullable();
             table.json('meta').nullable();
+            table.json('list').nullable();
             table.unsignedInteger('group_id');
             table.dateTime('created_at');
         });
@@ -275,36 +275,45 @@ maybe('Json', () => {
             .insert({
                 options: { enable: true, size: 10 },
                 meta: {},
+                list: [],
                 group_id: 10,
                 created_at: DB.bindTo.dateTime('2023-03-12 22:00:00')
             });
 
         let updatedCount = await DB.connection()
             .table('test_json_table_multi')
-            .update({ 'options->enable': false, created_at: DB.bindTo.dateTime('2015-05-26 22:02:06') });
-
+            .update({
+                'list->[0]': null,
+                'options->enable': false,
+                created_at: DB.bindTo.dateTime('2015-05-26 22:02:06')
+            });
         expect(updatedCount).toBe(1);
 
         let res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 10 });
+        expect(JSON.parse(res.list)).toEqual([null]);
         expect(JSON.parse(res.meta)).toEqual({});
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:06');
 
         updatedCount = await DB.connection()
             .table('test_json_table_multi')
-            .update({ 'options->size': BigInt('45'), created_at: DB.bindTo.dateTime('2015-05-26 22:02:08') });
+            .update({
+                'list->[0]': 1,
+                'options->size': BigInt('45'),
+                created_at: DB.bindTo.dateTime('2015-05-26 22:02:08')
+            });
 
         expect(updatedCount).toBe(1);
 
         res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 45 });
+        expect(JSON.parse(res.list)).toEqual([1]);
         expect(JSON.parse(res.meta)).toEqual({});
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:08');
-
         updatedCount = await DB.connection().table('test_json_table_multi').update({ 'options->size': null });
 
         expect(updatedCount).toBe(1);
@@ -318,7 +327,7 @@ maybe('Json', () => {
 
         updatedCount = await DB.connection()
             .table('test_json_table_multi')
-            .update({ 'options->size': new Raw('70') });
+            .update({ 'list->[1]': null, 'options->size': new Raw('70') });
 
         expect(updatedCount).toBe(1);
 
@@ -326,6 +335,7 @@ maybe('Json', () => {
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 70 });
         expect(JSON.parse(res.meta)).toEqual({});
+        expect(JSON.parse(res.list)).toEqual([1, null]);
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:08');
 

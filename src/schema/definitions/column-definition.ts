@@ -173,9 +173,9 @@ class ColumnDefinition {
     }
 
     /**
-     *  Add a fulltext index
+     *  Rename Column To
      */
-    public renameTo(column?: Stringable): this {
+    public renameTo(column: Stringable): this {
         return this.addToRegistry('renameTo', column);
     }
 

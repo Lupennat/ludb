@@ -695,7 +695,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected compileTypeDateTime(column: ColumnDefinition): string {
         const precision = column.getRegistry().precision;
-        return precision !== undefined ? `datetime(${precision})` : 'datetime';
+        return precision != null ? `datetime(${precision})` : 'datetime';
     }
 
     /**
@@ -703,7 +703,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected compileTypeDateTimeTz(column: ColumnDefinition): string {
         const precision = column.getRegistry().precision;
-        return precision !== undefined ? `datetime(${precision})` : 'datetime';
+        return precision != null ? `datetime(${precision})` : 'datetime';
     }
 
     /**
@@ -711,7 +711,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected compileTypeTime(column: ColumnDefinition): string {
         const precision = column.getRegistry().precision;
-        return precision !== undefined ? `time(${precision})` : 'time';
+        return precision != null ? `time(${precision})` : 'time';
     }
 
     /**
@@ -719,7 +719,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected compileTypeTimeTz(column: ColumnDefinition): string {
         const precision = column.getRegistry().precision;
-        return precision !== undefined ? `time(${precision})` : 'time';
+        return precision != null ? `time(${precision})` : 'time';
     }
 
     /**
@@ -727,7 +727,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected compileTypeTimestamp(column: ColumnDefinition): string {
         const precision = column.getRegistry().precision;
-        return precision !== undefined ? `timestamp(${precision})` : 'timestamp';
+        return precision != null ? `timestamp(${precision})` : 'timestamp';
     }
 
     /**
@@ -735,7 +735,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     protected compileTypeTimestampTz(column: ColumnDefinition): string {
         const precision = column.getRegistry().precision;
-        return precision !== undefined ? `timestamp(${precision})` : 'timestamp';
+        return precision != null ? `timestamp(${precision})` : 'timestamp';
     }
 
     /**

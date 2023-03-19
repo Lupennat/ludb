@@ -882,49 +882,49 @@ class Blueprint {
     /**
      * Create a new date-time column on the table.
      */
-    public dateTime(column: Stringable, precision?: number): ColumnDefinition {
+    public dateTime(column: Stringable, precision = 0): ColumnDefinition {
         return this.addColumn('dateTime', column, { precision });
     }
 
     /**
      * Create a new date-time column (with time zone) on the table.
      */
-    public dateTimeTz(column: Stringable, precision?: number): ColumnDefinition {
+    public dateTimeTz(column: Stringable, precision = 0): ColumnDefinition {
         return this.addColumn('dateTimeTz', column, { precision });
     }
 
     /**
      * Create a new time column on the table.
      */
-    public time(column: Stringable, precision?: number): ColumnDefinition {
+    public time(column: Stringable, precision = 0): ColumnDefinition {
         return this.addColumn('time', column, { precision });
     }
 
     /**
      * Create a new time column (with time zone) on the table.
      */
-    public timeTz(column: Stringable, precision?: number): ColumnDefinition {
+    public timeTz(column: Stringable, precision = 0): ColumnDefinition {
         return this.addColumn('timeTz', column, { precision });
     }
 
     /**
      * Create a new timestamp column on the table.
      */
-    public timestamp(column: Stringable, precision?: number): ColumnDefinition {
+    public timestamp(column: Stringable, precision = 0): ColumnDefinition {
         return this.addColumn('timestamp', column, { precision });
     }
 
     /**
      * Create a new timestamp (with time zone) column on the table.
      */
-    public timestampTz(column: Stringable, precision?: number): ColumnDefinition {
+    public timestampTz(column: Stringable, precision = 0): ColumnDefinition {
         return this.addColumn('timestampTz', column, { precision });
     }
 
     /**
      * Add nullable creation and update timestamps to the table.
      */
-    public timestamps(precision?: number): void {
+    public timestamps(precision = 0): void {
         this.timestamp('created_at', precision).nullable();
 
         this.timestamp('updated_at', precision).nullable();
@@ -933,7 +933,7 @@ class Blueprint {
     /**
      * Add creation and update timestampTz columns to the table.
      */
-    public timestampsTz(precision?: number): void {
+    public timestampsTz(precision = 0): void {
         this.timestampTz('created_at', precision).nullable();
 
         this.timestampTz('updated_at', precision).nullable();
@@ -942,7 +942,7 @@ class Blueprint {
     /**
      * Add creation and update datetime columns to the table.
      */
-    public datetimes(precision?: number): void {
+    public datetimes(precision = 0): void {
         this.dateTime('created_at', precision).nullable();
 
         this.dateTime('updated_at', precision).nullable();
@@ -951,21 +951,21 @@ class Blueprint {
     /**
      * Add a "deleted at" timestamp for the table.
      */
-    public softDeletes(column: Stringable = 'deleted_at', precision?: number): ColumnDefinition {
+    public softDeletes(column: Stringable = 'deleted_at', precision = 0): ColumnDefinition {
         return this.timestamp(column, precision).nullable();
     }
 
     /**
      * Add a "deleted at" timestampTz for the table.
      */
-    public softDeletesTz(column: Stringable = 'deleted_at', precision?: number): ColumnDefinition {
+    public softDeletesTz(column: Stringable = 'deleted_at', precision = 0): ColumnDefinition {
         return this.timestampTz(column, precision).nullable();
     }
 
     /**
      * Add a "deleted at" datetime column to the table.
      */
-    public softDeletesDatetime(column: Stringable = 'deleted_at', precision?: number): ColumnDefinition {
+    public softDeletesDatetime(column: Stringable = 'deleted_at', precision = 0): ColumnDefinition {
         return this.dateTime(column, precision).nullable();
     }
 

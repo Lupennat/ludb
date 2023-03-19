@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import set from 'set-value';
 import BaseGrammar from '../../grammar';
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import GrammarI from '../../types/query/grammar';
@@ -35,7 +36,7 @@ import {
     WhereSub,
     whereFulltext
 } from '../../types/query/registry';
-import { isValidBinding, stringifyReplacer } from '../../utils';
+import { isValidBinding, merge, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import JoinClause from '../join-clause';
@@ -1060,36 +1061,38 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
-     * Validate Json Update Values.
+     * Combine Json Update Values.
      */
-    protected validateJsonColumnsForUpdate(values: RowValues): void {
-        const jsonColumns: string[] = [];
-        const columns: string[] = [];
+    protected combineJsonValues(values: RowValues): [RowValues, string[]] {
+        const jsonGroupedColumns = this.groupJsonColumnsForUpdate(values);
+
+        if (Object.keys(jsonGroupedColumns).length === 0) {
+            return [values, []];
+        }
+
+        const groups: RowValues = {};
 
         for (const key in values) {
             if (this.isJsonSelector(key)) {
-                const exploded = this.getColumnKey(key).split('->');
-                const column = exploded.shift() as string;
-                if (!jsonColumns.includes(column)) {
-                    jsonColumns.push(column);
-                }
-            } else {
-                const column = this.getColumnKey(key);
-                if (!columns.includes(column)) {
-                    columns.push(column);
+                continue;
+            }
+            const keyWithoutTable = this.getColumnKey(key);
+            set(groups, keyWithoutTable, values[key]);
+
+            if (keyWithoutTable in jsonGroupedColumns) {
+                for (let path in jsonGroupedColumns[keyWithoutTable]) {
+                    const value = jsonGroupedColumns[keyWithoutTable][path];
+                    delete jsonGroupedColumns[keyWithoutTable][path];
+                    if (Object.keys(jsonGroupedColumns[keyWithoutTable]).length === 0) {
+                        delete jsonGroupedColumns[keyWithoutTable];
+                    }
+                    path = path.replace(/\[/g, '.').replace(/\]/g, '').replace(/->\./g, '.').replace(/->/g, '.');
+                    set(groups, `${keyWithoutTable}.${path}`, value);
                 }
             }
         }
 
-        const wrongColumn = jsonColumns.filter(column => columns.includes(column));
-
-        if (wrongColumn.length > 0) {
-            throw new Error(
-                `Incorrect update for json columns (${wrongColumn.join(
-                    ', '
-                )}), is not allowed to overwrite the column is simultaneously a json content value.`
-            );
-        }
+        return [merge(groups, jsonGroupedColumns), Object.keys(jsonGroupedColumns)];
     }
 
     /**
@@ -1118,9 +1121,9 @@ class Grammar extends BaseGrammar implements GrammarI {
     protected getColumnKey(key: string): string {
         const exploded = key.split('.');
         if (exploded.length > 1) {
-            exploded.shift();
+            return exploded.pop() as string;
         }
-        return exploded.join('.');
+        return key;
     }
 }
 

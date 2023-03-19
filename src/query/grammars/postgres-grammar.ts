@@ -1,6 +1,6 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime, whereFulltext } from '../../types/query/registry';
-import { beforeLast, escapeQuoteForSql, merge, stringifyReplacer } from '../../utils';
+import { beforeLast, escapeQuoteForSql, stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import Grammar from './grammar';
 
@@ -201,7 +201,9 @@ class PostgresGrammar extends Grammar {
         let index: null | number = null;
         const matches = lastSegment.match(/\[(-?[0-9]+)\]$/);
 
-        if (matches !== null) {
+        if (Number.isInteger(Number(lastSegment))) {
+            index = Number(lastSegment);
+        } else if (matches !== null) {
             segments.push(beforeLast(lastSegment, matches[0]));
             index = Number(matches[1]);
         }
@@ -280,28 +282,15 @@ class PostgresGrammar extends Grammar {
      * Compile the columns for an update statement.
      */
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
-        this.validateJsonColumnsForUpdate(values);
-        const groups = this.groupJsonColumnsForUpdate(values);
-
-        const notJsonValues = Object.keys(values)
-            .filter(key => !this.isJsonSelector(key))
-            .reduce(
-                (acc: RowValues, key) => ({
-                    ...acc,
-                    [key]: values[key]
-                }),
-                {}
-            );
-
-        values = merge(notJsonValues, groups);
-
-        return Object.keys(values)
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
+        return Object.keys(combinedValues)
             .map(key => {
-                const column = key.split('.').pop() as string;
-                const value =
-                    column in groups ? this.compileJsonUpdateColumn(column, values[key]) : this.parameter(values[key]);
+                const value = jsonKeys.includes(key)
+                    ? this.compileJsonUpdateColumn(key, combinedValues[key])
+                    : this.parameter(combinedValues[key]);
 
-                return `${this.wrap(column)} = ${value}`;
+                key = this.getColumnKey(key);
+                return `${this.wrap(key)} = ${value}`;
             })
             .join(', ');
     }
@@ -347,7 +336,7 @@ class PostgresGrammar extends Grammar {
         for (const key in values) {
             const path = `'{${this.wrapJsonPathAttributes(key.split('->'), '"').join(',')}}'`;
             const value = this.isExpression(values[key]) ? `'${this.parameter(values[key])}'` : '?::jsonb';
-            sql = `jsonb_set(${sql === '' ? column + '::jsonb' : sql}, ${path}, ${value})`;
+            sql = `jsonb_set(${sql === '' ? this.wrap(column) + '::jsonb' : sql}, ${path}, ${value})`;
         }
         return sql;
     }
@@ -446,54 +435,29 @@ class PostgresGrammar extends Grammar {
      * Prepare Values For Update
      */
     protected prepareValuesForUpdate(values: RowValues): any[] {
-        const groups = this.groupJsonColumnsForUpdate(values);
-        const filteredGroups = Object.keys(groups).reduce((acc: RowValues, key) => {
-            acc[key] = Object.keys(groups[key])
-                .filter(subkey => !this.isExpression(groups[key][subkey]))
-                .reduce(
-                    (acc: RowValues, subkey) => ({
-                        ...acc,
-                        [subkey]: groups[key][subkey]
-                    }),
-                    {}
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
+
+        return Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+            if (!jsonKeys.includes(key)) {
+                acc.push(
+                    this.mustBeJsonStringified(combinedValues[key])
+                        ? JSON.stringify(combinedValues[key], stringifyReplacer(this))
+                        : values[key]
                 );
+            } else {
+                for (const subkey in combinedValues[key]) {
+                    const value = combinedValues[key][subkey];
+                    if (this.isExpression(value)) {
+                        continue;
+                    }
+                    acc.push(
+                        typeof value === 'bigint' ? value.toString() : JSON.stringify(value, stringifyReplacer(this))
+                    );
+                }
+            }
 
             return acc;
-        }, {});
-
-        const notJsonValues = Object.keys(values)
-            .filter(key => !this.isJsonSelector(key))
-            .reduce(
-                (acc: RowValues, key) => ({
-                    ...acc,
-                    [key]: values[key]
-                }),
-                {}
-            );
-
-        values = merge(notJsonValues, filteredGroups);
-
-        return Object.keys(values)
-            .map(key => {
-                const column = key.split('.').pop() as string;
-                if (column in filteredGroups) {
-                    const values = [];
-                    for (const key in filteredGroups[column]) {
-                        const value = filteredGroups[column][key];
-                        values.push(
-                            typeof value === 'bigint'
-                                ? value.toString()
-                                : JSON.stringify(value, stringifyReplacer(this))
-                        );
-                    }
-                    return values;
-                } else {
-                    return this.mustBeJsonStringified(values[key])
-                        ? JSON.stringify(values[key], stringifyReplacer(this))
-                        : values[key];
-                }
-            })
-            .flat(1);
+        }, []);
     }
 
     /**

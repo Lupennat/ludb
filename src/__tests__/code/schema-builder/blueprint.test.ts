@@ -243,14 +243,14 @@ describe('Blueprint', () => {
         let blueprint = getMySqlBlueprint('users', table => {
             table.dateTime('created').useCurrent();
         });
-        expect(['alter table `users` add `created` datetime not null default CURRENT_TIMESTAMP']).toEqual(
+        expect(['alter table `users` add `created` datetime(0) not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
         blueprint = getPostgresBlueprint('users', table => {
             table.dateTime('created').useCurrent();
         });
         expect([
-            'alter table "users" add column "created" timestamp without time zone not null default CURRENT_TIMESTAMP'
+            'alter table "users" add column "created" timestamp(0) without time zone not null default CURRENT_TIMESTAMP'
         ]).toEqual(blueprint.toSql(connection));
         blueprint = getSQLiteBlueprint('users', table => {
             table.dateTime('created').useCurrent();
@@ -261,7 +261,7 @@ describe('Blueprint', () => {
         blueprint = getSqlServerBlueprint('users', table => {
             table.dateTime('created').useCurrent();
         });
-        expect(['alter table "users" add "created" datetime2 not null default CURRENT_TIMESTAMP']).toEqual(
+        expect(['alter table "users" add "created" datetime2(0) not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
     });
@@ -271,14 +271,14 @@ describe('Blueprint', () => {
         let blueprint = getMySqlBlueprint('users', table => {
             table.timestamp('created').useCurrent();
         });
-        expect(['alter table `users` add `created` timestamp not null default CURRENT_TIMESTAMP']).toEqual(
+        expect(['alter table `users` add `created` timestamp(0) not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
         blueprint = getPostgresBlueprint('users', table => {
             table.timestamp('created').useCurrent();
         });
         expect([
-            'alter table "users" add column "created" timestamp without time zone not null default CURRENT_TIMESTAMP'
+            'alter table "users" add column "created" timestamp(0) without time zone not null default CURRENT_TIMESTAMP'
         ]).toEqual(blueprint.toSql(connection));
         blueprint = getSQLiteBlueprint('users', table => {
             table.timestamp('created').useCurrent();
@@ -289,7 +289,7 @@ describe('Blueprint', () => {
         blueprint = getSqlServerBlueprint('users', table => {
             table.timestamp('created').useCurrent();
         });
-        expect(['alter table "users" add "created" datetime2 not null default CURRENT_TIMESTAMP']).toEqual(
+        expect(['alter table "users" add "created" datetime2(0) not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
     });

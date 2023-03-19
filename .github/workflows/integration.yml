@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [18.x]
-        database-type: [mysql, maria, sqlite, postgres, sqlsrv]
+        database-type: [ mysql57, mysql8, maria1003, maria1011, sqlite, postgres11, postgres15, sqlsrv17, sqlsrv22 ]
 
     steps:
       - uses: actions/checkout@v3

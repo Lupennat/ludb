@@ -834,25 +834,23 @@ describe('Posgtres Schema Grammar', () => {
         expect('alter table "users" add column "foo" jsonb not null').toBe(statements[0]);
     });
 
-    it('Works Adding Date Time', () => {
+    it('Works Adding Date Time Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.dateTime('created_at', 0);
+        blueprint.dateTime('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add column "created_at" timestamp(0) without time zone not null').toBe(
-            statements[0]
-        );
+        expect('alter table "users" add column "created_at" timestamp without time zone not null').toBe(statements[0]);
     });
 
-    it('Works Adding Date Time With Default Current', () => {
+    it('Works Adding Date Time Current', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTime('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect(
-            'alter table "users" add column "created_at" timestamp without time zone not null default CURRENT_TIMESTAMP'
+            'alter table "users" add column "created_at" timestamp(0) without time zone not null default CURRENT_TIMESTAMP'
         ).toBe(statements[0]);
     });
 
@@ -870,29 +868,29 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Date Time With Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.dateTime('created_at');
+        blueprint.dateTime('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" timestamp without time zone not null').toBe(statements[0]);
     });
 
-    it('Works Adding Date Time Tz', () => {
+    it('Works Adding Date Time Tz Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.dateTimeTz('created_at', 0);
+        blueprint.dateTimeTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add column "created_at" timestamp(0) with time zone not null').toBe(statements[0]);
+        expect('alter table "users" add column "created_at" timestamp with time zone not null').toBe(statements[0]);
     });
 
-    it('Works Adding Date Time Tz With Default Current', () => {
+    it('Works Adding Date Time Tz Current', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTimeTz('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect(
-            'alter table "users" add column "created_at" timestamp with time zone not null default CURRENT_TIMESTAMP'
+            'alter table "users" add column "created_at" timestamp(0) with time zone not null default CURRENT_TIMESTAMP'
         ).toBe(statements[0]);
     });
 
@@ -908,7 +906,7 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Date Time Tz With Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.dateTimeTz('created_at');
+        blueprint.dateTimeTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" timestamp with time zone not null').toBe(statements[0]);
@@ -917,7 +915,7 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Time', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.time('created_at', 0);
+        blueprint.time('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" time(0) without time zone not null').toBe(statements[0]);
@@ -935,7 +933,7 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Time With Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.time('created_at');
+        blueprint.time('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" time without time zone not null').toBe(statements[0]);
@@ -962,7 +960,7 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Time Tz With Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.timeTz('created_at');
+        blueprint.timeTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" time with time zone not null').toBe(statements[0]);
@@ -971,7 +969,7 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Timestamp', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.timestamp('created_at', 0);
+        blueprint.timestamp('created_at');
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" timestamp(0) without time zone not null').toBe(
@@ -979,10 +977,10 @@ describe('Posgtres Schema Grammar', () => {
         );
     });
 
-    it('Works Adding Timestamp With Default Current', () => {
+    it('Works Adding Timestamp Current', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.timestamp('created_at', 0).useCurrent();
+        blueprint.timestamp('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect(
@@ -1004,25 +1002,25 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Timestamp With Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.timestamp('created_at');
+        blueprint.timestamp('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" timestamp without time zone not null').toBe(statements[0]);
     });
 
-    it('Works Adding Timestamp Tz', () => {
+    it('Works Adding Timestamp Tz With Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.timestampTz('created_at', 0);
+        blueprint.timestampTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add column "created_at" timestamp(0) with time zone not null').toBe(statements[0]);
+        expect('alter table "users" add column "created_at" timestamp with time zone not null').toBe(statements[0]);
     });
 
-    it('Works Adding Timestamp Tz With Default Current', () => {
+    it('Works Adding Timestamp Tz Current', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.timestampTz('created_at', 0).useCurrent();
+        blueprint.timestampTz('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect(
@@ -1042,7 +1040,7 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Adding Timestamp Tz With Null Precision', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.timestampTz('created_at');
+        blueprint.timestampTz('created_at', null);
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "created_at" timestamp with time zone not null').toBe(statements[0]);
@@ -1087,7 +1085,7 @@ describe('Posgtres Schema Grammar', () => {
         blueprint.softDeletesDatetime();
         const statements = blueprint.toSql(connection);
         expect(1).toBe(statements.length);
-        expect('alter table "users" add column "deleted_at" timestamp without time zone null').toBe(statements[0]);
+        expect('alter table "users" add column "deleted_at" timestamp(0) without time zone null').toBe(statements[0]);
     });
 
     it('Works Adding SoftDeletes', () => {

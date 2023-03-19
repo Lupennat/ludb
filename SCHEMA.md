@@ -783,6 +783,7 @@ The following table contains all of the available column modifiers. This list do
 | `.nullable(value = true)`                           | Allow NULL values to be inserted into the column.                                         |
 | `.persisted(value = true)`                          | Mark the computed generated column as persistent (SQL Server).                            |
 | `.projection(number)`                               | Add geometry/geography projection.                                                        |
+| `.renameTo(string/Expression)`                      | Specify column new name (MySQL).                                                          |
 | `.startingValue(number/bigint)`                     | Set the starting value of an auto-incrementing field (MySQL/PostgreSQL).                  |
 | `.srid(number)`                                     | Define Geometry Point Srid.                                                               |
 | `.storedAs(string/Expression)`                      | Create a stored generated column (MySQL/PostgreSQL/SQLite).                               |
@@ -856,9 +857,23 @@ await Schema.table('users', table => {
 
 If you are running a database installation older than one of the following releases, you will not be able to rename columns.
 
+-   SQLite < `3.25.0`
+
+If you are running a database installation older than the one of the following releases, you can rename column using change.
+
 -   MySQL < `8.0.3`
 -   MariaDB < `10.5.2`
--   SQLite < `3.25.0`
+
+```ts
+await Schema.create('users', table => {
+    table.integer('from').nullable();
+});
+
+await Schema.table('users', table => {
+    // you need to re-define all column definition otherwise old definition will be lost
+    table.integer('from').nullable().renameTo('to').change();
+});
+```
 
 ### Dropping Columns
 
@@ -1017,7 +1032,7 @@ An alternative, expressive syntax is also provided for these actions:
 
 | Method                      | Description                                            |
 | --------------------------- | ------------------------------------------------------ |
-| `table.cascadeOnUpdate();`   | Updates should cascade.                                |
+| `table.cascadeOnUpdate();`  | Updates should cascade.                                |
 | `table.restrictOnUpdate();` | Updates should be restricted.                          |
 | `table.cascadeOnDelete();`  | Deletes should cascade.                                |
 | `table.restrictOnDelete();` | Deletes should be restricted.                          |
@@ -1027,9 +1042,7 @@ An alternative, expressive syntax is also provided for these actions:
 Any additional [column modifiers](#column-modifiers) must be called before the `constrained` method:
 
 ```ts
-table.foreignId('user_id')
-        .nullable()
-        .constrained();
+table.foreignId('user_id').nullable().constrained();
 ```
 
 #### Dropping Foreign Keys

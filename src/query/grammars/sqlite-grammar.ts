@@ -1,6 +1,6 @@
 import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereDateTime } from '../../types/query/registry';
-import { merge, stringifyReplacer } from '../../utils';
+import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -104,6 +104,13 @@ class SQLiteGrammar extends Grammar {
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
+        const segments = this.getValue(column).toString().split('->');
+        const lastSegment = segments.pop() as string;
+
+        if (Number.isInteger(Number(lastSegment))) {
+            column = `${segments.join('->')}[${lastSegment}]`;
+        }
+
         const [field, path] = this.wrapJsonFieldAndPath(column);
 
         return `json_type(${field}${path}) is not null`;
@@ -133,28 +140,15 @@ class SQLiteGrammar extends Grammar {
      * Compile the columns for an update statement.
      */
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
-        this.validateJsonColumnsForUpdate(values);
-        const groups = this.groupJsonColumnsForUpdate(values);
-
-        const notJsonValues = Object.keys(values)
-            .filter(key => !this.isJsonSelector(key))
-            .reduce(
-                (acc: RowValues, key) => ({
-                    ...acc,
-                    [key]: values[key]
-                }),
-                {}
-            );
-
-        values = merge(notJsonValues, groups);
-
-        return Object.keys(values)
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
+        return Object.keys(combinedValues)
             .map(key => {
-                const column = key.split('.').pop() as string;
-                const value =
-                    column in groups ? this.compileJsonUpdateColumn(column, values[key]) : this.parameter(values[key]);
+                const value = jsonKeys.includes(key)
+                    ? this.compileJsonUpdateColumn(key, combinedValues[key])
+                    : this.parameter(combinedValues[key]);
 
-                return `${this.wrap(column)} = ${value}`;
+                key = this.getColumnKey(key);
+                return `${this.wrap(key)} = ${value}`;
             })
             .join(', ');
     }
@@ -193,7 +187,7 @@ class SQLiteGrammar extends Grammar {
     }
 
     /**
-     * Compile a "JSON" patch statement into SQL.
+     * Compile a "JSON set" statement into SQL.
      */
     protected compileJsonUpdateColumn(column: string, values: RowValues): string {
         let sql = '';
@@ -209,7 +203,7 @@ class SQLiteGrammar extends Grammar {
                 stringValue = this.parameter(value);
             }
 
-            sql = `json_set(${sql === '' ? column : sql}, ${path}, ${stringValue})`;
+            sql = `json_set(${sql === '' ? this.wrap(column) : sql}, ${path}, ${stringValue})`;
         }
 
         return sql;
@@ -234,53 +228,29 @@ class SQLiteGrammar extends Grammar {
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
-        const groups = this.groupJsonColumnsForUpdate(values);
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
-        const filteredGroups = Object.keys(groups).reduce((acc: RowValues, key) => {
-            acc[key] = Object.keys(groups[key])
-                .filter(subkey => typeof groups[key][subkey] !== 'boolean')
-                .reduce(
-                    (acc: RowValues, subkey) => ({
-                        ...acc,
-                        [subkey]: groups[key][subkey]
-                    }),
-                    {}
+        const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+            if (!jsonKeys.includes(key)) {
+                acc.push(
+                    this.mustBeJsonStringified(combinedValues[key])
+                        ? JSON.stringify(combinedValues[key], stringifyReplacer(this))
+                        : values[key]
                 );
+            } else {
+                for (const subkey in combinedValues[key]) {
+                    const value = combinedValues[key][subkey];
+                    if (this.isExpression(value) || typeof value === 'boolean') {
+                        continue;
+                    }
+                    acc.push(
+                        this.mustBeJsonStringified(value) ? JSON.stringify(value, stringifyReplacer(this)) : value
+                    );
+                }
+            }
 
             return acc;
-        }, {});
-
-        const notJsonValues = Object.keys(values)
-            .filter(key => !this.isJsonSelector(key))
-            .reduce(
-                (acc: RowValues, key) => ({
-                    ...acc,
-                    [key]: values[key]
-                }),
-                {}
-            );
-
-        values = merge(notJsonValues, filteredGroups);
-
-        const valuesOfValues = Object.keys(values)
-            .map(key => {
-                const column = key.split('.').pop() as string;
-                if (column in filteredGroups) {
-                    const values = [];
-                    for (const key in filteredGroups[column]) {
-                        const value = filteredGroups[column][key];
-                        values.push(
-                            this.mustBeJsonStringified(value) ? JSON.stringify(value, stringifyReplacer(this)) : value
-                        );
-                    }
-                    return values;
-                } else {
-                    return this.mustBeJsonStringified(values[key])
-                        ? JSON.stringify(values[key], stringifyReplacer(this))
-                        : values[key];
-                }
-            })
-            .flat(1);
+        }, []);
 
         const cleanBindings = Object.keys(bindings)
             .filter(key => !['select'].includes(key))

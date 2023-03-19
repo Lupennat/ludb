@@ -1,4 +1,4 @@
-import { RowValues, Stringable } from '../../types/query/builder';
+import { Binding, RowValues, Stringable } from '../../types/query/builder';
 import { BindingTypes, WhereNull, whereFulltext } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import BuilderContract from '../builder-contract';
@@ -74,6 +74,13 @@ class MySqlGrammar extends Grammar {
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
+        const segments = this.getValue(column).toString().split('->');
+        const lastSegment = segments.pop() as string;
+
+        if (Number.isInteger(Number(lastSegment))) {
+            column = `${segments.join('->')}[${lastSegment}]`;
+        }
+
         const [field, path] = this.wrapJsonFieldAndPath(column);
         const regex = new RegExp(/(\[[^\]]+\])/, 'g');
         let sql = '';
@@ -128,13 +135,16 @@ class MySqlGrammar extends Grammar {
      * Compile the columns for an update statement.
      */
     protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
-        this.validateJsonColumnsForUpdate(values);
-        return Object.keys(values)
-            .map((key: keyof RowValues & Stringable) => {
-                if (this.isJsonSelector(key)) {
-                    return this.compileJsonUpdateColumn(key, values[key]);
-                }
-                return `${this.wrap(key)} = ${this.parameter(values[key])}`;
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
+
+        return Object.keys(combinedValues)
+            .map(key => {
+                const value = jsonKeys.includes(key)
+                    ? this.compileJsonUpdateColumn(key, combinedValues[key])
+                    : this.parameter(combinedValues[key]);
+
+                key = this.getColumnKey(key);
+                return `${this.wrap(key)} = ${value}`;
             })
             .join(', ');
     }
@@ -183,19 +193,24 @@ class MySqlGrammar extends Grammar {
     /**
      * Prepare a JSON column being updated using the JSON_SET function.
      */
-    protected compileJsonUpdateColumn(key: Stringable, value: any): string {
-        let stringValue = '';
-        if (typeof value === 'boolean') {
-            stringValue = value ? 'true' : 'false';
-        } else if (this.mustBeJsonStringified(value)) {
-            stringValue = `json_merge_patch(${Array.isArray(value) ? "'[]'" : "'{}'"}, ?)`;
-        } else {
-            stringValue = this.parameter(value);
+    protected compileJsonUpdateColumn(column: string, values: RowValues): string {
+        let sql = '';
+        for (const key in values) {
+            const path = this.wrapJsonPath(key, '->');
+            const value = values[key];
+            let stringValue = '';
+            if (typeof value === 'boolean') {
+                stringValue = value ? 'true' : 'false';
+            } else if (this.mustBeJsonStringified(value)) {
+                stringValue = `json_merge_patch(${Array.isArray(value) ? "'[]'" : "'{}'"}, ?)`;
+            } else {
+                stringValue = this.parameter(value);
+            }
+
+            sql = `json_set(${sql === '' ? this.wrap(column) : sql}, ${path}, ${stringValue})`;
         }
 
-        const [field, path] = this.wrapJsonFieldAndPath(key);
-
-        return `${field} = json_set(${field}${path}, ${stringValue})`;
+        return sql;
     }
 
     /**
@@ -221,22 +236,35 @@ class MySqlGrammar extends Grammar {
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
-        values = Object.keys(values)
-            .filter(
-                key =>
-                    !this.isJsonSelector(key) || (typeof values[key] !== 'boolean' && !this.isExpression(values[key]))
-            )
-            .reduce(
-                (acc: RowValues, key) => ({
-                    ...acc,
-                    [key]: this.mustBeJsonStringified(values[key])
-                        ? JSON.stringify(values[key], stringifyReplacer(this))
-                        : values[key]
-                }),
-                {}
-            );
+        const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
-        return super.prepareBindingsForUpdate(bindings, values);
+        const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+            if (!jsonKeys.includes(key)) {
+                acc.push(
+                    this.mustBeJsonStringified(combinedValues[key])
+                        ? JSON.stringify(combinedValues[key], stringifyReplacer(this))
+                        : values[key]
+                );
+            } else {
+                for (const subkey in combinedValues[key]) {
+                    const value = combinedValues[key][subkey];
+                    if (this.isExpression(value) || typeof value === 'boolean') {
+                        continue;
+                    }
+                    acc.push(
+                        this.mustBeJsonStringified(value) ? JSON.stringify(value, stringifyReplacer(this)) : value
+                    );
+                }
+            }
+
+            return acc;
+        }, []);
+
+        const cleanBindings = Object.keys(bindings)
+            .filter(key => !['select', 'join'].includes(key))
+            .map(key => bindings[key as keyof BindingTypes]);
+
+        return bindings.join.concat(valuesOfValues, cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**
