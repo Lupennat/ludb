@@ -156,6 +156,7 @@ class SqlServerGrammar extends Grammar {
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
+        column = this.convertJsonArrowPathToJsonBracePath(column);
         const segments = this.getValue(column).toString().split('->');
         const lastSegment = segments.pop() as string;
         const matches = lastSegment.match(/\[([0-9]+)\]$/);
@@ -165,7 +166,7 @@ class SqlServerGrammar extends Grammar {
             segments.push(beforeLast(lastSegment, matches[0]));
             key = matches[1];
         } else {
-            key = Number.isInteger(Number(lastSegment)) ? lastSegment : `'${escapeQuoteForSql(lastSegment)}'`;
+            key = `'${escapeQuoteForSql(lastSegment)}'`;
         }
 
         const [field, path] = this.wrapJsonFieldAndPath(segments.join('->'));

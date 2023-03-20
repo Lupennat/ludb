@@ -104,12 +104,7 @@ class SQLiteGrammar extends Grammar {
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
-        const segments = this.getValue(column).toString().split('->');
-        const lastSegment = segments.pop() as string;
-
-        if (Number.isInteger(Number(lastSegment))) {
-            column = `${segments.join('->')}[${lastSegment}]`;
-        }
+        column = this.convertJsonArrowPathToJsonBracePath(column);
 
         const [field, path] = this.wrapJsonFieldAndPath(column);
 

@@ -140,4 +140,44 @@ maybe('Postgres Schema Builder', () => {
         );
         await Schema.drop('public.test_schema_posts');
     });
+
+    it('Works Get All Tables And Column Listing', async () => {
+        await Schema.create('test_schema_users', table => {
+            table.integer('id');
+            table.string('name');
+            table.string('age');
+            table.enum('color', ['red', 'blue']);
+        });
+
+        await DB.connection().statement('create view test_schema_users_view AS select name,age FROM test_schema_users');
+
+        expect(await Schema.getAllTables()).toEqual(['"public"."test_schema_users"']);
+        expect(await Schema.getColumnListing('test_schema_users')).toEqual(['id', 'name', 'age', 'color']);
+        await Schema.create('test_schema_posts', table => {
+            table.integer('id');
+            table.string('title');
+        });
+        expect(await Schema.getAllTables()).toEqual(
+            expect.arrayContaining(['"public"."test_schema_users"', '"public"."test_schema_posts"'])
+        );
+        await Schema.drop('test_schema_posts');
+        await DB.connection().statement('drop view if exists test_schema_users_view;');
+        await Schema.drop('test_schema_users');
+    });
+
+    it('Works Get All Views', async () => {
+        await Schema.create('test_schema_users', table => {
+            table.integer('id');
+            table.string('name');
+            table.string('age');
+            table.enum('color', ['red', 'blue']);
+        });
+
+        await DB.connection().statement('create view test_schema_users_view AS select name,age FROM test_schema_users');
+
+        expect(await Schema.getAllViews()).toEqual(['"public"."test_schema_users_view"']);
+        await DB.connection().statement('drop view if exists test_schema_users_view;');
+        expect(await Schema.getAllViews()).toEqual([]);
+        await Schema.drop('test_schema_users');
+    });
 });
