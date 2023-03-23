@@ -41,6 +41,8 @@ describe('Json', () => {
         ['string key', 4, 'json_col->foo'],
         ['nested key exists', 2, 'json_col->foo->bar'],
         ['string key missing', 0, 'json_col->none'],
+        ['integer key nexted with arrow ', 1, 'json_col->baz->0->bar->0'],
+        ['integer key nexted with braces ', 1, 'json_col->baz[0]->bar[0]'],
         ['integer key with arrow ', 1, 'json_col->foo->bar->0'],
         ['integer key with braces', 1, 'json_col->foo->bar[0]'],
         ['integer key missing', 0, 'json_col->foo->bar[1]'],
@@ -55,6 +57,7 @@ describe('Json', () => {
             table.json('json_col').nullable();
         });
         await Schema.create('test_json_table_multi', table => {
+            table.id();
             table.json('options').nullable();
             table.json('meta').nullable();
             table.json('list').nullable();
@@ -89,7 +92,8 @@ describe('Json', () => {
                 { json_col: { foo: { bar: false } } },
                 { json_col: { foo: {} } },
                 { json_col: { foo: [{ bar: 'bar' }, { baz: 'baz' }] } },
-                { json_col: { bar: null } }
+                { json_col: { bar: null } },
+                { json_col: { baz: [{ bar: ['foo'] }] } }
             ]);
     });
 
@@ -172,12 +176,18 @@ describe('Json', () => {
     });
 
     it('Works Update Wrapping Json Array', async () => {
-        await DB.connection()
+        const id = await DB.connection()
             .table('test_json_table_multi')
-            .insert({ options: {}, meta: {}, group_id: 10, created_at: DB.bindTo.dateTime('2023-03-12 22:00:00') });
+            .insertGetId({
+                options: {},
+                meta: {},
+                group_id: 10,
+                created_at: DB.bindTo.dateTime('2023-03-12 22:00:00')
+            });
 
         const updatedCount = await DB.connection()
             .table('test_json_table_multi')
+            .where('id', id)
             .update({
                 'test_json_table_multi.options->2fa': false,
                 'test_json_table_multi.options->presets': ['laravel', 'vue'],
@@ -186,23 +196,20 @@ describe('Json', () => {
                 group_id: new Raw('45'),
                 created_at: DB.bindTo.dateTime('2019-08-06 21:00:00')
             });
-
         expect(updatedCount).toBe(1);
 
-        const res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
+        const res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ '2fa': false, presets: ['laravel', 'vue'], language: 'english' });
         expect(JSON.parse(res.meta)).toEqual({ tags: ['white', 'large'] });
         expect(res.group_id).toBe(45);
         expect(res.created_at).toBe('2019-08-06 21:00:00');
-
-        await DB.connection().table('test_json_table_multi').truncate();
     });
 
     it('Works Update Wrapping Nested Json Array', async () => {
-        await DB.connection()
+        const id = await DB.connection()
             .table('test_json_table_multi')
-            .insert({
+            .insertGetId({
                 options: { sharing: {} },
                 meta: {},
                 group_id: 10,
@@ -211,6 +218,7 @@ describe('Json', () => {
 
         const updatedCount = await DB.connection()
             .table('test_json_table_multi')
+            .where('id', id)
             .update({
                 'test_json_table_multi.options->name': 'Lupennat',
                 'options->security': { '2fa': false, presets: ['laravel', 'vue'] },
@@ -222,7 +230,7 @@ describe('Json', () => {
 
         expect(updatedCount).toBe(1);
 
-        const res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
+        const res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({
             name: 'Lupennat',
@@ -232,14 +240,12 @@ describe('Json', () => {
         expect(JSON.parse(res.meta)).toEqual({});
         expect(res.group_id).toBe(45);
         expect(res.created_at).toBe('2019-08-06 21:00:00');
-
-        await DB.connection().table('test_json_table_multi').truncate();
     });
 
     it('Works Update Wrapping Json Path Array Index', async () => {
-        await DB.connection()
+        const id = await DB.connection()
             .table('test_json_table_multi')
-            .insert({
+            .insertGetId({
                 options: [
                     { '2fa': false, first: true },
                     { '2fa': false, first: false }
@@ -249,14 +255,14 @@ describe('Json', () => {
                 created_at: DB.bindTo.dateTime('2023-03-12 22:00:00')
             });
 
-        const updatedCount = await DB.connection().table('test_json_table_multi').update({
+        const updatedCount = await DB.connection().table('test_json_table_multi').where('id', id).update({
             'options->[1]->2fa': true,
             'meta->tags[0][0]': 'black'
         });
 
         expect(updatedCount).toBe(1);
 
-        const res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
+        const res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual([
             { '2fa': false, first: true },
@@ -265,14 +271,12 @@ describe('Json', () => {
         expect(JSON.parse(res.meta)).toEqual({ tags: [['black'], 'large'] });
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2023-03-12 22:00:00');
-
-        await DB.connection().table('test_json_table_multi').truncate();
     });
 
     it('Works Update With Json Prepares Bindings Correctly', async () => {
-        await DB.connection()
+        const id = await DB.connection()
             .table('test_json_table_multi')
-            .insert({
+            .insertGetId({
                 options: { enable: true, size: 10 },
                 meta: {},
                 list: [],
@@ -282,14 +286,16 @@ describe('Json', () => {
 
         let updatedCount = await DB.connection()
             .table('test_json_table_multi')
+            .where('id', id)
             .update({
                 'list->[0]': null,
                 'options->enable': false,
                 created_at: DB.bindTo.dateTime('2015-05-26 22:02:06')
             });
+
         expect(updatedCount).toBe(1);
 
-        let res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
+        let res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 10 });
         expect(JSON.parse(res.list)).toEqual([null]);
@@ -299,6 +305,7 @@ describe('Json', () => {
 
         updatedCount = await DB.connection()
             .table('test_json_table_multi')
+            .where('id', id)
             .update({
                 'list->[0]': 1,
                 'options->size': BigInt('45'),
@@ -307,18 +314,21 @@ describe('Json', () => {
 
         expect(updatedCount).toBe(1);
 
-        res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
+        res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 45 });
         expect(JSON.parse(res.list)).toEqual([1]);
         expect(JSON.parse(res.meta)).toEqual({});
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:08');
-        updatedCount = await DB.connection().table('test_json_table_multi').update({ 'options->size': null });
+        updatedCount = await DB.connection()
+            .table('test_json_table_multi')
+            .where('id', id)
+            .update({ 'options->size': null });
 
         expect(updatedCount).toBe(1);
 
-        res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
+        res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: null });
         expect(JSON.parse(res.meta)).toEqual({});
@@ -327,19 +337,18 @@ describe('Json', () => {
 
         updatedCount = await DB.connection()
             .table('test_json_table_multi')
+            .where('id', id)
             .update({ 'list->[1]': null, 'options->size': new Raw('70') });
 
         expect(updatedCount).toBe(1);
 
-        res = await DB.connection().table('test_json_table_multi').sole<JsonMulti>();
+        res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 70 });
         expect(JSON.parse(res.meta)).toEqual({});
         expect(JSON.parse(res.list)).toEqual([1, null]);
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:08');
-
-        await DB.connection().table('test_json_table_multi').truncate();
     });
 
     it.each(data)(

@@ -194,6 +194,7 @@ class PostgresGrammar extends Grammar {
      * Compile a "JSON contains key" statement into SQL.
      */
     protected compileJsonContainsKey(column: Stringable): string {
+        column = this.convertJsonArrowPathToJsonBracePath(column);
         const segments = this.getValue(column).toString().split('->');
 
         const lastSegment = segments.pop() as string;
@@ -201,9 +202,7 @@ class PostgresGrammar extends Grammar {
         let index: null | number = null;
         const matches = lastSegment.match(/\[(-?[0-9]+)\]$/);
 
-        if (Number.isInteger(Number(lastSegment))) {
-            index = Number(lastSegment);
-        } else if (matches !== null) {
+        if (matches !== null) {
             segments.push(beforeLast(lastSegment, matches[0]));
             index = Number(matches[1]);
         }

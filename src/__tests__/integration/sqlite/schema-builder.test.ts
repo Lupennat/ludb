@@ -1,8 +1,8 @@
-import { DB, isMySql } from '../fixtures/config';
+import { DB, isSQLite } from '../fixtures/config';
 
-const maybe = isMySql() ? describe : describe.skip;
+const maybe = isSQLite() ? describe : describe.skip;
 
-maybe('MySql Schema Builder', () => {
+maybe('Postgres Schema Builder', () => {
     const Schema = DB.connection().getSchemaBuilder();
 
     beforeAll(async () => {
@@ -18,23 +18,6 @@ maybe('MySql Schema Builder', () => {
     afterAll(async () => {
         await Schema.drop('test_schema_users');
         await DB.disconnect();
-    });
-
-    it('Works Add Comment To Table', async () => {
-        await Schema.create('test_schema_posts', table => {
-            table.id();
-            table.comment('This is a comment');
-        });
-
-        const tableInfo = await DB.connection()
-            .table('information_schema.tables')
-            .where('table_schema', DB.connection().getDatabaseName())
-            .where('table_name', 'test_schema_posts')
-            .select('table_comment as table_comment')
-            .first();
-
-        expect(tableInfo!.table_comment).toBe('This is a comment');
-        await Schema.drop('test_schema_posts');
     });
 
     it('Works Get All Tables And Column Listing', async () => {

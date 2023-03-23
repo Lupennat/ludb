@@ -1125,6 +1125,16 @@ class Grammar extends BaseGrammar implements GrammarI {
         }
         return key;
     }
+
+    /**
+     * Convert Json Arrow Path to Json Brace Path
+     */
+    protected convertJsonArrowPathToJsonBracePath(column: Stringable): string {
+        return this.getValue(column)
+            .toString()
+            .replace(/->((-)?\d+)->/g, '[$1$2]->')
+            .replace(/->((-)?\d+)$/g, '[$1$2]');
+    }
 }
 
 export default Grammar;
