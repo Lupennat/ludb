@@ -59,9 +59,23 @@ class PostgresBuilder extends Builder {
      * Drop all views from the database.
      */
     public async dropAllViews(): Promise<void> {
-        const views = await this.getAllViews();
+        const views: string[] = [];
+        const dbViews = await this.getAllViewsFromConnection();
+        const excludedViews = this.grammar.escapeNames(
+            this.connection.getConfig('dont_drop', ['geography_columns', 'geometry_columns'])
+        );
+
+        for (const dbView of dbViews) {
+            const viewsToMatch = this.grammar.escapeNames(
+                [dbView.viewname].concat(dbView.qualifiedname ? [dbView.qualifiedname] : [])
+            );
+            if (viewsToMatch.filter(value => excludedViews.includes(value)).length === 0) {
+                views.push(dbView.qualifiedname ? dbView.qualifiedname : dbView.viewname);
+            }
+        }
+
         if (views.length > 0) {
-            await this.connection.statement(this.grammar.compileDropAllViews(views));
+            this.connection.statement(this.grammar.compileDropAllViews(views));
         }
     }
 
@@ -74,6 +88,7 @@ class PostgresBuilder extends Builder {
             await this.connection.statement(this.grammar.compileDropAllTypes(types));
         }
     }
+
     /**
      * Get all of the table names and qualifiednames for the database.
      */
@@ -98,10 +113,10 @@ class PostgresBuilder extends Builder {
     }
 
     /**
-     * Get all of the view names for the database.
+     * Get all of the views names and qualifiednames for the database.
      */
-    public async getAllViews(): Promise<string[]> {
-        const results = await this.connection.select<{ viewname: string; qualifiedname: string | null }>(
+    protected async getAllViewsFromConnection(): Promise<Array<{ viewname: string; qualifiedname: string | null }>> {
+        return this.connection.select<{ viewname: string; qualifiedname: string | null }>(
             this.grammar.compileGetAllViews(
                 this.parseSearchPath(
                     this.connection.getConfig<string | string[]>('search_path') ||
@@ -110,6 +125,13 @@ class PostgresBuilder extends Builder {
                 )
             )
         );
+    }
+
+    /**
+     * Get all of the view names for the database.
+     */
+    public async getAllViews(): Promise<string[]> {
+        const results = await this.getAllViewsFromConnection();
         return results.map(result => (result.qualifiedname ? result.qualifiedname : result.viewname));
     }
 
@@ -138,7 +160,7 @@ class PostgresBuilder extends Builder {
      */
     public async getColumnType(table: string, column: string): Promise<string> {
         const [database, schema, realTable] = this.parseSchemaAndTable(table);
-        const result = await this.connection.selectOne<{ data_type: string }>(
+        const result = await this.connection.selectOne<{ column_name: string; data_type: string; udt_name: string }>(
             this.grammar.compileColumnType(),
             [database, schema, `${this.connection.getTablePrefix()}${realTable}`, column],
             false
@@ -149,7 +171,7 @@ class PostgresBuilder extends Builder {
             );
         }
 
-        return result.data_type;
+        return result.data_type.toLowerCase() === 'user-defined' ? result.udt_name : result.data_type;
     }
 
     /**

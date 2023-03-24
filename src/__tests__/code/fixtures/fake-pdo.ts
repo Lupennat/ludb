@@ -1,4 +1,4 @@
-import { PdoConnectionI, PdoDriver, PdoRawConnection, PdoRawConnectionI } from 'lupdo';
+import { PdoConnection, PdoConnectionI, PdoDriver, PdoRawConnection, PdoRawConnectionI } from 'lupdo';
 import PdoAffectingData from 'lupdo/dist/typings/types/pdo-affecting-data';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import PdoColumnData from 'lupdo/dist/typings/types/pdo-column-data';
@@ -11,7 +11,7 @@ class FakeThirdPartyConnection implements PoolConnection {
     __lupdo_killed = false;
 }
 
-export class FakeConnection implements PdoConnectionI {
+export class FakeConnection extends PdoConnection {
     public async query(): Promise<void> {
         return void 0;
     }
@@ -68,6 +68,9 @@ class FakePdo extends PdoDriver {
     }
     protected validateRawConnection(): boolean {
         return true;
+    }
+    protected async getVersionFromConnection(): Promise<string> {
+        return '1.0.0-fake';
     }
 }
 

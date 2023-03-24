@@ -28,7 +28,10 @@ class PostgresConnector extends Connector implements ConnectorI {
                 this.configureSynchronousCommit(connection, config)
             ];
             if (typeof originalCreated === 'function') {
-                promises.push(originalCreated(uuid, connection));
+                const promise = originalCreated(uuid, connection);
+                if (promise !== undefined) {
+                    promises.push(promise);
+                }
             }
             await Promise.all(promises);
         };

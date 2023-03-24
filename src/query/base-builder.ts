@@ -887,7 +887,8 @@ abstract class BaseBuilder extends BuilderContract {
                 boolean,
                 not,
                 (query, values) => {
-                    query.where(...values);
+                    values = values.length === 3 ? values : [values[0], '=', values[1]];
+                    query.where(...values, boolean);
                 }
             );
         }
@@ -1177,7 +1178,8 @@ abstract class BaseBuilder extends BuilderContract {
         // received when the method was called and pass it into the nested where.
         if (Array.isArray(first)) {
             return this.addArrayOfWheres(first, boolean, not, (query, values) => {
-                query.whereColumn(...values);
+                values = values.length === 3 ? values : [values[0], '=', values[1]];
+                query.whereColumn(...values, boolean);
             });
         }
 

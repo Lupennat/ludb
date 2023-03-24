@@ -1,6 +1,7 @@
+import { compareVersions } from 'compare-versions';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { MysqlOptions } from 'lupdo-mysql';
-import { MySqlConfig, MySqlStrict } from '../types/config';
+import { MySqlConfig } from '../types/config';
 import ConnectorI from '../types/connector';
 import { merge } from '../utils';
 import Connector from './connector';
@@ -26,7 +27,10 @@ class MySqlConnector extends Connector implements ConnectorI {
                 this.setModes(connection, config)
             ];
             if (typeof originalCreated === 'function') {
-                promises.push(originalCreated(uuid, connection));
+                const promise = originalCreated(uuid, connection);
+                if (promise !== undefined) {
+                    promises.push(promise);
+                }
             }
             await Promise.all(promises);
         };
@@ -92,7 +96,7 @@ class MySqlConnector extends Connector implements ConnectorI {
             connection.query(`set session sql_mode='${config.modes.join(',')}'`);
         } else if (config.strict !== undefined) {
             if (config.strict) {
-                connection.query(this.strictMode(config.strict));
+                connection.query(this.strictMode(connection, config));
             } else {
                 connection.query("set session sql_mode='NO_ENGINE_SUBSTITUTION'");
             }
@@ -102,8 +106,9 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Get the query to enable strict mode.
      */
-    protected strictMode(strict: MySqlStrict): string {
-        if (strict.toLowerCase() === 'new') {
+    protected strictMode(connection: PdoConnectionI, config: MySqlConfig): string {
+        const version = (config.version ?? connection.version).split('-')[0];
+        if (compareVersions(version, '8.0.11') >= 0) {
             return "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'";
         }
 

@@ -1080,22 +1080,6 @@ class Grammar extends BaseGrammar implements GrammarI {
         return typeof value === 'boolean' ? `'${Number(value)}'` : `'${value.toString()}'`;
     }
 
-    // /**
-    //  * Create an empty Doctrine DBAL TableDiff from the BlueprintI.
-    //  *
-    //  * @param  \Illuminate\Database\Schema\BlueprintI  $blueprint
-    //  * @param  \Doctrine\DBAL\Schema\AbstractSchemaManager  $schema
-    //  * @return \Doctrine\DBAL\Schema\TableDiff
-    //  */
-    // public function getDoctrineTableDiff(BlueprintI $blueprint, SchemaManager $schema)
-    // {
-    //     $table = $this->getTablePrefix().$blueprint->getTable();
-
-    //     return tap(new TableDiff($table), function ($tableDiff) use ($schema, $table) {
-    //         $tableDiff->fromTable = $schema->introspectTable($table);
-    //     });
-    // }
-
     /**
      * Get the commands for the grammar.
      */
