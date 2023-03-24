@@ -20,7 +20,10 @@ class SQLiteConnector extends Connector implements ConnectorI {
             const promises = [this.configureForeignKeyConstraints(connection, config)];
 
             if (typeof originalCreated === 'function') {
-                promises.push(originalCreated(uuid, connection));
+                const promise = originalCreated(uuid, connection);
+                if (promise !== undefined) {
+                    promises.push(promise);
+                }
             }
             await Promise.all(promises);
         };

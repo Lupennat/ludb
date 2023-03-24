@@ -193,38 +193,45 @@ describe('Postgres Schema Builder Test', () => {
         jest.spyOn(session, 'selectOne')
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name, data_type from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
+                    'select column_name, data_type, udt_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
                 );
                 expect(bindings).toEqual(['db', 'public', 'prefix_table', 'column']);
                 return { column_name: 'column', data_type: 'int' };
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name, data_type from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
+                    'select column_name, data_type, udt_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
                 );
                 expect(bindings).toEqual(['db', 'search_path', 'prefix_table', 'column']);
                 return { column_name: 'column', data_type: 'int' };
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name, data_type from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
+                    'select column_name, data_type, udt_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
                 );
                 expect(bindings).toEqual(['db', 'schema', 'prefix_table', 'column']);
                 return { column_name: 'column', data_type: 'int' };
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name, data_type from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
+                    'select column_name, data_type, udt_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
                 );
                 expect(bindings).toEqual(['db2', 'schema2', 'prefix_table2', 'column']);
                 return { column_name: 'column', data_type: 'int' };
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select column_name, data_type from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
+                    'select column_name, data_type, udt_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
                 );
                 expect(bindings).toEqual(['db', 'claudio', 'prefix_table', 'column']);
                 return { column_name: 'column', data_type: 'int' };
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    'select column_name, data_type, udt_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?'
+                );
+                expect(bindings).toEqual(['db', 'public', 'prefix_table', 'column']);
+                return { column_name: 'column', data_type: 'USER-DEFINED', udt_name: 'geometry' };
             })
             .mockImplementationOnce(async () => {
                 return null;
@@ -240,6 +247,7 @@ describe('Postgres Schema Builder Test', () => {
         expect(await builder.getColumnType('db2.schema2.table2', 'column')).toEqual('int');
         jest.spyOn(session, 'getConfig').mockReturnValueOnce('$user').mockReturnValueOnce('claudio');
         expect(await builder.getColumnType('table', 'column')).toEqual('int');
+        expect(await builder.getColumnType('table', 'column')).toEqual('geometry');
         await expect(builder.getColumnType('table', 'column')).rejects.toThrowError(
             'column "column" not found on table "prefix_table" with schema "public" and database "db".'
         );
@@ -294,23 +302,45 @@ describe('Postgres Schema Builder Test', () => {
         const grammar = new PostgresSchemaGrammar();
         jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
-        const stmtSpied = jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
-            expect(sql).toBe('drop view "view_users","view_companies" cascade');
-            expect(bindings).toBeUndefined();
-            return true;
-        });
+        const stmtSpied = jest
+            .spyOn(session, 'statement')
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('drop view "view_users","view_companies" cascade');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    'drop view "view_users","public"."geography_columns","public"."geometry_columns" cascade'
+                );
+                expect(bindings).toBeUndefined();
+                return true;
+            });
 
-        const builder = new PostgresBuilder(session);
+        const builder = new MockedPostgresBuilder(session);
         jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
         const getAllSpied = jest
-            .spyOn(builder, 'getAllViews')
-            .mockResolvedValueOnce(['view_users', 'view_companies'])
+            .spyOn(builder, 'getAllViewsFromConnection')
+            .mockResolvedValueOnce([
+                { viewname: 'view_users', qualifiedname: null },
+                { viewname: 'view_companies', qualifiedname: null },
+                { viewname: 'geography_columns', qualifiedname: "'public'.'geography_columns'" },
+                { viewname: 'geometry_columns', qualifiedname: "'public'.'geometry_columns'" }
+            ])
+            .mockResolvedValueOnce([
+                { viewname: 'view_users', qualifiedname: null },
+                { viewname: 'view_companies', qualifiedname: null },
+                { viewname: 'geography_columns', qualifiedname: "'public'.'geography_columns'" },
+                { viewname: 'geometry_columns', qualifiedname: "'public'.'geometry_columns'" }
+            ])
             .mockResolvedValueOnce([]);
 
         await builder.dropAllViews();
+        jest.spyOn(session, 'getConfig').mockReturnValueOnce(['view_companies']);
         await builder.dropAllViews();
-        expect(getAllSpied).toBeCalledTimes(2);
-        expect(stmtSpied).toBeCalledTimes(1);
+        await builder.dropAllViews();
+        expect(getAllSpied).toBeCalledTimes(3);
+        expect(stmtSpied).toBeCalledTimes(2);
     });
 
     it('Works Drop All Types', async () => {

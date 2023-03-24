@@ -135,7 +135,7 @@ class PostgresGrammar extends Grammar {
      * Compile the query to determine the data type of column.
      */
     public compileColumnType(): string {
-        return 'select column_name, data_type from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?';
+        return 'select column_name, data_type, udt_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ? and column_name = ?';
     }
 
     /**

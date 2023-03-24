@@ -149,7 +149,7 @@ services:
             - 'until /usr/bin/mysql -hmaria1011 -ulupdo -plupdo@s3cRet -e "SELECT 1"; do sleep 5; done'
 
     postgres11:
-        image: postgres:11-alpine
+        image: postgis/postgis:11-3.3-alpine
         command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
         ports:
             - '25431:5432'
@@ -162,7 +162,7 @@ services:
             - POSTGRES_DB=tempdb
 
     waitpostgres11:
-        image: postgres:11-alpine
+        image: postgis/postgis:11-3.3-alpine
         links:
             - postgres11
         depends_on:
@@ -173,7 +173,7 @@ services:
             - 'until /usr/local/bin/psql postgres://lupdo:lupdos3cRet@postgres11/tempdb -c "SELECT 1"; do sleep 5; done'
 
     postgres15:
-        image: postgres:15-alpine
+        image: postgis/postgis:15-3.3-alpine
         command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
         ports:
             - '25435:5432'
@@ -186,7 +186,7 @@ services:
             - POSTGRES_DB=tempdb
 
     waitpostgres15:
-        image: postgres:15-alpine
+        image: postgis/postgis:15-3.3-alpine
         links:
             - postgres15
         depends_on:

@@ -458,6 +458,13 @@ class MySqlGrammar extends Grammar {
     }
 
     /**
+     * Compile Column Timestamp
+     */
+    protected compileTypeTimestampTz(column: ColumnDefinition): string {
+        return this.compileTypeTimestamp(column);
+    }
+
+    /**
      * Compile Column Uuid
      */
     protected compileTypeUuid(): string {

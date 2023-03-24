@@ -2075,4 +2075,45 @@ describe('Query Builder Wheres', () => {
         ).toBe(builder.toSql());
         expect([1]).toEqual(builder.getBindings());
     });
+
+    it('Works Where With Object', () => {
+        let builder = getBuilder();
+        builder.from('users').where({ name: 'wrong-name', email: 'test-email1' }, null, null, 'or');
+        expect('select * from "users" where ("name" = ? or "email" = ?)').toBe(builder.toSql());
+        expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder.from('users').where({ name: 'wrong-name', email: 'test-email1' }, null, null, 'or', true);
+        expect('select * from "users" where not ("name" = ? or "email" = ?)').toBe(builder.toSql());
+        expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
+    });
+
+    it('Works Where With Tuples', () => {
+        let builder = getBuilder();
+        builder.from('users').where(
+            [
+                ['name', 'wrong-name'],
+                ['email', '!=', 'test-email1']
+            ],
+            null,
+            null,
+            'or'
+        );
+        expect('select * from "users" where ("name" = ? or "email" != ?)').toBe(builder.toSql());
+        expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
+
+        builder = getBuilder();
+        builder.from('users').where(
+            [
+                ['name', 'wrong-name'],
+                ['email', '!=', 'test-email1']
+            ],
+            null,
+            null,
+            'or',
+            true
+        );
+        expect('select * from "users" where not ("name" = ? or "email" != ?)').toBe(builder.toSql());
+        expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
+    });
 });

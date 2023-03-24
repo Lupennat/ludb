@@ -119,8 +119,6 @@ export interface ConnectionConfig extends Omit<PreparedConnectionConfig, 'name' 
     prefix_indexes?: boolean;
 }
 
-export type MySqlStrict = `${'N' | 'n'}${'E' | 'e'}${'W' | 'w'}` | `${'O' | 'o'}${'L' | 'l'}${'D' | 'd'}`;
-
 export interface MySqlConnectionOptions extends ConnectionOptions {
     /**
      * database
@@ -135,9 +133,9 @@ export interface MySqlConnectionOptions extends ConnectionOptions {
      */
     collation?: string;
     /**
-     * strict mode must be old if mysql < 8.0.11
+     * strict mode
      */
-    strict?: MySqlStrict | false;
+    strict?: boolean;
     /**
      * mysql table engine for schema builder
      */
@@ -158,6 +156,10 @@ export interface MySqlConnectionOptions extends ConnectionOptions {
      * The path to a unix domain socket to connect to. When used host and port are ignored
      */
     unix_socket?: string;
+    /**
+     * Database Version
+     */
+    version?: string;
     /**
      * lupdo-mysql options
      */
@@ -345,7 +347,7 @@ export interface SqlServerConnectionOptions extends ConnectionOptions {
      */
     readonly?: boolean;
     /**
-     * make Database ReadOnly
+     * Database Version
      */
     version?: string;
     /**

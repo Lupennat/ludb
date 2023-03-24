@@ -23,6 +23,7 @@ export const config = {
             port: 5307,
             username: 'lupdo',
             password: 'lupdo@s3cRet',
+            strict: true,
             database: 'tempdb'
         } as MySqlConfig,
         mysql8: {
@@ -31,6 +32,7 @@ export const config = {
             port: 5308,
             username: 'lupdo',
             password: 'lupdo@s3cRet',
+            strict: true,
             database: 'tempdb'
         } as MySqlConfig,
         maria1003: {
@@ -39,6 +41,7 @@ export const config = {
             port: 31003,
             username: 'lupdo',
             password: 'lupdo@s3cRet',
+            strict: true,
             database: 'tempdb'
         } as MySqlConfig,
         maria1011: {
@@ -47,6 +50,7 @@ export const config = {
             port: 31011,
             username: 'lupdo',
             password: 'lupdo@s3cRet',
+            strict: true,
             database: 'tempdb'
         } as MySqlConfig,
         sqlite: {
