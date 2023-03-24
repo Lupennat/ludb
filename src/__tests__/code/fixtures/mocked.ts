@@ -460,4 +460,8 @@ export class MockedPostgresBuilder extends PostgresBuilder {
     public async getAllTablesFromConnection(): Promise<Array<{ tablename: string; qualifiedname: string | null }>> {
         return super.getAllTablesFromConnection();
     }
+
+    public async getAllViewsFromConnection(): Promise<Array<{ viewname: string; qualifiedname: string | null }>> {
+        return super.getAllViewsFromConnection();
+    }
 }

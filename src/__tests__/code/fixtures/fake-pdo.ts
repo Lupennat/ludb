@@ -12,6 +12,7 @@ class FakeThirdPartyConnection implements PoolConnection {
 }
 
 export class FakeConnection extends PdoConnection {
+    version = '1.0.0';
     public async query(): Promise<void> {
         return void 0;
     }
@@ -70,7 +71,7 @@ class FakePdo extends PdoDriver {
         return true;
     }
     protected async getVersionFromConnection(): Promise<string> {
-        return '1.0.0-fake';
+        return '1.0.0';
     }
 }
 
