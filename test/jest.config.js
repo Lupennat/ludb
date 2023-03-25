@@ -1,5 +1,6 @@
 module.exports = {
     rootDir: '..',
+    bail: true,
     clearMocks: true,
     coverageDirectory: 'coverage',
     coverageReporters: ['html', 'text', 'text-summary', 'cobertura'],

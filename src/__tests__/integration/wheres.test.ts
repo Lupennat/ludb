@@ -167,7 +167,7 @@ describe('Wheres', () => {
         users = await DB.connection()
             .table('test_wheres_users')
             .whereIn('name', query => {
-                query.select('name').where('id', '>', 2);
+                query.from('test_wheres_users').select('name').where('id', '>', 2);
             })
             .get();
 
