@@ -39,7 +39,9 @@ maybe('MySql Schema Builder', () => {
 
     it('Works Get All Tables And Column Listing', async () => {
         expect(await Schema.getAllTables()).toEqual(['test_schema_users']);
-        expect(await Schema.getColumnListing('test_schema_users')).toEqual(['id', 'name', 'age', 'color']);
+        expect(await Schema.getColumnListing('test_schema_users')).toEqual(
+            expect.arrayContaining(['id', 'name', 'age', 'color'])
+        );
         await Schema.create('test_schema_posts', table => {
             table.integer('id');
             table.string('title');

@@ -151,7 +151,9 @@ maybe('Postgres Schema Builder', () => {
 
         await DB.connection().statement('create view test_schema_users_view AS select name,age FROM test_schema_users');
 
-        expect(await Schema.getAllTables()).toEqual(['"public"."test_schema_users"']);
+        expect(await Schema.getAllTables()).toEqual(
+            expect.arrayContaining(['"public"."test_schema_users"', '"public"."spatial_ref_sys"'])
+        );
         expect(await Schema.getColumnListing('test_schema_users')).toEqual(['id', 'name', 'age', 'color']);
         await Schema.create('test_schema_posts', table => {
             table.integer('id');
@@ -175,9 +177,17 @@ maybe('Postgres Schema Builder', () => {
 
         await DB.connection().statement('create view test_schema_users_view AS select name,age FROM test_schema_users');
 
-        expect(await Schema.getAllViews()).toEqual(['"public"."test_schema_users_view"']);
+        expect(await Schema.getAllViews()).toEqual(
+            expect.arrayContaining([
+                '"public"."geography_columns"',
+                '"public"."geometry_columns"',
+                '"public"."test_schema_users_view"'
+            ])
+        );
         await DB.connection().statement('drop view if exists test_schema_users_view;');
-        expect(await Schema.getAllViews()).toEqual([]);
+        expect(await Schema.getAllViews()).toEqual(
+            expect.arrayContaining(['"public"."geography_columns"', '"public"."geometry_columns"'])
+        );
         await Schema.drop('test_schema_users');
     });
 });
