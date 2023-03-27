@@ -2,6 +2,7 @@ import Expression from '../../query/expression';
 import Grammar from '../../query/grammars/grammar';
 import {
     addslashes,
+    afterLast,
     beforeLast,
     causedByConcurrencyError,
     causedByLostConnection,
@@ -87,6 +88,13 @@ describe('Utils', () => {
         expect(beforeLast('testBeforeLastSearchTerminateHereSearch', 'Search')).toBe(
             'testBeforeLastSearchTerminateHere'
         );
+    });
+
+    it('Works After Last', () => {
+        expect(afterLast('test', 'nope')).toBe('test');
+        expect(afterLast('test', '')).toBe('test');
+        expect(afterLast('afterSearchTest', 'Search')).toBe('Test');
+        expect(afterLast('afterLastSearchShouldBeSkippedSearchNotThis', 'Search')).toBe('NotThis');
     });
 
     it('Works Add Slashes', () => {

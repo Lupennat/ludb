@@ -62,6 +62,13 @@ export interface Arrayable<Item> {
     toArray(): Item[];
 }
 
+export interface Objectable<Item> {
+    /**
+     * Get the instance as an object.
+     */
+    toObject(): Item;
+}
+
 export type BuilderConstructor = new (connection: ConnectionSessionI, grammar?: GrammarI) => BuilderI;
 
 export default interface BuilderI extends BuilderContract {

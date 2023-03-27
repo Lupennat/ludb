@@ -4,7 +4,7 @@ import { isPlainObject } from 'is-plain-object';
 import { TypedBinding } from 'lupdo';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
-import { Arrayable, Stringable } from './types/query/builder';
+import { Arrayable, Objectable, Stringable } from './types/query/builder';
 import GrammarI from './types/query/grammar';
 
 export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) => any {
@@ -171,6 +171,13 @@ export function isArrayable<T>(value: any): value is Arrayable<T> {
 }
 
 /**
+ * Determine if the value is Objectable.
+ */
+export function isObjectable<T>(value: any): value is Objectable<T> {
+    return typeof value === 'object' && 'toObject' in value && typeof value.toObject === 'function';
+}
+
+/**
  * Determine if the value is Stringable
  */
 export function isStringable(value: any): value is Stringable {
@@ -206,6 +213,20 @@ export function beforeLast(subject: string, search: string): string {
     }
 
     return subject.slice(0, pos);
+}
+
+export function afterLast(subject: string, search: string): string {
+    if (search === '') {
+        return subject;
+    }
+
+    const pos = subject.lastIndexOf(search);
+
+    if (pos === -1) {
+        return subject;
+    }
+
+    return subject.slice(pos + search.length);
 }
 
 export function addslashes(str: string): string {
