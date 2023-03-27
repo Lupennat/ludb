@@ -118,7 +118,7 @@ function cloneHavings(havings: Having[]): Having[] {
     }, []);
 }
 
-function cloneOrders(orders: Order[]): Order[] {
+export function cloneOrders(orders: Order[]): Order[] {
     return orders.reduce((carry: Order[], order: Order) => {
         carry.push({ ...order });
         return carry;

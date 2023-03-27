@@ -1,6 +1,16 @@
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { snakeCase } from 'snake-case';
+import Cursor from '../paginations/cursor';
+import CursorPaginator from '../paginations/cursor-paginator';
+import LengthAwarePaginator from '../paginations/length-aware-paginator';
+import Paginator from '../paginations/paginator';
 import { ConnectionSessionI } from '../types/connection';
+import PaginatorI, {
+    CursorPaginatorI,
+    CursorPaginatorOptions,
+    LengthAwarePaginatorI,
+    PaginatorOptions
+} from '../types/paginations';
 import {
     Arrayable,
     BetweenColumnsTuple,
@@ -24,12 +34,12 @@ import {
 } from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
-import RegistryI, { BindingTypes, Order, Where } from '../types/query/registry';
+import RegistryI, { BindingTypes, Order, OrderColumn, Where } from '../types/query/registry';
 import { isArrayable, isExpression, isStringable, isValidBinding, merge, raw, stringifyReplacer } from '../utils';
 import BuilderContract from './builder-contract';
 import ExpressionContract from './expression-contract';
 import IndexHint from './index-hint';
-import { default as createRegistry } from './registry';
+import { cloneOrders, default as createRegistry } from './registry';
 
 abstract class BaseBuilder extends BuilderContract {
     /**
@@ -3383,6 +3393,298 @@ abstract class BaseBuilder extends BuilderContract {
      */
     protected async runSelect<T = Dictionary>(): Promise<T[]> {
         return this.getConnection().select<T>(this.toSql(), this.getBindings(), !this.registry.useWritePdo);
+    }
+
+    /**
+     * Paginate the given query into a paginator.
+     */
+    public async paginate<T = Dictionary>(
+        perPage: number | ((total: number) => number) = 15,
+        columns: Stringable | Stringable[] = ['*'],
+        name = 'page',
+        page?: number
+    ): Promise<LengthAwarePaginatorI<T>> {
+        page = page ?? Paginator.resolveCurrentPage(name);
+
+        page = page >= 1 ? page : 1;
+
+        const total = await this.getCountForPagination();
+
+        perPage = typeof perPage === 'function' ? perPage(total) : perPage;
+
+        const results = total ? await this.forPage(page, perPage).get<T>(columns) : new Array<T>();
+
+        return this.paginator(results, total, perPage, page, {
+            path: Paginator.resolveCurrentPath(),
+            name
+        });
+    }
+
+    /**
+     * Get a simple paginator
+     *
+     * This is more efficient on larger data-sets, etc.
+     */
+    public async simplePaginate<T = Dictionary>(
+        perPage = 15,
+        columns: Stringable | Stringable[] = ['*'],
+        name = 'page',
+        page?: number
+    ): Promise<PaginatorI<T>> {
+        page = page ?? Paginator.resolveCurrentPage(name);
+
+        page = page >= 1 ? page : 1;
+
+        this.offset((page - 1) * perPage).limit(perPage + 1);
+
+        return this.simplePaginator(await this.get<T>(columns), perPage, page, {
+            path: Paginator.resolveCurrentPath(),
+            name
+        });
+    }
+
+    /**
+     * Get a cursor paginator
+     *
+     * This is more efficient on larger data-sets, etc.
+     */
+    public async cursorPaginate<T = Dictionary>(
+        perPage = 15,
+        columns: Stringable | Stringable[] = ['*'],
+        name = 'cursor',
+        cursor?: Cursor | string | null
+    ): Promise<CursorPaginatorI<T>> {
+        return await this.paginateUsingCursor<T>(perPage, columns, name, cursor);
+    }
+
+    /**
+     * Create a new length-aware paginator instance.
+     */
+    protected paginator<T>(
+        results: T[],
+        total: number,
+        perPage: number,
+        page: number,
+        options: PaginatorOptions
+    ): LengthAwarePaginator<T> {
+        return new LengthAwarePaginator(results, total, perPage, page, options);
+    }
+
+    /**
+     * Create a new simple paginator instance.
+     */
+    protected simplePaginator<T>(results: T[], perPage: number, page: number, options: PaginatorOptions): Paginator<T> {
+        return new Paginator(results, perPage, page, options);
+    }
+
+    /**
+     * Create a new cursor paginator instance.
+     */
+    protected cursorPaginator<T>(
+        results: T[],
+        perPage: number,
+        cursor: Cursor | null,
+        options: CursorPaginatorOptions
+    ): CursorPaginator<T> {
+        return new CursorPaginator(results, perPage, cursor, options);
+    }
+
+    /**
+     * Get the count of the total records for the paginator.
+     */
+    public async getCountForPagination(columns: Stringable | Stringable[] = ['*']): Promise<number> {
+        const results = await this.runPaginationCountQuery(columns);
+
+        // Once we have run the pagination count query, we will get the resulting count and
+        // take into account what type of query it was. When there is a group by we will
+        // just return the count of the entire results set since that will be correct.
+        if (results.length === 0) {
+            return 0;
+        }
+
+        return Number(results[0].aggregate);
+    }
+
+    /**
+     * Run a pagination count query.
+     */
+    protected async runPaginationCountQuery(
+        columns: Stringable | Stringable[]
+    ): Promise<{ aggregate: number | string }[]> {
+        if (this.registry.groups.length || this.registry.havings.length) {
+            const clone = this.cloneForPaginationCount();
+
+            if (clone.getRegistry().columns === null && this.registry.joins.length > 0) {
+                clone.select(`${this.registry.from}.*`);
+            }
+
+            return await this.newQuery()
+                .from(this.raw(`(${clone.toSql()}) as ${this.getGrammar().wrap('aggregate_table')}`))
+                .mergeBindings(clone)
+                .setAggregate('count', this.withoutSelectAliases(columns))
+                .get<{ aggregate: number | string }>();
+        }
+
+        return this.cloneWithout(
+            this.registry.unions.length ? ['orders', 'limit', 'offset'] : ['columns', 'orders', 'limit', 'offset']
+        )
+            .cloneWithoutBindings(this.registry.unions.length ? ['order'] : ['select', 'order'])
+            .setAggregate('count', this.withoutSelectAliases(columns))
+            .get<{ aggregate: number | string }>();
+    }
+
+    /**
+     * Clone the existing query instance for usage in a pagination subquery.
+     */
+    protected cloneForPaginationCount(): BuilderContract {
+        return this.cloneWithout(['orders', 'limit', 'offset']).cloneWithoutBindings(['order']);
+    }
+
+    /**
+     * Remove the column aliases since they will break count queries.
+     */
+    protected withoutSelectAliases(columns: Stringable | Stringable[]): string[] {
+        return (Array.isArray(columns) ? columns : [columns]).map(column => {
+            column = this.getGrammar().getValue(column).toString();
+            const position = column.toLowerCase().indexOf(' as ');
+            return position > -1 ? column.slice(0, position) : column;
+        });
+    }
+
+    /**
+     * Paginate the given query using a cursor paginator.
+     */
+    protected async paginateUsingCursor<T>(
+        perPage: number,
+        columns: Stringable | Stringable[],
+        name: string,
+        cursor?: Cursor | string | null
+    ): Promise<CursorPaginatorI<T>> {
+        const cursorInstance =
+            typeof cursor === 'string'
+                ? Cursor.fromEncoded(cursor)
+                : cursor == null
+                ? CursorPaginator.resolveCurrentCursor(name, cursor)
+                : cursor;
+
+        const orders = this.ensureOrderForCursorPagination(
+            cursorInstance !== null && cursorInstance.pointsToPreviousItems()
+        );
+
+        if (cursorInstance != null) {
+            const addCursorConditions = (builder: BuilderContract, previousColumn: null | string, i: number): void => {
+                const unionBuilders = builder.getRegistry().unions.length
+                    ? builder.getRegistry().unions.map(union => {
+                          return union.query;
+                      })
+                    : [];
+                if (previousColumn !== null) {
+                    const originalColumn = this.getOriginalColumnNameForCursorPagination(this, previousColumn);
+
+                    builder.where(
+                        originalColumn.includes('(') || originalColumn.includes(')')
+                            ? this.raw(originalColumn)
+                            : originalColumn,
+                        '=',
+                        cursorInstance.parameter(previousColumn)
+                    );
+                    // unionBuilders should always be empty
+                    // for (const unionBuilder of unionBuilders) {
+                    //     unionBuilder.where(
+                    //         this.getOriginalColumnNameForCursorPagination(this, previousColumn),
+                    //         '=',
+                    //         cursorInstance.parameter(previousColumn)
+                    //     );
+                    //     this.addBinding(unionBuilder.getRawBindings()['where'], 'union');
+                    // }
+                }
+                builder.where(builder => {
+                    const order = orders[i];
+                    const column = this.getGrammar().getValue(order.column).toString();
+                    const originalColumn = this.getOriginalColumnNameForCursorPagination(this, column);
+                    builder.where(
+                        originalColumn.includes('(') || originalColumn.includes(')')
+                            ? this.raw(originalColumn)
+                            : originalColumn,
+                        order.direction === 'asc' ? '>' : '<',
+                        cursorInstance.parameter(column)
+                    );
+                    if (i < orders.length - 1) {
+                        builder.orWhere(builder => {
+                            addCursorConditions(builder, column, i + 1);
+                        });
+                    }
+
+                    for (const unionBuilder of unionBuilders) {
+                        unionBuilder.where(unionBuilder => {
+                            unionBuilder.where(
+                                this.getOriginalColumnNameForCursorPagination(this, column),
+                                order.direction === 'asc' ? '>' : '<',
+                                cursorInstance.parameter(column)
+                            );
+                            if (i < orders.length - 1) {
+                                unionBuilder.orWhere(unionBuilder => {
+                                    addCursorConditions(unionBuilder, column, i + 1);
+                                });
+                            }
+                            this.addBinding(unionBuilder.getRawBindings()['where'], 'union');
+                        });
+                    }
+                });
+            };
+            addCursorConditions(this, null, 0);
+        }
+
+        this.limit(perPage + 1);
+
+        return this.cursorPaginator<T>(await this.get<T>(columns), perPage, cursorInstance, {
+            path: CursorPaginator.resolveCurrentPath(),
+            name,
+            parameters: orders.map(order => this.getGrammar().getValue(order.column).toString())
+        });
+    }
+
+    /**
+     * Ensure the proper order by required for cursor pagination.
+     */
+    protected ensureOrderForCursorPagination(shouldReverse: boolean): OrderColumn[] {
+        this.enforceOrderBy();
+
+        let orders = cloneOrders(
+            (this.registry.orders.length > 0 ? this.registry.orders : this.registry.unionOrders).filter(
+                (order: Order) => {
+                    return 'direction' in order;
+                }
+            )
+        ) as OrderColumn[];
+
+        if (shouldReverse) {
+            orders = orders.map(order => {
+                order.direction = order.direction === 'asc' ? 'desc' : 'asc';
+                return order;
+            });
+        }
+
+        return orders;
+    }
+
+    /**
+     * Get the original column name of the given column, without any aliasing.
+     */
+    protected getOriginalColumnNameForCursorPagination(builder: BuilderContract, parameter: string): string {
+        const columns = builder.getColumns();
+        for (const column of columns) {
+            const position = column.toLowerCase().lastIndexOf(' as ');
+            if (position > -1) {
+                const original = column.slice(0, position);
+                const alias = column.slice(position + 4);
+                if (parameter === alias || builder.getGrammar().wrap(parameter) === alias) {
+                    return original;
+                }
+            }
+        }
+
+        return parameter;
     }
 
     /**

@@ -24,6 +24,8 @@ import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
 import RegistryI, { BindingTypes, Where } from '../types/query/registry';
 
+import Cursor from '../paginations/cursor';
+import PaginatorI, { CursorPaginatorI, LengthAwarePaginatorI } from '../types/paginations';
 import ExpressionContract from './expression-contract';
 
 abstract class BuilderContract {
@@ -1668,6 +1670,45 @@ abstract class BuilderContract {
      * Execute the query as a "select" statement.
      */
     public abstract get<T = Dictionary>(columns?: Stringable | Stringable[]): Promise<T[]>;
+
+    /**
+     * Paginate the given query into a paginator.
+     */
+    public abstract paginate<T = Dictionary>(
+        perPage?: number | ((total: number) => number),
+        columns?: Stringable | Stringable[],
+        name?: string,
+        page?: number
+    ): Promise<LengthAwarePaginatorI<T>>;
+
+    /**
+     * Get a simple paginator
+     *
+     * This is more efficient on larger data-sets, etc.
+     */
+    public abstract simplePaginate<T = Dictionary>(
+        perPage?: number,
+        columns?: Stringable | Stringable[],
+        name?: string,
+        page?: number
+    ): Promise<PaginatorI<T>>;
+
+    /**
+     * Get a cursor paginator
+     *
+     * This is more efficient on larger data-sets, etc.
+     */
+    public abstract cursorPaginate<T = Dictionary>(
+        perPage?: number,
+        columns?: Stringable | Stringable[],
+        name?: string,
+        cursor?: Cursor | string | null
+    ): Promise<CursorPaginatorI<T>>;
+
+    /**
+     * Get the count of the total records for the paginator.
+     */
+    public abstract getCountForPagination(columns?: Stringable | Stringable[]): Promise<number>;
 
     /**
      * Get an async Generator for the given query.
