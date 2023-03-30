@@ -852,7 +852,16 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile an insert statement using a subquery into SQL.
      */
     public compileInsertUsing(query: BuilderContract, columns: Stringable[], sql: string): string {
-        return `insert into ${this.wrapTable(query.getRegistry().from)} (${this.columnize(columns)}) ${sql}`;
+        const table = this.wrapTable(query.getRegistry().from);
+
+        if (
+            columns.length === 0 ||
+            columns.filter(column => !['*'].includes(this.getValue(column).toString())).length === 0
+        ) {
+            return `insert into ${table} ${sql}`;
+        }
+
+        return `insert into ${table} (${this.columnize(columns)}) ${sql}`;
     }
 
     /**

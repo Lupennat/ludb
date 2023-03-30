@@ -246,7 +246,7 @@ describe('Query Builder Utilities', () => {
         });
         builder.insertUsing([], getBuilder());
         expect(spiedAffecting).toBeCalledTimes(1);
-        expect(spiedAffecting).toBeCalledWith('insert into "users" () select *', []);
+        expect(spiedAffecting).toBeCalledWith('insert into "users" select *', []);
     });
 
     it('Works Preserved Are Applied By Upsert', async () => {
