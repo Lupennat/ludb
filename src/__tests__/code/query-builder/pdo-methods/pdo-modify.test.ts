@@ -68,6 +68,38 @@ describe('Query Builder Pdo Methods Modify', () => {
         ).toBe(1);
     });
 
+    it('Works Insert Using Method With Empty Columns', async () => {
+        const builder = getBuilder();
+
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe('insert into "table1" select * from "table2" where "foreign_id" = ?');
+            expect(bindings).toEqual([5]);
+            return 1;
+        });
+
+        expect(
+            await builder.from('table1').insertUsing([], query => {
+                query.from('table2').where('foreign_id', '=', 5);
+            })
+        ).toBe(1);
+    });
+
+    it('Works Insert Using Method With All Columns', async () => {
+        const builder = getBuilder();
+
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe('insert into "table1" select * from "table2" where "foreign_id" = ?');
+            expect(bindings).toEqual([5]);
+            return 1;
+        });
+
+        expect(
+            await builder.from('table1').insertUsing(['*'], query => {
+                query.from('table2').where('foreign_id', '=', 5);
+            })
+        ).toBe(1);
+    });
+
     it('Works Insert Using Invalid Subquery', async () => {
         const builder = getBuilder();
         // @ts-expect-error test arguments error
