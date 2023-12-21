@@ -65,7 +65,7 @@
         "db:down": "npm run sqlite:down && docker compose -f docker-compose.yml down -v"
     },
     "engines": {
-        "node": "^14.19.0 || ^16.10.0 || >=18.0.0"
+        "node": "^16.10.0 || >=18.0.0"
     },
     "devDependencies": {
         "@types/jest": "^29.2.4",
