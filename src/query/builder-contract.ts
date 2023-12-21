@@ -1560,6 +1560,11 @@ abstract class BuilderContract {
     public abstract toSql(): string;
 
     /**
+     * Get the raw SQL representation of the query with embedded bindings.
+     */
+    public abstract toRawSql(): string;
+
+    /**
      * Chunk the results of the query.
      */
     public abstract chunk<T = Dictionary>(
@@ -1981,6 +1986,11 @@ abstract class BuilderContract {
      * Log the current SQL and bindings.
      */
     public abstract log(): this;
+
+    /**
+     * Log the raw current SQL with embedded bindings.
+     */
+    public abstract logRawSql(): this;
 }
 
 export default BuilderContract;

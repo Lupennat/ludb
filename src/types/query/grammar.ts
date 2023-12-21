@@ -1,6 +1,7 @@
 import BuilderContract from '../../query/builder-contract';
+import ExpressionContract from '../../query/expression-contract';
 import BaseGrammarI from '../base-grammar';
-import { Binding, RowValues, Stringable } from './builder';
+import { Binding, BindingExclude, BindingExcludeObject, RowValues, Stringable } from './builder';
 import { BindingTypes } from './registry';
 
 export default interface GrammarI extends BaseGrammarI {
@@ -110,6 +111,14 @@ export default interface GrammarI extends BaseGrammarI {
     compileSavepointRollBack(name: string): string;
 
     /**
+     * Substitute the given bindings into the given raw SQL query.
+     */
+    substituteBindingsIntoRawSql(
+        sql: string,
+        bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
+    ): string;
+
+    /**
      * Get the grammar specific operators.
      */
     getOperators(): string[];
@@ -118,4 +127,9 @@ export default interface GrammarI extends BaseGrammarI {
      * Get the grammar specific bitwise operators.
      */
     getBitwiseOperators(): string[];
+
+    /**
+     * Escapes a value for safe SQL embedding.
+     */
+    escape(value: Binding): string;
 }

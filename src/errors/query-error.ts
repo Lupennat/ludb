@@ -2,7 +2,6 @@ import { PdoError } from 'lupdo';
 import ExpressionContract from '../query/expression-contract';
 import { ConnectionSessionI } from '../types/connection';
 import { BindingExclude, BindingExcludeObject } from '../types/query/builder';
-import { escapeQuoteForSql, isTypedBinding } from '../utils';
 
 class QueryError extends PdoError {
     /**
@@ -19,47 +18,10 @@ class QueryError extends PdoError {
     }
 
     /**
-     * Format Value
-     */
-    protected getStringQuoteValue(binding: BindingExclude<null | ExpressionContract>): string {
-        if (isTypedBinding(binding)) {
-            const value = binding.value;
-            if (value == null) {
-                return 'null';
-            }
-            binding = value;
-        }
-
-        if (Buffer.isBuffer(binding)) {
-            return `<Buffer[${Buffer.byteLength(binding)}]>`;
-        }
-
-        if (['boolean', 'number', 'bigint'].includes(typeof binding)) {
-            return binding.toString();
-        }
-
-        return `'${escapeQuoteForSql(binding.toString())}'`;
-    }
-
-    /**
      * Format the SQL error message.
      */
     protected formatMessage(): string {
-        let sql = '';
-        if (Array.isArray(this.bindings)) {
-            const bindings = this.bindings.slice();
-            sql = this.sql.replace(/\?/g, () => {
-                const binding = bindings.shift();
-                return binding == null ? 'null' : this.getStringQuoteValue(binding);
-            });
-        } else {
-            const keys = Object.keys(this.bindings).sort((a, b) => a.length - b.length);
-            sql = this.sql;
-            for (const key of keys) {
-                const binding = this.bindings[key];
-                sql = sql.replace(`:${key}`, binding == null ? 'null' : this.getStringQuoteValue(binding));
-            }
-        }
+        const sql = this.connection.getQueryGrammar().substituteBindingsIntoRawSql(this.sql, this.bindings);
 
         return `${this.cause.message} (Connection: ${this.connection.getName()}, SQL: ${sql})`;
     }

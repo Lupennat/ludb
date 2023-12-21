@@ -111,7 +111,7 @@ export default interface Builder {
     /**
      * Disable foreign key constraints during the execution of a callback.
      */
-    withoutForeignKeyConstraints<T>(callback: () => T): Promise<T>;
+    withoutForeignKeyConstraints<T>(callback: () => T): Promise<T | void>;
     /**
      * Get the database connection instance.
      */

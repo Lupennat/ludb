@@ -523,6 +523,13 @@ class SqlServerGrammar extends Grammar {
 
         return table;
     }
+
+    /**
+     * Escape a binary value for safe SQL embedding.
+     */
+    protected escapeBinary(value: Buffer): string {
+        return `0x${value.toString('hex')}`;
+    }
 }
 
 export default SqlServerGrammar;

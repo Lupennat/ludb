@@ -380,6 +380,16 @@ describe('SQLite Schema Grammar', () => {
         ]).toEqual(statements);
     });
 
+    it('Works Adding Foreign Id Specifying Index Name In Constraint', () => {
+        const connection = getConnection().sessionSchema();
+        const blueprint = getSQLiteBlueprint('users');
+        blueprint.foreignId('company_id').constrained(undefined, undefined, 'my_index');
+        const statements = blueprint.toSql(connection);
+
+        expect(1).toBe(statements.length);
+        expect('alter table "users" add column "company_id" integer not null').toBe(statements[0]);
+    });
+
     it('Works Adding Big Incrementing ID', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSQLiteBlueprint('users');

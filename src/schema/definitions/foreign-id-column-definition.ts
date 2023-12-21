@@ -22,10 +22,10 @@ class ForeignIdColumnDefinition extends ColumnDefinition {
     /**
      * Create a foreign key constraint on this column referencing the "id" column of the conventionally related table.
      */
-    public constrained(table?: Stringable, column?: Stringable): CommandForeignKeyDefinition {
+    public constrained(table?: Stringable, column?: Stringable, indexName?: Stringable): CommandForeignKeyDefinition {
         column = column ?? 'id';
 
-        return this.references(column).on(
+        return this.references(column, indexName).on(
             table ??
                 plural(
                     beforeLast(
@@ -39,8 +39,8 @@ class ForeignIdColumnDefinition extends ColumnDefinition {
     /**
      * Specify which column this foreign ID references on another table.
      */
-    public references(columns: Stringable | Stringable[]): CommandForeignKeyDefinition {
-        return this.blueprint.foreign(this.name).references(columns);
+    public references(columns: Stringable | Stringable[], indexName?: Stringable): CommandForeignKeyDefinition {
+        return this.blueprint.foreign(this.name, indexName).references(columns);
     }
 }
 

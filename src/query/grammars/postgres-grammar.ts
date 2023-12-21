@@ -582,6 +582,20 @@ class PostgresGrammar extends Grammar {
 
         return [attribute];
     }
+
+    /**
+     * Escape a binary value for safe SQL embedding.
+     */
+    protected escapeBinary(value: Buffer): string {
+        return `x'${value.toString('hex')}'::bytea`;
+    }
+
+    /**
+     * Escape a bool value for safe SQL embedding.
+     */
+    protected escapeBool(value: boolean): string {
+        return value ? 'true' : 'false';
+    }
 }
 
 export default PostgresGrammar;

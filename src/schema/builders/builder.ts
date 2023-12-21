@@ -273,14 +273,15 @@ class Builder implements BuilderI {
     /**
      * Disable foreign key constraints during the execution of a callback.
      */
-    public async withoutForeignKeyConstraints<T>(callback: () => T): Promise<T> {
+    public async withoutForeignKeyConstraints<T>(callback: () => T): Promise<T | void> {
         await this.disableForeignKeyConstraints();
 
-        const result = callback();
-
-        await this.enableForeignKeyConstraints();
-
-        return result;
+        try {
+            const result = callback();
+            return result;
+        } finally {
+            await this.enableForeignKeyConstraints();
+        }
     }
 
     /**

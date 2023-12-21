@@ -453,6 +453,22 @@ describe('Query Builder Joins', () => {
         expect([1, 10000]).toEqual(builder.getBindings());
     });
 
+    it('Works Join With Nested On Condition', () => {
+        const builder = getBuilder();
+        builder
+            .select('users.id')
+            .from('users')
+            .join('contacts', join => {
+                return join.on('users.id', 'contacts.id').addNestedWhereQuery(getBuilder().where('contacts.id', 1));
+            });
+
+        expect(
+            'select "users"."id" from "users" inner join "contacts" on "users"."id" = "contacts"."id" and ("contacts"."id" = ?)'
+        ).toBe(builder.toSql());
+
+        expect([1]).toEqual(builder.getBindings());
+    });
+
     it('Works Join Sub', () => {
         let builder = getBuilder();
         builder.from('users').joinSub('select * from "contacts"', 'sub', 'users.id', '=', 'sub.id');

@@ -84,7 +84,7 @@ email = await DB.table('users').where('name', 'John').value<string>('email');
 To retrieve a single row by its `id` column value, use the `find` method:
 
 ```ts
-email = await DB.table('users').where('name', 'John').value<string>('email');
+email = await DB.table('users').find(3);
 ```
 
 #### Retrieving A List Of Column Values
@@ -1012,8 +1012,14 @@ await DB.table('users').where('votes', '>', 100).lockForUpdate().get();
 
 ## Debugging
 
-You may use the `log` methods while building a query to log the current query bindings and SQL. The `log` method will display the debug information but allow the request to continue executing:
+You may use the `log` method while building a query to log the current query bindings and SQL. The `log` method will display the debug information but allow the request to continue executing:
 
 ```ts
 DB.table('users').where('votes', '>', 100).log();
+```
+
+The `logRawSql` method may be invoked on a query to log the query's SQL with all parameter bindings properly substituted:
+
+```ts
+DB.table('users').where('votes', '>', 100).logRawSql();
 ```
