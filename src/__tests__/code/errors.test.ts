@@ -26,7 +26,7 @@ describe('Errors', () => {
             new Error('Original Error')
         );
         expect(error.message).toBe(
-            "Original Error (Connection: fake, SQL: select * from test where name = 'Claudio' and available = null and created_at < '2023-03-01 15:27:00' and buffer = <Buffer[4]> and id = 100000 and counter = true and role = 10)"
+            "Original Error (Connection: fake, SQL: select * from test where name = 'Claudio' and available = null and created_at < '2023-03-01 15:27:00' and buffer = <Buffer[4]> and id = '100000' and counter = 1 and role = '10')"
         );
         expect(error.getSql()).toBe(
             'select * from test where name = ? and available = ? and created_at < ? and buffer = ? and id = ? and counter = ? and role = ?'

@@ -39,7 +39,7 @@ jobs:
             npm run sqlite:up
 
       - name: Run npm install
-        run: npm install
+        run: npm ci
 
       - name: Initialize Database
         if: ${{ matrix.database-type != 'sqlite' }}

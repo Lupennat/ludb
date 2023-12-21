@@ -88,7 +88,10 @@ export function causedByLostConnection(error: any): boolean {
         'TCP Provider: Error code 0x274C',
         'SQLSTATE[HY000] [2002] No such file or directory',
         'SSL: Operation timed out',
-        'Reason: Server is in script upgrade mode. Only administrator can connect at this time.'
+        'Reason: Server is in script upgrade mode. Only administrator can connect at this time.',
+        'SSL: Handshake timed out',
+        'SQLSTATE[08006] [7] SSL error: sslv3 alert unexpected message',
+        'SQLSTATE[08006] [7] unrecognized SSL error code:'
     ];
 
     for (const message of messages) {
@@ -263,4 +266,22 @@ export function merge<T1, T2>(x: Partial<T1>, y: Partial<T2>): T1 & T2 {
             return Array.isArray(value) || isPlainObject(value);
         }
     });
+}
+
+export function hasInvalidUTF8Characters(str: string): boolean {
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    // Encode the string as UTF-8 bytes
+    const utf8Bytes = encoder.encode(str);
+
+    // Decode the UTF-8 bytes back to a string
+    const decodedString = decoder.decode(utf8Bytes);
+
+    // Compare the decoded string with the original string
+    return str !== decodedString;
+}
+
+export function hasNullBytesCharacters(str: string): boolean {
+    return str.includes('\0');
 }

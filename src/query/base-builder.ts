@@ -3043,6 +3043,16 @@ abstract class BaseBuilder extends BuilderContract {
     }
 
     /**
+     * Get the raw SQL representation of the query with embedded bindings.
+     */
+    public toRawSql(): string {
+        return this.getGrammar().substituteBindingsIntoRawSql(
+            this.toSql(),
+            this.getConnection().prepareBindings(this.getBindings())
+        );
+    }
+
+    /**
      * Chunk the results of the query.
      */
     public async chunk<T = Dictionary>(
@@ -4424,6 +4434,15 @@ abstract class BaseBuilder extends BuilderContract {
      */
     public log(): this {
         console.log(this.toSql(), this.getBindings());
+
+        return this;
+    }
+
+    /**
+     * Log the raw current SQL with embedded bindings.
+     */
+    public logRawSql(): this {
+        console.log(this.toRawSql());
 
         return this;
     }

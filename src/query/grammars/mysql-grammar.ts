@@ -308,6 +308,13 @@ class MySqlGrammar extends Grammar {
 
         return `json_extract(${field}${path})`;
     }
+
+    /**
+     * Escape a binary value for safe SQL embedding.
+     */
+    protected escapeBinary(value: Buffer): string {
+        return `x'${value.toString('hex')}'`;
+    }
 }
 
 export default MySqlGrammar;

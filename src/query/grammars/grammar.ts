@@ -2,7 +2,7 @@
 
 import set from 'set-value';
 import BaseGrammar from '../../grammar';
-import { Binding, RowValues, Stringable } from '../../types/query/builder';
+import { Binding, BindingExclude, BindingExcludeObject, RowValues, Stringable } from '../../types/query/builder';
 import GrammarI from '../../types/query/grammar';
 import JoinClauseI from '../../types/query/join-clause';
 import {
@@ -36,8 +36,17 @@ import {
     WhereSub,
     whereFulltext
 } from '../../types/query/registry';
-import { isValidBinding, merge, stringifyReplacer } from '../../utils';
+import {
+    escapeQuoteForSql,
+    hasInvalidUTF8Characters,
+    hasNullBytesCharacters,
+    isTypedBinding,
+    isValidBinding,
+    merge,
+    stringifyReplacer
+} from '../../utils';
 import BuilderContract from '../builder-contract';
+import ExpressionContract from '../expression-contract';
 import IndexHint from '../index-hint';
 import JoinClause from '../join-clause';
 
@@ -473,11 +482,11 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a nested where clause.
      */
-    protected compileWhereNested(query: BuilderContract, where: WhereNested): string {
+    protected compileWhereNested(_query: BuilderContract, where: WhereNested): string {
         // Here we will calculate what portion of the string we need to remove. If this
         // is a join clause query, we need to remove the "on" portion of the SQL and
         // if it is a normal query we need to take the leading "where" of queries.
-        const offset = query instanceof JoinClause ? 3 : 6;
+        const offset = where.query instanceof JoinClause ? 3 : 6;
         const wheres = this.compileWheres(where.query);
         const not = where.not ? 'not ' : '';
         return `${not}(${wheres.slice(offset)})`;
@@ -1049,6 +1058,53 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
+     * Substitute the given bindings into the given raw SQL query.
+     */
+    public substituteBindingsIntoRawSql(
+        sql: string,
+        bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
+    ): string {
+        if (Array.isArray(bindings)) {
+            bindings = bindings.slice();
+            let isStringLiteral = false;
+            let query = '';
+            for (let i = 0; i < sql.length; i++) {
+                const char = sql[i];
+                const nextChar = sql[i + 1] ?? null;
+                const combinedChar = `${char}${nextChar}`;
+                if ([`\\'`, "''", '??'].includes(combinedChar)) {
+                    // Single quotes can be escaped as '' according to the SQL standard while
+                    // MySQL uses \'. Postgres has operators like ?| that must get encoded
+                    // in PHP like ??|. We should skip over the escaped characters here.
+                    if (combinedChar === '??' && !isStringLiteral) {
+                        query += '?';
+                    } else {
+                        query += combinedChar;
+                    }
+                    i += 1;
+                } else if (char === "'") {
+                    query += char;
+                    isStringLiteral = !isStringLiteral;
+                } else if (char === '?' && !isStringLiteral) {
+                    // Substitutable binding...
+                    const binding = bindings.shift();
+                    query += binding !== undefined ? this.escape(binding) : '?';
+                } else {
+                    // Normal character...
+                    query += char;
+                }
+            }
+            return query;
+        } else {
+            const keys = Object.keys(bindings).sort((a, b) => a.length - b.length);
+            for (const key of keys) {
+                sql = sql.replace(`:${key}`, this.escape(bindings[key]));
+            }
+            return sql;
+        }
+    }
+
+    /**
      * Get the grammar specific operators.
      */
     public getOperators(): string[] {
@@ -1143,6 +1199,64 @@ class Grammar extends BaseGrammar implements GrammarI {
             .toString()
             .replace(/->((-)?\d+)->/g, '[$1$2]->')
             .replace(/->((-)?\d+)$/g, '[$1$2]');
+    }
+
+    /**
+     * Escapes a value for safe SQL embedding.
+     */
+    public escape(value: Binding): string {
+        if (isTypedBinding(value)) {
+            value = value.value;
+        }
+
+        if (value === null) {
+            return 'null';
+        }
+
+        if (Buffer.isBuffer(value)) {
+            return this.escapeBinary(value);
+        }
+
+        if (typeof value === 'boolean') {
+            return this.escapeBool(value);
+        }
+
+        if (value instanceof ExpressionContract) {
+            value = value.getValue(this);
+        }
+
+        value = this.escapeString(value);
+
+        if (hasNullBytesCharacters(value)) {
+            return '<NullByte>';
+        }
+
+        if (hasInvalidUTF8Characters(value)) {
+            return '<InvalidUtf8Byte>';
+        }
+
+        return value;
+    }
+
+    /**
+     * Escape a string value for safe SQL embedding.
+     */
+    protected escapeString(value: number | bigint | string | Date): string {
+        return `'${escapeQuoteForSql(value.toString())}'`;
+    }
+
+    /**
+     * Escape a boolean value for safe SQL embedding.
+     */
+    protected escapeBool(value: boolean): string {
+        return value ? '1' : '0';
+    }
+
+    /**
+     * Escape a binary value for safe SQL embedding.
+     */
+    protected escapeBinary(value: Buffer): string {
+        return `<Buffer[${Buffer.byteLength(value)}]>`;
     }
 }
 

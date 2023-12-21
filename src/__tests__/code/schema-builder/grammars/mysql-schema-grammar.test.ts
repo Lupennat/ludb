@@ -591,6 +591,19 @@ describe('MySql Schema Grammar', () => {
         ]).toEqual(statements);
     });
 
+    it('Works Adding Foreign Id Specifying Index Name In Constraint', () => {
+        const connection = getConnection().sessionSchema();
+        const blueprint = getMySqlBlueprint('users');
+        blueprint.foreignId('company_id').constrained(undefined, undefined, 'my_index');
+        const statements = blueprint.toSql(connection);
+
+        expect(2).toBe(statements.length);
+        expect('alter table `users` add `company_id` bigint unsigned not null').toBe(statements[0]);
+        expect(
+            'alter table `users` add constraint `my_index` foreign key (`company_id`) references `companies` (`id`)'
+        ).toBe(statements[1]);
+    });
+
     it('Works Adding Big Incrementing ID', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');

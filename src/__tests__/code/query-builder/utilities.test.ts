@@ -509,4 +509,23 @@ describe('Query Builder Utilities', () => {
             ['foo', 1, 3, 'bar']
         );
     });
+
+    it('Works LogRaw', () => {
+        console.log = jest.fn();
+        const builder = getBuilder()
+            .select('*')
+            .from('users')
+            .join('othertable', join => {
+                join.where('bar', '=', 'foo');
+            })
+            .where('registered', 1)
+            .groupBy('city')
+            .having('population', '>', 3)
+            .orderByRaw('match ("foo") against(?)', ['bar']);
+
+        expect(builder.logRawSql()).toEqual(builder);
+        expect(console.log).toHaveBeenCalledWith(
+            `select * from "users" inner join "othertable" on "bar" = 'foo' where "registered" = '1' group by "city" having "population" > '3' order by match ("foo") against('bar')`
+        );
+    });
 });
