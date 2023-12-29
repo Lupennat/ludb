@@ -24,7 +24,7 @@ describe('Schema Builder Test', () => {
         expect(() => {
             // @ts-expect-error test wrong parameter
             Builder.withDefaultMorphKeyType('not-valid');
-        }).toThrowError("Morph key type must be 'int', 'uuid', or 'ulid'.");
+        }).toThrow("Morph key type must be 'int', 'uuid', or 'ulid'.");
         Builder.morphUsingUuids();
         expect(Builder.defaultMorphKeyType).toBe('uuid');
         Builder.morphUsingUlids();
@@ -36,91 +36,155 @@ describe('Schema Builder Test', () => {
     it('Works Create Database', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.createDatabase('foo')).rejects.toThrowError(
+        await expect(builder.createDatabase('foo')).rejects.toThrow(
             'This database driver does not support creating databases.'
         );
     });
 
-    it('Works Drop All Tables', async () => {
+    it('Works Create View', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.dropAllTables()).rejects.toThrowError(
-            'This database driver does not support dropping tables.'
-        );
+        await expect(
+            builder.createView('foo', view =>
+                view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+            )
+        ).rejects.toThrow('This database driver does not support creating views.');
     });
 
-    it('Works Drop All Types', async () => {
+    it('Works Drop Tables', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.dropAllTypes()).rejects.toThrowError(
-            'This database driver does not support dropping types.'
-        );
+        await expect(builder.dropTables()).rejects.toThrow('This database driver does not support dropping tables.');
     });
 
-    it('Works Drop All Views', async () => {
+    it('Works Drop Types', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.dropAllViews()).rejects.toThrowError(
-            'This database driver does not support dropping views.'
-        );
+        await expect(builder.dropTypes()).rejects.toThrow('This database driver does not support dropping types.');
+    });
+
+    it('Works Drop Views', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.dropViews()).rejects.toThrow('This database driver does not support dropping views.');
     });
 
     it('Works Drop Database If Exists', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.dropDatabaseIfExists('foo')).rejects.toThrowError(
+        await expect(builder.dropDatabaseIfExists('foo')).rejects.toThrow(
             'This database driver does not support dropping databases.'
         );
     });
 
-    it('Works Get All Tables', async () => {
+    it('Works Drop View If Exists', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.getAllTables()).rejects.toThrowError(
-            'This database driver does not support retrieval of table names.'
+        await expect(builder.dropViewIfExists('foo')).rejects.toThrow(
+            'This database driver does not support dropping views.'
         );
     });
 
-    it('Works Get All Views', async () => {
+    it('Works Get Tables', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.getAllViews()).rejects.toThrowError(
-            'This database driver does not support retrieval of view names.'
-        );
+        await expect(builder.getTables()).rejects.toThrow('This database driver does not support retrieval of tables.');
     });
 
-    it('Works Get All Types', async () => {
+    it('Works Get Views', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.getAllTypes()).rejects.toThrowError(
-            'This database driver does not support retrieval of type names.'
-        );
+        await expect(builder.getViews()).rejects.toThrow('This database driver does not support retrieval of views.');
+    });
+
+    it('Works Get Types', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.getTypes()).rejects.toThrow('This database driver does not support user-defined types.');
     });
 
     it('Works Has Table', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
-        jest.spyOn(session.getSchemaGrammar(), 'compileTableExists').mockReturnValue('sql');
-        jest.spyOn(session, 'selectFromWriteConnection')
-            .mockImplementationOnce(async (query, bindings) => {
-                expect(query).toBe('sql');
-                expect(bindings).toEqual(['prefix_table']);
-                return [];
-            })
+        jest.spyOn(builder, 'getTables')
+            .mockImplementationOnce(async () => [])
             .mockImplementationOnce(async () => {
-                return ['prefix_table'];
+                return [
+                    {
+                        name: 'prefix_table'
+                    }
+                ];
             });
+
         expect(await builder.hasTable('table')).toBeFalsy();
         expect(await builder.hasTable('table')).toBeTruthy();
+    });
+
+    it('Works Has View', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        jest.spyOn(builder, 'getViews')
+            .mockImplementationOnce(async () => [])
+            .mockImplementationOnce(async () => {
+                return [
+                    {
+                        name: 'prefix_view',
+                        definition: 'definition'
+                    }
+                ];
+            });
+
+        expect(await builder.hasView('view')).toBeFalsy();
+        expect(await builder.hasView('view')).toBeTruthy();
+    });
+
+    it('Works Get Column Type', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        jest.spyOn(builder, 'getColumns').mockImplementation(async table => {
+            expect(table).toBe('table');
+            return [
+                {
+                    name: 'column',
+                    type_name: 'varchar',
+                    type: 'varchar(255)',
+                    nullable: true,
+                    default: null,
+                    auto_increment: false
+                }
+            ];
+        });
+
+        expect(await builder.getColumnType('table', 'column')).toBe('varchar');
+        expect(await builder.getColumnType('table', 'column', true)).toBe('varchar(255)');
+        await expect(builder.getColumnType('table', 'column2')).rejects.toThrow(
+            `There is no column with name 'column2' on table 'prefix_table'.`
+        );
     });
 
     it('Works Has Column', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        jest.spyOn(builder, 'getColumnListing').mockImplementation(async table => {
+        jest.spyOn(builder, 'getColumns').mockImplementation(async table => {
             expect(table).toEqual('users');
-            return ['id', 'name'];
+            return [
+                {
+                    name: 'id',
+                    type_name: 'int',
+                    type: 'int',
+                    nullable: false,
+                    default: null,
+                    auto_increment: true
+                },
+                {
+                    name: 'name',
+                    type_name: 'varchar',
+                    type: 'varchar',
+                    nullable: false,
+                    default: null,
+                    auto_increment: false
+                }
+            ];
         });
         expect(await builder.hasColumn('users', 'ID')).toBeTruthy();
         expect(await builder.hasColumn('users', 'address')).toBeFalsy();
@@ -129,9 +193,26 @@ describe('Schema Builder Test', () => {
     it('Works Has Columns', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        jest.spyOn(builder, 'getColumnListing').mockImplementation(async table => {
+        jest.spyOn(builder, 'getColumns').mockImplementation(async table => {
             expect(table).toEqual('users');
-            return ['id', 'name'];
+            return [
+                {
+                    name: 'id',
+                    type_name: 'int',
+                    type: 'int',
+                    nullable: false,
+                    default: null,
+                    auto_increment: true
+                },
+                {
+                    name: 'name',
+                    type_name: 'varchar',
+                    type: 'varchar',
+                    nullable: false,
+                    default: null,
+                    auto_increment: false
+                }
+            ];
         });
         expect(await builder.hasColumns('users', ['ID', 'name'])).toBeTruthy();
         expect(await builder.hasColumns('users', ['ID', 'address'])).toBeFalsy();
@@ -145,9 +226,9 @@ describe('Schema Builder Test', () => {
             expect(blueprint).toBeInstanceOf(Blueprint);
         });
         await builder.whenTableHasColumn('users', 'id', callback);
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         await builder.whenTableHasColumn('users', 'name', callback);
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('Works When Table Doesnt Have Columns', async () => {
@@ -158,24 +239,32 @@ describe('Schema Builder Test', () => {
             expect(blueprint).toBeInstanceOf(Blueprint);
         });
         await builder.whenTableDoesntHaveColumn('users', 'id', callback);
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         await builder.whenTableDoesntHaveColumn('users', 'name', callback);
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
-    it('Works Get Column Type', async () => {
+    it('Works Get Columns', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.getColumnType('users', 'id')).rejects.toThrowError(
-            'This database driver does not support column type.'
+        await expect(builder.getColumns('users')).rejects.toThrow(
+            'This database driver does not support retrieval of columns.'
         );
     });
 
-    it('Works Get Column Listing', async () => {
+    it('Works Get Indexs', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
-        await expect(builder.getColumnListing('users')).rejects.toThrowError(
-            'This database driver does not support column listing.'
+        await expect(builder.getIndexes('users')).rejects.toThrow(
+            'This database driver does not support retrieval of indexes.'
+        );
+    });
+
+    it('Works Get Foreign Keys', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.getForeignKeys('users')).rejects.toThrow(
+            'This database driver does not support retrieval of foreign keys.'
         );
     });
 
@@ -195,7 +284,7 @@ describe('Schema Builder Test', () => {
         builder.blueprintResolver(resolver);
         const callback = jest.fn();
         builder.createBlueprint('users', callback);
-        expect(resolver).toBeCalledWith('users', expect.any(Grammar), callback, 'prefix_');
+        expect(resolver).toHaveBeenCalledWith('users', expect.any(Grammar), callback, 'prefix_');
     });
 
     it('Works Table', async () => {
@@ -205,7 +294,7 @@ describe('Schema Builder Test', () => {
             expect(blueprint).toBeInstanceOf(Blueprint);
         });
         await builder.table('users', callback);
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('Works Create', async () => {
@@ -214,23 +303,23 @@ describe('Schema Builder Test', () => {
         const callback = jest.fn(blueprint => {
             expect(blueprint).toBeInstanceOf(Blueprint);
         });
-        await expect(builder.create('users', callback)).rejects.toThrowError(
+        await expect(builder.create('users', callback)).rejects.toThrow(
             'This database driver does not support create table.'
         );
 
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('Works Drop', async () => {
         const session = getConnection().sessionSchema();
         const builder = new MockedSchemaBuilder(session);
-        await expect(builder.drop('users')).rejects.toThrowError('This database driver does not support drop table.');
+        await expect(builder.drop('users')).rejects.toThrow('This database driver does not support drop table.');
     });
 
-    it('Works Drop If Exists', async () => {
+    it('Works Drop Table If Exists', async () => {
         const session = getConnection().sessionSchema();
         const builder = new MockedSchemaBuilder(session);
-        await expect(builder.dropIfExists('users')).rejects.toThrowError(
+        await expect(builder.dropTableIfExists('users')).rejects.toThrow(
             'This database driver does not support drop table if exists.'
         );
     });
@@ -238,7 +327,7 @@ describe('Schema Builder Test', () => {
     it('Works Drop Columns', async () => {
         const session = getConnection().sessionSchema();
         const builder = new MockedSchemaBuilder(session);
-        await expect(builder.dropColumns('users', ['id', 'name'])).rejects.toThrowError(
+        await expect(builder.dropColumns('users', ['id', 'name'])).rejects.toThrow(
             'This database driver does not support drop column.'
         );
     });
@@ -246,7 +335,7 @@ describe('Schema Builder Test', () => {
     it('Works Rename', async () => {
         const session = getConnection().sessionSchema();
         const builder = new MockedSchemaBuilder(session);
-        await expect(builder.rename('users', new Raw('uzers'))).rejects.toThrowError(
+        await expect(builder.rename('users', new Raw('uzers'))).rejects.toThrow(
             'This database driver does not support rename table.'
         );
     });
@@ -254,7 +343,7 @@ describe('Schema Builder Test', () => {
     it('Works Enable Foreign Key Constraints', async () => {
         const session = getConnection().sessionSchema();
         const builder = new MockedSchemaBuilder(session);
-        await expect(builder.enableForeignKeyConstraints()).rejects.toThrowError(
+        await expect(builder.enableForeignKeyConstraints()).rejects.toThrow(
             'This database driver does not support foreign key enabling.'
         );
     });
@@ -262,7 +351,7 @@ describe('Schema Builder Test', () => {
     it('Works Disable Foreign Key Constraints', async () => {
         const session = getConnection().sessionSchema();
         const builder = new MockedSchemaBuilder(session);
-        await expect(builder.disableForeignKeyConstraints()).rejects.toThrowError(
+        await expect(builder.disableForeignKeyConstraints()).rejects.toThrow(
             'This database driver does not support foreign key disabling.'
         );
     });
@@ -285,7 +374,7 @@ describe('Schema Builder Test', () => {
 
         await builder.withoutForeignKeyConstraints(callback);
 
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(called[0]).toEqual('disabled');
         expect(called[1]).toEqual('enabled');
     });

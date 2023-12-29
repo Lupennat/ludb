@@ -16,7 +16,7 @@ import {
     SQLiteConfig,
     SqlServerConfig
 } from '../types/config';
-import DriverConnectionI from '../types/connection';
+import DriverConnectionI from '../types/connection/connection';
 import ConnectorI from '../types/connector';
 import { merge } from '../utils';
 import Connector from './connector';

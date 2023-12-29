@@ -1,5 +1,5 @@
 import Expression from '../../query/expression';
-import { Stringable } from '../../types/query/builder';
+import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
 import {
     ColumnType,
@@ -7,12 +7,14 @@ import {
     CommandType,
     ModifiersType,
     RenameFullRegistryI,
-    RenameRegistryI
+    RenameRegistryI,
+    ViewRegistryI
 } from '../../types/schema/registry';
 import ColumnDefinition from '../definitions/column-definition';
 import CommandDefinition from '../definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../definitions/commands/command-index-definition';
+import CommandViewDefinition from '../definitions/commands/command-view-definition';
 import Grammar from './grammar';
 
 class SQLiteGrammar extends Grammar {
@@ -32,17 +34,92 @@ class SQLiteGrammar extends Grammar {
     protected commands: CommandType[] = [];
 
     /**
-     * Compile the SQL needed to retrieve all table names.
+     * Compile the query to determine if the dbstat table is available.
      */
-    public compileGetAllTables(): string {
-        return "select type, name from sqlite_master where type = 'table' and name not like 'sqlite_%'";
+    public compileDbstatExists(): string {
+        return "select exists (select 1 from pragma_compile_options where compile_options = 'ENABLE_DBSTAT_VTAB') as enabled";
     }
 
     /**
-     * Compile the SQL needed to retrieve all table views.
+     * Compile a create view command;
      */
-    public compileGetAllViews(): string {
-        return "select type, name from sqlite_master where type = 'view'";
+    public compileCreateView(name: Stringable, command: CommandViewDefinition<ViewRegistryI>): string {
+        const registry = command.getRegistry();
+        let sql = `create${registry.temporary ? ' temporary' : ''} view ${this.wrapTable(name)}`;
+
+        const columns = registry.columnNames ? registry.columnNames : [];
+
+        if (columns.length) {
+            sql += ` (${this.columnize(columns)})`;
+        }
+
+        sql += ` as ${registry.as.toRawSql()}`;
+
+        return sql;
+    }
+    /**
+     * Compile the query to determine the tables.
+     */
+    public compileTables(withSize?: boolean): string {
+        return withSize
+            ? 'select m.tbl_name as name, sum(s.pgsize) as size from sqlite_master as m ' +
+                  'join dbstat as s on s.name = m.name ' +
+                  "where m.type in ('table', 'index') and m.tbl_name not like 'sqlite_%' " +
+                  'group by m.tbl_name ' +
+                  'order by m.tbl_name'
+            : "select name from sqlite_master where type = 'table' and name not like 'sqlite_%' order by name";
+    }
+
+    /**
+     * Compile the query to determine the views.
+     */
+    public compileViews(): string {
+        return "select name, sql as definition from sqlite_master where type = 'view' order by name";
+    }
+
+    /**
+     * Compile the query to determine the columns.
+     */
+    public compileColumns(table: string): string {
+        return (
+            'select name, type, not "notnull" as "nullable", dflt_value as "default", pk as "primary" ' +
+            'from pragma_table_info(' +
+            this.wrap(table.replace('.', '__')) +
+            ') order by cid asc'
+        );
+    }
+
+    /**
+     * Compile the query to determine the indexes.
+     */
+    public compileIndexes(table: string): string {
+        return (
+            'select "primary" as name, group_concat(col) as columns, 1 as "unique", 1 as "primary" ' +
+            'from (select name as col from pragma_table_info(' +
+            this.wrap(table.replace('.', '__')) +
+            ') where pk > 0 order by pk, cid) group by name ' +
+            'union select name, group_concat(col) as columns, "unique", origin = "pk" as "primary" ' +
+            'from (select il.*, ii.name as col from pragma_index_list(' +
+            table +
+            ') il, pragma_index_info(il.name) ii order by il.seq, ii.seqno) ' +
+            'group by name, "unique", "primary"'
+        );
+    }
+
+    /**
+     * Compile the query to determine the foreign keys.
+     */
+    public compileForeignKeys(table: string): string {
+        return (
+            'select group_concat("from") as columns, "table" as foreign_table, ' +
+            'group_concat("to") as foreign_columns, on_update, on_delete ' +
+            'from (select * from pragma_foreign_key_list(' +
+            this.wrap(table.replace('.', '__')) +
+            ') as fkl inner join pragmar_index_list(' +
+            this.wrap(table.replace('.', '__')) +
+            ') as il on il.seq = fkl.id order by id desc, seq) ' +
+            'group by id, "table", on_update, on_delete'
+        );
     }
 
     /**
@@ -55,14 +132,14 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile the SQL needed to drop all tables.
      */
-    public compileDropAllTables(): string {
+    public compileDropTables(): string {
         return "delete from sqlite_master where type in ('table', 'index', 'trigger')";
     }
 
     /**
      * Compile the SQL needed to drop all views.
      */
-    public compileDropAllViews(): string {
+    public compileDropViews(): string {
         return "delete from sqlite_master where type in ('view')";
     }
 
@@ -97,11 +174,11 @@ class SQLiteGrammar extends Grammar {
             const onUpdate = command.getRegistry().onUpdate;
 
             if (onDelete) {
-                sql += ` on delete ${onDelete}`;
+                sql += ` on delete ${this.getValue(onDelete).toString()}`;
             }
 
             if (onUpdate) {
-                sql += ` on update ${onUpdate}`;
+                sql += ` on update ${this.getValue(onUpdate).toString()}`;
             }
 
             return sql;
@@ -132,27 +209,6 @@ class SQLiteGrammar extends Grammar {
         }
 
         return '';
-    }
-
-    /**
-     * Compile the query to determine the list of tables.
-     */
-    public compileTableExists(): string {
-        return "select * from sqlite_master where type = 'table' and name = ?";
-    }
-
-    /**
-     * Compile the query to determine the data type of column.
-     */
-    public compileColumnType(table: string): string {
-        return `pragma table_xinfo(${this.wrap(table.replace(/\./g, '__'))})`;
-    }
-
-    /**
-     * Compile the query to determine the list of columns.
-     */
-    public compileColumnListing(table: string): string {
-        return `pragma table_info(${this.wrap(table.replace(/\./g, '__'))})`;
     }
 
     /**
@@ -278,8 +334,15 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile a drop table (if exists) command.
      */
-    public compileDropIfExists(blueprint: BlueprintI): string {
+    public compileDropTableIfExists(blueprint: BlueprintI): string {
         return `drop table if exists ${this.wrapTable(blueprint)}`;
+    }
+
+    /**
+     * Compile a drop view (if exists) command.
+     */
+    public compileDropViewIfExists(name: string): string {
+        return `drop view if exists ${this.wrapTable(name)}`;
     }
 
     /**
@@ -522,7 +585,7 @@ class SQLiteGrammar extends Grammar {
                 storedAs = this.wrapJsonSelector(storedAs);
             }
 
-            return ` as (${storedAs}) stored`;
+            return ` as (${this.getValue(storedAs).toString()}) stored`;
         }
 
         return '';
@@ -538,7 +601,7 @@ class SQLiteGrammar extends Grammar {
                 virtualAs = this.wrapJsonSelector(virtualAs);
             }
 
-            return ` as (${virtualAs})`;
+            return ` as (${this.getValue(virtualAs).toString()})`;
         }
 
         return '';

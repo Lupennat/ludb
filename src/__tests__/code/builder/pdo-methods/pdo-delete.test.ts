@@ -7,7 +7,7 @@ import {
     pdo
 } from '../../fixtures/mocked';
 
-describe('Query Builder Pdo Methods', () => {
+describe('Builder Pdo Methods', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -16,27 +16,27 @@ describe('Query Builder Pdo Methods', () => {
         let builder = getBuilder();
         let spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete from "users" where "email" = ?', ['foo']);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
 
         builder = getBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').delete(1)).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete from "users" where "users"."id" = ?', [1]);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from "users" where "users"."id" = ?', [1]);
 
         builder = getBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').selectRaw('?', ['ignore']).delete(1)).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete from "users" where "users"."id" = ?', [1]);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from "users" where "users"."id" = ?', [1]);
 
         builder = getSQLiteBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete from "users" where "email" = ?', ['foo']);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
 
         builder = getSQLiteBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" where "rowid" in (select "users"."rowid" from "users" where "email" = ? order by "id" asc limit 1)',
             ['foo']
         );
@@ -44,17 +44,19 @@ describe('Query Builder Pdo Methods', () => {
         builder = getMySqlBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete from `users` where `email` = ? order by `id` asc limit 1', ['foo']);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from `users` where `email` = ? order by `id` asc limit 1', [
+            'foo'
+        ]);
 
         builder = getPostgresBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete from "users" where "email" = ?', ['foo']);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
 
         builder = getPostgresBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" where "ctid" in (select "users"."ctid" from "users" where "email" = ? order by "id" asc limit 1)',
             ['foo']
         );
@@ -62,12 +64,12 @@ describe('Query Builder Pdo Methods', () => {
         builder = getSqlServerBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete from [users] where [email] = ?', ['foo']);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from [users] where [email] = ?', ['foo']);
 
         builder = getSqlServerBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith('delete top (1) from [users] where [email] = ?', ['foo']);
+        expect(spiedDelete).toHaveBeenCalledWith('delete top (1) from [users] where [email] = ?', ['foo']);
     });
 
     it('Works Delete With Join Method', async () => {
@@ -82,7 +84,7 @@ describe('Query Builder Pdo Methods', () => {
                 .limit(1)
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" where "rowid" in (select "users"."rowid" from "users" inner join "contacts" on "users"."id" = "contacts"."id" where "users"."email" = ? order by "users"."id" asc limit 1)',
             ['foo']
         );
@@ -90,7 +92,7 @@ describe('Query Builder Pdo Methods', () => {
         builder = getSQLiteBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users as u').join('contacts as c', 'u.id', '=', 'c.id').delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" as "u" where "rowid" in (select "u"."rowid" from "users" as "u" inner join "contacts" as "c" on "u"."id" = "c"."id")',
             []
         );
@@ -106,7 +108,7 @@ describe('Query Builder Pdo Methods', () => {
                 .limit(1)
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete `users` from `users` inner join `contacts` on `users`.`id` = `contacts`.`id` where `email` = ?',
             ['foo']
         );
@@ -122,7 +124,7 @@ describe('Query Builder Pdo Methods', () => {
                 .limit(1)
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete `a` from `users` as `a` inner join `users` as `b` on `a`.`id` = `b`.`user_id` where `email` = ?',
             ['foo']
         );
@@ -132,7 +134,7 @@ describe('Query Builder Pdo Methods', () => {
         expect(
             await builder.from('users').join('contacts', 'users.id', '=', 'contacts.id').orderBy('id').take(1).delete(1)
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete `users` from `users` inner join `contacts` on `users`.`id` = `contacts`.`id` where `users`.`id` = ?',
             [1]
         );
@@ -146,7 +148,7 @@ describe('Query Builder Pdo Methods', () => {
                 .where('email', '=', 'foo')
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete [users] from [users] inner join [contacts] on [users].[id] = [contacts].[id] where [email] = ?',
             ['foo']
         );
@@ -162,7 +164,7 @@ describe('Query Builder Pdo Methods', () => {
                 .limit(1)
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete [a] from [users] as [a] inner join [users] as [b] on [a].[id] = [b].[user_id] where [email] = ?',
             ['foo']
         );
@@ -170,7 +172,7 @@ describe('Query Builder Pdo Methods', () => {
         builder = getSqlServerBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').join('contacts', 'users.id', '=', 'contacts.id').delete(1)).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete [users] from [users] inner join [contacts] on [users].[id] = [contacts].[id] where [users].[id] = ?',
             [1]
         );
@@ -184,7 +186,7 @@ describe('Query Builder Pdo Methods', () => {
                 .where('users.email', '=', 'foo')
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" where "ctid" in (select "users"."ctid" from "users" inner join "contacts" on "users"."id" = "contacts"."id" where "users"."email" = ?)',
             ['foo']
         );
@@ -200,7 +202,7 @@ describe('Query Builder Pdo Methods', () => {
                 .limit(1)
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" as "a" where "ctid" in (select "a"."ctid" from "users" as "a" inner join "users" as "b" on "a"."id" = "b"."user_id" where "email" = ? order by "id" asc limit 1)',
             ['foo']
         );
@@ -210,7 +212,7 @@ describe('Query Builder Pdo Methods', () => {
         expect(
             await builder.from('users').join('contacts', 'users.id', '=', 'contacts.id').orderBy('id').take(1).delete(1)
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" where "ctid" in (select "users"."ctid" from "users" inner join "contacts" on "users"."id" = "contacts"."id" where "users"."id" = ? order by "id" asc limit 1)',
             [1]
         );
@@ -226,7 +228,7 @@ describe('Query Builder Pdo Methods', () => {
                 .where('name', 'baz')
                 .delete()
         ).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" where "ctid" in (select "users"."ctid" from "users" inner join "contacts" on "users"."id" = "contacts"."user_id" and "users"."id" = ? where "name" = ?)',
             [1, 'baz']
         );
@@ -234,7 +236,7 @@ describe('Query Builder Pdo Methods', () => {
         builder = getPostgresBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').join('contacts', 'users.id', '=', 'contacts.id').delete()).toBe(1);
-        expect(spiedDelete).toBeCalledWith(
+        expect(spiedDelete).toHaveBeenCalledWith(
             'delete from "users" where "ctid" in (select "users"."ctid" from "users" inner join "contacts" on "users"."id" = "contacts"."id")',
             []
         );
@@ -244,7 +246,7 @@ describe('Query Builder Pdo Methods', () => {
         let builder = getBuilder();
         let spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
         await builder.from('users').truncate();
-        expect(spiedTruncate).toBeCalledWith('truncate table "users"', []);
+        expect(spiedTruncate).toHaveBeenCalledWith('truncate table "users"', []);
 
         builder = getSQLiteBuilder();
         spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
@@ -255,6 +257,6 @@ describe('Query Builder Pdo Methods', () => {
         builder = getPostgresBuilder();
         spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
         await builder.from('users').truncate();
-        expect(spiedTruncate).toBeCalledWith('truncate "users" restart identity cascade', []);
+        expect(spiedTruncate).toHaveBeenCalledWith('truncate "users" restart identity cascade', []);
     });
 });

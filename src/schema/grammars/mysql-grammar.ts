@@ -1,6 +1,6 @@
 import Expression from '../../query/expression';
-import { ConnectionSessionI } from '../../types';
-import { Stringable } from '../../types/query/builder';
+import { ConnectionSessionI } from '../../types/connection/connection';
+import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
 import {
     ColumnDefinitionRegistryI,
@@ -10,13 +10,15 @@ import {
     CommentRegistryI,
     ModifiersType,
     RenameFullRegistryI,
-    RenameRegistryI
+    RenameRegistryI,
+    ViewRegistryI
 } from '../../types/schema/registry';
 import { addslashes, escapeQuoteForSql } from '../../utils';
 import ColumnDefinition from '../definitions/column-definition';
 import CommandDefinition from '../definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../definitions/commands/command-index-definition';
+import CommandViewDefinition from '../definitions/commands/command-view-definition';
 import Grammar from './grammar';
 
 class MySqlGrammar extends Grammar {
@@ -67,17 +69,119 @@ class MySqlGrammar extends Grammar {
     }
 
     /**
-     * Compile the SQL needed to retrieve all table names.
+     * Compile a create view command;
      */
-    public compileGetAllTables(): string {
-        return "SHOW FULL TABLES WHERE table_type = 'BASE TABLE'";
+    public compileCreateView(name: Stringable, command: CommandViewDefinition<ViewRegistryI>): string {
+        const registry = command.getRegistry();
+        let sql = `create`;
+        const algorithm = registry.algorithm ? this.getValue(registry.algorithm).toString() : '';
+
+        if (algorithm) {
+            sql += ` algorithm=${algorithm}`;
+        }
+
+        const definer = registry.definer ? this.getValue(registry.definer).toString() : '';
+
+        if (definer) {
+            sql += ` definer=${definer} sql security definer`;
+        }
+
+        sql += ` view ${this.wrapTable(name)}`;
+
+        const columns = registry.columnNames ? registry.columnNames : [];
+
+        if (columns.length) {
+            sql += ` (${this.columnize(columns)})`;
+        }
+
+        sql += ` as ${registry.as.toRawSql()}`;
+
+        const check = registry.check ? registry.check : '';
+
+        if (check) {
+            sql += ` with ${check} check option`;
+        }
+
+        return sql;
     }
 
     /**
-     * Compile the SQL needed to retrieve all table views.
+     * Compile the query to determine the tables.
      */
-    public compileGetAllViews(): string {
-        return "SHOW FULL TABLES WHERE table_type = 'VIEW'";
+    public compileTables(database: string): string {
+        return (
+            'select table_name as `name`, (data_length + index_length) as `size`, ' +
+            'table_comment as `comment`, engine as `engine`, table_collation as `collation` ' +
+            'from information_schema.tables where table_schema = ' +
+            this.quoteString(database) +
+            " and table_type = 'BASE TABLE' " +
+            'order by table_name'
+        );
+    }
+
+    /**
+     * Compile the query to determine the views.
+     */
+    public compileViews(database: string): string {
+        return (
+            'select table_name as `name`, view_definition as `definition` ' +
+            'from information_schema.views where table_schema = ' +
+            this.quoteString(database) +
+            ' order by table_name'
+        );
+    }
+
+    /**
+     * Compile the query to determine the columns.
+     */
+    public compileColumns(table: string, database: string): string {
+        return (
+            'select column_name as `name`, data_type as `type_name`, column_type as `type`, ' +
+            'collation_name as `collation`, is_nullable as `nullable`, ' +
+            'column_default as `default`, column_comment as `comment`, extra as `extra` ' +
+            'from information_schema.columns where table_schema = ' +
+            this.quoteString(database) +
+            ' and table_name = ' +
+            this.quoteString(table)
+        );
+    }
+
+    /**
+     * Compile the query to determine the indexes.
+     */
+    public compileIndexes(table: string, database: string): string {
+        return (
+            'select index_name as `name`, group_concat(column_name order by seq_in_index) as `columns`, ' +
+            'index_type as `type`, not non_unique as `unique` ' +
+            'from information_schema.statistics where table_schema = ' +
+            this.quoteString(database) +
+            ' and table_name = ' +
+            this.quoteString(table) +
+            ' group by index_name, index_type, non_unique'
+        );
+    }
+
+    /**
+     * Compile the query to determine the foreign keys.
+     */
+    public compileForeignKeys(table: string, database: string): string {
+        return (
+            'select kc.constraint_name as `name`, ' +
+            'group_concat(kc.column_name order by kc.ordinal_position) as `columns`, ' +
+            'kc.referenced_table_schema as `foreign_schema`, ' +
+            'kc.referenced_table_name as `foreign_table`, ' +
+            'group_concat(kc.referenced_column_name order by kc.ordinal_position) as `foreign_columns`, ' +
+            'rc.update_rule as `on_update`, ' +
+            'rc.delete_rule as `on_delete` ' +
+            'from information_schema.key_column_usage kc join information_schema.referential_constraints rc ' +
+            'on kc.constraint_schema = rc.constraint_schema and kc.constraint_name = rc.constraint_name ' +
+            'where kc.table_schema = ' +
+            this.quoteString(database) +
+            ' and kc.table_name = ' +
+            this.quoteString(table) +
+            ' and kc.referenced_table_name is not null ' +
+            'group by kc.constraint_name, kc.referenced_table_schema, kc.referenced_table_name, rc.update_rule, rc.delete_rule'
+        );
     }
 
     /**
@@ -97,14 +201,14 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile the SQL needed to drop all tables.
      */
-    public compileDropAllTables(tables: Stringable[]): string {
+    public compileDropTables(tables: Stringable[]): string {
         return `drop table ${this.wrapArray(tables).join(',')}`;
     }
 
     /**
      * Compile the SQL needed to drop all views.
      */
-    public compileDropAllViews(views: Stringable[]): string {
+    public compileDropViews(views: Stringable[]): string {
         return `drop view ${this.wrapArray(views).join(',')}`;
     }
 
@@ -129,9 +233,25 @@ class MySqlGrammar extends Grammar {
      * Create the main create table clause.
      */
     protected compileCreateTable(blueprint: BlueprintI): string {
+        const tableStructure = this.getColumns(blueprint);
+
+        const primaryKey = this.getCommandByName<CommandIndexDefinition>(blueprint, 'primary');
+
+        if (primaryKey) {
+            const registry = primaryKey.getRegistry();
+            const algorithm = registry.algorithm ? this.getValue(registry.algorithm).toString() : '';
+            tableStructure.push(
+                `primary key ${algorithm ? 'using ' + algorithm : ''}(${this.columnize(
+                    primaryKey.getRegistry().columns
+                )})`
+            );
+
+            primaryKey.shouldBeSkipped = true;
+        }
+
         return `${blueprint.getRegistry().temporary ? 'create temporary' : 'create'} table ${this.wrapTable(
             blueprint
-        )} (${this.getColumns(blueprint).join(', ')})`;
+        )} (${tableStructure.join(', ')})`;
     }
 
     /**
@@ -144,7 +264,7 @@ class MySqlGrammar extends Grammar {
         // blueprint itself or on the root configuration for the connection that the
         // table is being created on. We will add these to the create table query.
         if (charset) {
-            sql += ` default character set ${charset}`;
+            sql += ` default character set ${this.getValue(charset).toString()}`;
         }
 
         const collation = blueprint.getRegistry().collation ?? connection.getConfig('collation');
@@ -153,7 +273,7 @@ class MySqlGrammar extends Grammar {
         // added to either this create table blueprint or the configuration for this
         // connection that the query is targeting. We'll add it to this SQL query.
         if (collation) {
-            sql += ` collate '${collation}'`;
+            sql += ` collate '${this.getValue(collation).toString()}'`;
         }
 
         return sql;
@@ -165,31 +285,10 @@ class MySqlGrammar extends Grammar {
     protected compileCreateEngine(sql: string, connection: ConnectionSessionI, blueprint: BlueprintI): string {
         const engine = blueprint.getRegistry().engine ?? connection.getConfig('engine');
         if (engine) {
-            return `${sql} engine = ${engine}`;
+            return `${sql} engine = ${this.getValue(engine).toString()}`;
         }
 
         return sql;
-    }
-
-    /**
-     * Compile the query to determine the list of tables.
-     */
-    public compileTableExists(): string {
-        return "select * from information_schema.tables where table_schema = ? and table_name = ? and table_type = 'BASE TABLE'";
-    }
-
-    /**
-     * Compile the query to determine the data type of column.
-     */
-    public compileColumnType(): string {
-        return 'select column_name as `column_name`, data_type as `data_type` from information_schema.columns where table_schema = ? and table_name = ? and column_name = ?';
-    }
-
-    /**
-     * Compile the query to determine the list of columns.
-     */
-    public compileColumnListing(): string {
-        return 'select column_name as `column_name` from information_schema.columns where table_schema = ? and table_name = ?';
     }
 
     /**
@@ -282,8 +381,9 @@ class MySqlGrammar extends Grammar {
      */
     public compilePrimary(blueprint: BlueprintI, command: CommandIndexDefinition): string {
         const registry = command.getRegistry();
+        const algorithm = registry.algorithm ? this.getValue(registry.algorithm).toString() : '';
         return `alter table ${this.wrapTable(blueprint)} add primary key ${
-            registry.algorithm ? 'using ' + registry.algorithm : ''
+            algorithm ? 'using ' + algorithm : ''
         }(${this.columnize(registry.columns)})`;
     }
 
@@ -355,8 +455,9 @@ class MySqlGrammar extends Grammar {
      */
     protected compileKey(blueprint: BlueprintI, command: CommandIndexDefinition, type: string): string {
         const registry = command.getRegistry();
+        const algorithm = registry.algorithm ? this.getValue(registry.algorithm).toString() : '';
         return `alter table ${this.wrapTable(blueprint)} add ${type} ${this.wrap(registry.index)}${
-            registry.algorithm ? ' using ' + registry.algorithm : ''
+            algorithm ? ' using ' + algorithm : ''
         }(${this.columnize(registry.columns)})`;
     }
 
@@ -370,8 +471,15 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile a drop table (if exists) command.
      */
-    public compileDropIfExists(blueprint: BlueprintI): string {
+    public compileDropTableIfExists(blueprint: BlueprintI): string {
         return `drop table if exists ${this.wrapTable(blueprint)}`;
+    }
+
+    /**
+     * Compile a drop view (if exists) command.
+     */
+    public compileDropViewIfExists(name: string): string {
+        return `drop view if exists ${this.wrapTable(name)}`;
     }
 
     /**
@@ -503,7 +611,7 @@ class MySqlGrammar extends Grammar {
     protected compileModifyCharset(_blueprint: BlueprintI, column: ColumnDefinition): string {
         const charset = column.getRegistry().charset;
         if (charset) {
-            return ` character set ${charset}`;
+            return ` character set ${this.getValue(charset).toString()}`;
         }
 
         return '';
@@ -515,7 +623,7 @@ class MySqlGrammar extends Grammar {
     protected compileModifyCollate(_blueprint: BlueprintI, column: ColumnDefinition): string {
         const collation = column.getRegistry().collation;
         if (collation) {
-            return ` collate '${collation}'`;
+            return ` collate '${this.getValue(collation).toString()}'`;
         }
 
         return '';
@@ -629,7 +737,7 @@ class MySqlGrammar extends Grammar {
                 storedAs = this.wrapJsonSelector(storedAs);
             }
 
-            return ` as (${storedAs}) stored`;
+            return ` as (${this.getValue(storedAs).toString()}) stored`;
         }
 
         return '';
@@ -656,7 +764,7 @@ class MySqlGrammar extends Grammar {
                 virtualAs = this.wrapJsonSelector(virtualAs);
             }
 
-            return ` as (${virtualAs})`;
+            return ` as (${this.getValue(virtualAs).toString()})`;
         }
 
         return '';

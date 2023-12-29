@@ -9,7 +9,7 @@ import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
 import SchemaBuilder from '../schema/builders/builder';
 import SchemaGrammar from '../schema/grammars/grammar';
-import { BindToI } from '../types';
+import BindToI from '../types/bind-to';
 import { DriverFLattedConfig, FlattedConnectionConfig, ReadWriteType } from '../types/config';
 import DriverConnectionI, {
     BeforeExecutingCallback,
@@ -19,16 +19,13 @@ import DriverConnectionI, {
     PretendingCallback,
     QueryExecutedCallback,
     TransactionCallback
-} from '../types/connection';
-import BuilderI, {
-    Binding,
-    BindingExclude,
-    BindingExcludeObject,
-    BindingObject,
-    SubQuery
-} from '../types/query/builder';
+} from '../types/connection/connection';
+
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
+import BuilderI from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
-import SchemaBuilderI from '../types/schema/builder';
+import { QueryAbleCallback } from '../types/query/query-builder';
+import SchemaBuilderI from '../types/schema/builder/schema-builder';
 import SchemaGrammarI from '../types/schema/grammar';
 import { raw } from '../utils';
 import ConnectionSession from './connection-session';
@@ -454,7 +451,7 @@ class Connection implements DriverConnectionI {
     /**
      * Begin a fluent query against a database table.
      */
-    public table(table: SubQuery<BuilderI>, as?: string): BuilderI {
+    public table(table: QueryAbleCallback<BuilderI> | BuilderI | Stringable, as?: string): BuilderI {
         return this.session().table(table, as);
     }
 
@@ -496,6 +493,17 @@ class Connection implements DriverConnectionI {
         useReadPdo?: boolean
     ): Promise<T[]> {
         return this.session().select<T>(query, bindings, useReadPdo);
+    }
+
+    /**
+     * Run a select statement against the database.
+     */
+    public async selectResultSets<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T[][]> {
+        return this.session().selectResultSets<T>(query, bindings, useReadPdo);
     }
 
     /**

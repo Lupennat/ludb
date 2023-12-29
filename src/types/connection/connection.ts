@@ -2,15 +2,16 @@ import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStat
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
-import QueryExecuted from '../events/query-executed';
-import BuilderContract from '../query/builder-contract';
-import ExpressionContract from '../query/expression-contract';
-import BindToI from './bind-to';
-import { FlattedConnectionConfig, ReadWriteType } from './config';
-import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable, SubQuery } from './query/builder';
-import GrammarI from './query/grammar';
-import SchemaBuilderI from './schema/builder';
-import SchemaGrammarI from './schema/grammar';
+import QueryExecuted from '../../events/query-executed';
+import ExpressionContract from '../../query/expression-contract';
+import BindToI from '../bind-to';
+import { FlattedConnectionConfig, ReadWriteType } from '../config';
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../generics';
+import BuilderI from '../query/builder';
+import GrammarI from '../query/grammar';
+import { QueryAbleCallback } from '../query/query-builder';
+import SchemaBuilderI from '../schema/builder/schema-builder';
+import SchemaGrammarI from '../schema/grammar';
 
 export type ConnectionResolver = <T extends FlattedConnectionConfig>(
     pdo: Pdo,
@@ -30,6 +31,8 @@ export type QueryExecutedCallback = (event: QueryExecuted) => void | Promise<voi
 
 export type PretendingCallback = (session: ConnectionSessionI) => void | Promise<void>;
 
+export type WithoutPretendingCallback<T> = () => T | Promise<T>;
+
 export type TransactionCallback = (session: ConnectionSessionI) => void | Promise<void>;
 
 export interface LoggedQuery {
@@ -38,7 +41,10 @@ export interface LoggedQuery {
 }
 
 export default interface DriverConnectionI
-    extends Omit<ConnectionSessionI, 'isSchema' | 'transactionLevel' | 'commit' | 'rollBack' | 'getDriverConnection'> {
+    extends Omit<
+        ConnectionSessionI,
+        'isSchema' | 'transactionLevel' | 'commit' | 'rollBack' | 'getDriverConnection' | 'withoutPretending'
+    > {
     /**
      * Get the current PDO connection.
      */
@@ -159,12 +165,12 @@ export interface ConnectionSessionI {
     /**
      * Begin a fluent query against a database table.
      */
-    table(table: SubQuery<BuilderContract>, as?: string): BuilderContract;
+    table(table: QueryAbleCallback<BuilderI> | BuilderI | Stringable, as?: string): BuilderI;
 
     /**
      * Get a new query builder instance.
      */
-    query(): BuilderContract;
+    query(): BuilderI;
 
     /**
      * Run a select statement and return a single result.
@@ -189,6 +195,15 @@ export interface ConnectionSessionI {
      * Run a select statement against the database.
      */
     select<T = Dictionary>(query: string, bindings?: Binding[] | BindingObject, useReadPdo?: boolean): Promise<T[]>;
+
+    /**
+     * Run a select statement against the database.
+     */
+    selectResultSets<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T[][]>;
 
     /**
      * Run a select statement against the database and get Column.
@@ -252,6 +267,11 @@ export interface ConnectionSessionI {
      * Execute the given callback in "dry run" mode.
      */
     pretend(callback: PretendingCallback): Promise<LoggedQuery[]>;
+
+    /**
+     * Execute the given callback without "pretending".
+     */
+    withoutPretending<T>(callback: WithoutPretendingCallback<T>): Promise<T>;
 
     /**
      * Execute a Closure within a transaction.

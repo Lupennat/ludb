@@ -1,8 +1,8 @@
 import Expression from '../query/expression';
-import { ConnectionSessionI } from '../types';
-import { Stringable } from '../types/query/builder';
+import { ConnectionSessionI } from '../types/connection/connection';
+import { Stringable } from '../types/generics';
 import { Relatable, RelatableConstructor } from '../types/schema/blueprint';
-import { BlueprintCallback } from '../types/schema/builder';
+import { BlueprintCallback } from '../types/schema/builder/schema-builder';
 import GrammarI from '../types/schema/grammar';
 import RegistryI, {
     ColumnDefinitionRegistryI,
@@ -103,6 +103,10 @@ class Blueprint {
         this.ensureCommandsAreValid(connection);
 
         for (const command of this.registry.commands) {
+            if (command.shouldBeSkipped) {
+                continue;
+            }
+
             switch (command.name) {
                 case 'add':
                     const adds = this.grammar.compileAdd(this, command, connection);
@@ -181,8 +185,8 @@ class Blueprint {
                         this.grammar.compileDropForeign(this, command as CommandForeignKeyDefinition, connection)
                     );
                     break;
-                case 'dropIfExists':
-                    statements.push(this.grammar.compileDropIfExists(this, command, connection));
+                case 'dropTableIfExists':
+                    statements.push(this.grammar.compileDropTableIfExists(this, command, connection));
                     break;
                 case 'primary':
                     statements.push(this.grammar.compilePrimary(this, command as CommandIndexDefinition, connection));
@@ -392,8 +396,8 @@ class Blueprint {
     /**
      * Indicate that the table should be dropped if it exists.
      */
-    public dropIfExists(): CommandDefinition {
-        return this.addCommand(this.createCommand('dropIfExists', {}));
+    public dropTableIfExists(): CommandDefinition {
+        return this.addCommand(this.createCommand('dropTableIfExists', {}));
     }
 
     /**
@@ -1384,6 +1388,13 @@ class Blueprint {
      */
     public getTable(): Stringable {
         return this.registry.table;
+    }
+
+    /**
+     * Get the table prefix.
+     */
+    public getPrefix(): Stringable {
+        return this.registry.prefix;
     }
 
     /**

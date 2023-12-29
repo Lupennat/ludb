@@ -1,7 +1,7 @@
 import ExpressionContract from '../query/expression-contract';
 import BindToI from './bind-to';
 import { ConnectionConfig, DriverConfig } from './config';
-import DriverConnectionI from './connection';
+import DriverConnectionI from './connection/connection';
 
 export type Extension = (config: ConnectionConfig, name: string) => DriverConnectionI;
 
@@ -13,7 +13,7 @@ export default interface DatabaseI {
     /**
      * Get a database connection instance.
      */
-    connection(name?: string): DriverConnectionI;
+    connection<T extends DriverConnectionI = DriverConnectionI>(name?: string): T;
 
     /**
      * Register a connection with the manager.

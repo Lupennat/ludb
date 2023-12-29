@@ -4,8 +4,9 @@ import { isPlainObject } from 'is-plain-object';
 import { TypedBinding } from 'lupdo';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
-import { Arrayable, Objectable, Stringable } from './types/query/builder';
+import { Stringable } from './types/generics';
 import GrammarI from './types/query/grammar';
+import { Arrayable, Objectable } from './types/query/query-builder';
 
 export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) => any {
     return (_key: string, value: any): any => {
@@ -91,7 +92,13 @@ export function causedByLostConnection(error: any): boolean {
         'Reason: Server is in script upgrade mode. Only administrator can connect at this time.',
         'SSL: Handshake timed out',
         'SQLSTATE[08006] [7] SSL error: sslv3 alert unexpected message',
-        'SQLSTATE[08006] [7] unrecognized SSL error code:'
+        'SQLSTATE[08006] [7] unrecognized SSL error code:',
+        'SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it',
+        'SQLSTATE[HY000] [2002] A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond',
+        'SQLSTATE[HY000] [2002] Network is unreachable',
+        'SQLSTATE[HY000] [2002] The requested address is not valid in its context',
+        'SQLSTATE[HY000] [2002] A socket operation was attempted to an unreachable network',
+        'SQLSTATE[HY000]: General error: 3989'
     ];
 
     for (const message of messages) {

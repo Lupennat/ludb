@@ -103,7 +103,7 @@ describe('Posgtres Schema Grammar', () => {
     it('Works Drop Table If Exists', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.dropIfExists();
+        blueprint.dropTableIfExists();
         const statements = blueprint.toSql(connection);
 
         expect(1).toBe(statements.length);
@@ -575,7 +575,7 @@ describe('Posgtres Schema Grammar', () => {
 
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support modifying generated columns.');
+        }).toThrow('This database driver does not support modifying generated columns.');
 
         blueprint = getPostgresBlueprint('users', table => {
             table.timestamp('added_at', 2).useCurrent().storedAs('foo is not null').change();
@@ -583,7 +583,7 @@ describe('Posgtres Schema Grammar', () => {
 
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support modifying generated columns.');
+        }).toThrow('This database driver does not support modifying generated columns.');
     });
 
     it('Works Adding String Without Length Limit', () => {
@@ -805,7 +805,7 @@ describe('Posgtres Schema Grammar', () => {
         blueprint.set('role', ['member', 'admin']);
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the set type.');
+        }).toThrow('This Database driver does not support the set type.');
     });
 
     it('Works Adding Date', () => {
@@ -1345,13 +1345,14 @@ describe('Posgtres Schema Grammar', () => {
             .references('id')
             .on('parents')
             .noActionOnDelete()
+            .noActionOnUpdate()
             .deferrable(false)
             .initiallyImmediate();
         statements = blueprint.toSql(connection);
 
         expect(1).toBe(statements.length);
         expect(
-            'alter table "users" add constraint "users_parent_id_foreign" foreign key ("parent_id") references "parents" ("id") on delete no action not deferrable'
+            'alter table "users" add constraint "users_parent_id_foreign" foreign key ("parent_id") references "parents" ("id") on delete no action on update no action not deferrable'
         ).toBe(statements[0]);
 
         blueprint = getPostgresBlueprint('users');
@@ -1518,7 +1519,7 @@ describe('Posgtres Schema Grammar', () => {
         blueprint.computed('discounted_virtual', 'price - 5').persisted();
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the computed type');
+        }).toThrow('This Database driver does not support the computed type');
     });
 
     it('Works Create Database', () => {
@@ -1547,37 +1548,31 @@ describe('Posgtres Schema Grammar', () => {
         expect('drop database if exists "my_database_b"').toBe(statement);
     });
 
-    it('Works Drop All Tables Escapes Table Names', () => {
-        const statement = new PostgresSchemaGrammar().compileDropAllTables(['alpha', 'beta', 'gamma']);
+    it('Works Drop View If Exists', () => {
+        let statement = new PostgresSchemaGrammar().compileDropViewIfExists('my_view_a');
+
+        expect('drop view if exists "my_view_a"').toBe(statement);
+
+        statement = new PostgresSchemaGrammar().compileDropViewIfExists('my_view_b');
+
+        expect('drop view if exists "my_view_b"').toBe(statement);
+    });
+
+    it('Works Drop Tables Escapes Table Names', () => {
+        const statement = new PostgresSchemaGrammar().compileDropTables(['alpha', 'beta', 'gamma']);
 
         expect('drop table "alpha","beta","gamma" cascade').toBe(statement);
     });
 
-    it('Works Drop All Views Escapes Table Names', () => {
-        const statement = new PostgresSchemaGrammar().compileDropAllViews(['alpha', 'beta', 'gamma']);
+    it('Works Drop Views Escapes Table Names', () => {
+        const statement = new PostgresSchemaGrammar().compileDropViews(['alpha', 'beta', 'gamma']);
 
         expect('drop view "alpha","beta","gamma" cascade').toBe(statement);
     });
 
-    it('Works Drop All Types Escapes Table Names', () => {
-        const statement = new PostgresSchemaGrammar().compileDropAllTypes(['alpha', 'beta', 'gamma']);
+    it('Works Drop Types Escapes Table Names', () => {
+        const statement = new PostgresSchemaGrammar().compileDropTypes(['alpha', 'beta', 'gamma']);
 
         expect('drop type "alpha","beta","gamma" cascade').toBe(statement);
-    });
-
-    it('Works Compile Table Exists', () => {
-        const statement = new PostgresSchemaGrammar().compileTableExists();
-
-        expect(
-            "select * from information_schema.tables where table_catalog = ? and table_schema = ? and table_name = ? and table_type = 'BASE TABLE'"
-        ).toBe(statement);
-    });
-
-    it('Works Compile Column Listing', () => {
-        const statement = new PostgresSchemaGrammar().compileColumnListing();
-
-        expect(
-            'select column_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ?'
-        ).toBe(statement);
     });
 });

@@ -2,9 +2,11 @@ import ColumnDefinition from '../../schema/definitions/column-definition';
 import CommandDefinition from '../../schema/definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../../schema/definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../../schema/definitions/commands/command-index-definition';
+import CommandViewDefinition from '../../schema/definitions/commands/command-view-definition';
 import BaseGrammarI from '../base-grammar';
-import { ConnectionSessionI } from '../connection';
-import { Stringable } from '../query/builder';
+import { ConnectionSessionI } from '../connection/connection';
+import { Stringable } from '../generics';
+
 import BlueprintI from './blueprint';
 import {
     ColumnDefinitionRegistryI,
@@ -12,7 +14,8 @@ import {
     CommandType,
     CommentRegistryI,
     RenameFullRegistryI,
-    RenameRegistryI
+    RenameRegistryI,
+    ViewRegistryI
 } from './registry';
 
 export default interface GrammarI extends Omit<BaseGrammarI, 'wrapTable'> {
@@ -20,26 +23,49 @@ export default interface GrammarI extends Omit<BaseGrammarI, 'wrapTable'> {
      * Compile a create database command.
      */
     compileCreateDatabase(name: string, connection: ConnectionSessionI): string;
-
     /**
-     * Compile the SQL needed to retrieve all table names.
+     * Compile a create view command;
      */
-    compileGetAllTables(searchPath?: string[]): string;
-
+    compileCreateView(_name: Stringable, _command: CommandViewDefinition<ViewRegistryI>): string;
     /**
-     * Compile the SQL needed to retrieve all table views.
+     * Compile the query to determine if the dbstat table is available.
      */
-    compileGetAllViews(searchPath?: string[]): string;
-
-    /**
-     * Compile the SQL needed to retrieve all type names.
-     */
-    compileGetAllTypes(): string;
+    compileDbstatExists(): string;
 
     /**
      * Compile a drop database if exists command.
      */
     compileDropDatabaseIfExists(name: string): string;
+
+    /**
+     * Compile the query to determine the tables.
+     */
+    compileTables(databaseOrSchemaOrWithSize?: string | boolean): string;
+
+    /**
+     * Compile the query to determine the views.
+     */
+    compileViews(databaseOrSchema?: string): string;
+
+    /**
+     * Compile the query to determine the user-defined types.
+     */
+    compileTypes(databaseOrSchema?: string): string;
+
+    /**
+     * Compile the query to determine the columns.
+     */
+    compileColumns(table: string, databaseOrSchema?: string): string;
+
+    /**
+     * Compile the query to determine the indexes.
+     */
+    compileIndexes(table: string, databaseOrSchema?: string): string;
+
+    /**
+     * Compile the query to determine the foreign keys.
+     */
+    compileForeignKeys(table: string, databaseOrSchema?: string): string;
 
     /**
      * Compile a drop table command.
@@ -49,22 +75,27 @@ export default interface GrammarI extends Omit<BaseGrammarI, 'wrapTable'> {
     /**
      * Compile the SQL needed to drop all tables.
      */
-    compileDropAllTables(tables?: Stringable[]): string;
+    compileDropTables(tables?: Stringable[]): string;
 
     /**
      * Compile the SQL needed to drop all views.
      */
-    compileDropAllViews(views?: Stringable[]): string;
+    compileDropViews(views?: Stringable[]): string;
 
     /**
      * Compile the SQL needed to drop all types.
      */
-    compileDropAllTypes(types?: Stringable[]): string;
+    compileDropTypes(types?: Stringable[]): string;
+
+    /**
+     * Compile the SQL needed to drop all domains.
+     */
+    compileDropDomains(domains?: Stringable[]): string;
 
     /**
      * Compile the command to drop all foreign keys.
      */
-    compileDropAllForeignKeys(): string;
+    compileDropForeignKeys(): string;
 
     /**
      * Compile the SQL needed to rebuild the database.
@@ -75,21 +106,6 @@ export default interface GrammarI extends Omit<BaseGrammarI, 'wrapTable'> {
      * Compile a create table command.
      */
     compileCreate(blueprint: BlueprintI, command: CommandDefinition, connection: ConnectionSessionI): string;
-
-    /**
-     * Compile the query to determine the list of tables.
-     */
-    compileTableExists(): string;
-
-    /**
-     * Compile the query to determine the type of column.
-     */
-    compileColumnType(table?: string, column?: string): string;
-
-    /**
-     * Compile the query to determine the list of columns.
-     */
-    compileColumnListing(table?: string): string;
 
     /**
      * Compile the command to enable foreign key constraints.
@@ -246,7 +262,12 @@ export default interface GrammarI extends Omit<BaseGrammarI, 'wrapTable'> {
     /**
      * Compile a drop table (if exists) command.
      */
-    compileDropIfExists(blueprint: BlueprintI, command: CommandDefinition, connection: ConnectionSessionI): string;
+    compileDropTableIfExists(blueprint: BlueprintI, command: CommandDefinition, connection: ConnectionSessionI): string;
+
+    /**
+     * Compile a drop view (if exists) command.
+     */
+    compileDropViewIfExists(name: string): string;
 
     /**
      * Compile a table comment command.

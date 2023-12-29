@@ -1,6 +1,8 @@
 import { CommandRegistryI, CommandType } from '../../../types/schema/registry';
 
 class CommandDefinition<Registry extends CommandRegistryI = CommandRegistryI> {
+    public shouldBeSkipped = false;
+
     constructor(public readonly name: CommandType, protected registry: Registry) {}
 
     /**

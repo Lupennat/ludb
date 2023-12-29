@@ -1,5 +1,5 @@
 import ExpressionContract from '../query/expression-contract';
-import { Stringable } from './query/builder';
+import { Stringable } from './generics';
 
 export default interface BaseGrammarI {
     /**

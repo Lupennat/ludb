@@ -214,15 +214,15 @@ describe('Wheres', () => {
     });
 
     it('Works Sole Fails For Multiple Records', async () => {
-        await expect(DB.connection().table('test_wheres_users').whereIn('id', [1, 2]).sole()).rejects.toThrowError(
+        await expect(DB.connection().table('test_wheres_users').whereIn('id', [1, 2]).sole()).rejects.toThrow(
             '2 records were found.'
         );
     });
 
     it('Works Sole Fails If No Records', async () => {
-        await expect(
-            DB.connection().table('test_wheres_users').where('name', 'wrong-name').sole()
-        ).rejects.toThrowError('no records were found.');
+        await expect(DB.connection().table('test_wheres_users').where('name', 'wrong-name').sole()).rejects.toThrow(
+            'no records were found.'
+        );
     });
 
     it('Works Sole Value', async () => {

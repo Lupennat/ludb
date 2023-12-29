@@ -1,6 +1,6 @@
 import { isPlainObject } from 'is-plain-object';
 import { CursorPaginatorI, CursorPaginatorObject, CursorPaginatorOptions } from '../types/paginations';
-import { Objectable } from '../types/query/builder';
+import { Objectable } from '../types/query/query-builder';
 import { afterLast, isObjectable } from '../utils';
 import AbstractPaginator from './abstract-paginator';
 import Cursor from './cursor';

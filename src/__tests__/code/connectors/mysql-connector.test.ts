@@ -63,8 +63,8 @@ describe('MySql Connector', () => {
             }
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
 
         connector = new MySqlConnector();
@@ -87,7 +87,7 @@ describe('MySql Connector', () => {
             charset: 'utf8'
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
     });
 

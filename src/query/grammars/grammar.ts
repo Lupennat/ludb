@@ -2,15 +2,17 @@
 
 import set from 'set-value';
 import BaseGrammar from '../../grammar';
-import { Binding, BindingExclude, BindingExcludeObject, RowValues, Stringable } from '../../types/query/builder';
+import { Binding, BindingExclude, BindingExcludeObject, Stringable } from '../../types/generics';
 import GrammarI from '../../types/query/grammar';
 import JoinClauseI from '../../types/query/join-clause';
+import QueryBuilderI, { RowValues } from '../../types/query/query-builder';
 import {
     Aggregate,
     BindingTypes,
     Having,
     HavingBasic,
     HavingBetween,
+    HavingExpression,
     HavingNested,
     HavingNull,
     HavingRaw,
@@ -25,6 +27,7 @@ import {
     WhereContains,
     WhereDateTime,
     WhereExists,
+    WhereExpression,
     WhereIn,
     WhereInRaw,
     WhereKeyContains,
@@ -45,7 +48,6 @@ import {
     merge,
     stringifyReplacer
 } from '../../utils';
-import BuilderContract from '../builder-contract';
 import ExpressionContract from '../expression-contract';
 import IndexHint from '../index-hint';
 import JoinClause from '../join-clause';
@@ -82,7 +84,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a select query into SQL.
      */
-    public compileSelect(query: BuilderContract): string {
+    public compileSelect(query: QueryBuilderI): string {
         const registry = query.getRegistry();
         if ((registry.unions.length > 0 || registry.havings.length > 0) && registry.aggregate !== null) {
             return this.compileUnionAggregate(query);
@@ -116,7 +118,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile the components necessary for a select clause.
      */
-    protected compileComponents(query: BuilderContract): string[] {
+    protected compileComponents(query: QueryBuilderI): string[] {
         const sqls: string[] = [];
 
         const registry = query.getRegistry();
@@ -192,7 +194,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile an aggregated select clause.
      */
-    protected compileAggregate(query: BuilderContract, aggregate: Aggregate): string {
+    protected compileAggregate(query: QueryBuilderI, aggregate: Aggregate): string {
         let column = this.columnize(aggregate.columns);
         const distinct = query.getRegistry().distinct;
 
@@ -211,7 +213,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile the "select *" portion of the query.
      */
-    protected compileColumns(query: BuilderContract, columns: Stringable[]): string {
+    protected compileColumns(query: QueryBuilderI, columns: Stringable[]): string {
         // If the query is actually performing an aggregating select, we will let that
         // compiler handle the building of the select clauses, as it will need some
         // more syntax that is best handled by that function to keep things neat.
@@ -227,21 +229,21 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile the "from" portion of the query.
      */
-    protected compileFrom(_query: BuilderContract, table: Stringable): string {
+    protected compileFrom(_query: QueryBuilderI, table: Stringable): string {
         return `from ${this.wrapTable(table)}`;
     }
 
     /**
      * Compile the index hints for the query.
      */
-    protected compileIndexHint(_query: BuilderContract, _indexHint: IndexHint): string {
+    protected compileIndexHint(_query: QueryBuilderI, _indexHint: IndexHint): string {
         throw new Error('This database engine does not support index hints.');
     }
 
     /**
      * Compile the "join" portions of the query.
      */
-    protected compileJoins(query: BuilderContract, joins: JoinClauseI[]): string {
+    protected compileJoins(query: QueryBuilderI, joins: JoinClauseI[]): string {
         return joins
             .map((join: JoinClauseI) => {
                 const table = this.wrapTable(join.table);
@@ -258,7 +260,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile the "where" portions of the query.
      */
-    public compileWheres(query: BuilderContract): string {
+    public compileWheres(query: QueryBuilderI): string {
         // Each type of where clause has its own compiler function, which is responsible
         // for actually creating the where clauses SQL. This helps keep the code nice
         // and maintainable since each clause has a very small method that it uses.
@@ -277,67 +279,69 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Get an array of all the where clauses for the query.
      */
-    protected compileWheresToArray(query: BuilderContract): string[] {
+    protected compileWheresToArray(query: QueryBuilderI): string[] {
         return query.getRegistry().wheres.map((where: Where) => {
             return `${where.boolean} ${this.compileWhere(query, where)}`;
         });
     }
 
-    protected compileWhere(query: BuilderContract, where: Where): string {
+    protected compileWhere(query: QueryBuilderI, where: Where): string {
         switch (where.type) {
             case 'Raw':
-                return this.compileWhereRaw(query, where as WhereRaw);
+                return this.compileWhereRaw(query, where);
+            case 'Expression':
+                return this.compileWhereExpression(query, where);
             case 'Bitwise':
-                return this.compileWhereBitwise(query, where as WhereBasic);
+                return this.compileWhereBitwise(query, where);
             case 'In':
-                return this.compileWhereIn(query, where as WhereIn);
+                return this.compileWhereIn(query, where);
             case 'InRaw':
-                return this.compileWhereInRaw(query, where as WhereInRaw);
+                return this.compileWhereInRaw(query, where);
             case 'Null':
-                return this.compileWhereNull(query, where as WhereNull);
+                return this.compileWhereNull(query, where);
             case 'Between':
-                return this.compileWhereBetween(query, where as WhereBetween);
+                return this.compileWhereBetween(query, where);
             case 'BetweenColumns':
-                return this.compileWhereBetweenColumns(query, where as WhereBetweenColumns);
+                return this.compileWhereBetweenColumns(query, where);
             case 'Date':
-                return this.compileWhereDate(query, where as WhereDateTime);
+                return this.compileWhereDate(query, where);
             case 'Time':
-                return this.compileWhereTime(query, where as WhereDateTime);
+                return this.compileWhereTime(query, where);
             case 'Day':
-                return this.compileWhereDay(query, where as WhereDateTime);
+                return this.compileWhereDay(query, where);
             case 'Month':
-                return this.compileWhereMonth(query, where as WhereDateTime);
+                return this.compileWhereMonth(query, where);
             case 'Year':
-                return this.compileWhereYear(query, where as WhereDateTime);
+                return this.compileWhereYear(query, where);
             case 'Column':
-                return this.compileWhereColumn(query, where as WhereColumn);
+                return this.compileWhereColumn(query, where);
             case 'Nested':
-                return this.compileWhereNested(query, where as WhereNested);
+                return this.compileWhereNested(query, where);
             case 'Sub':
-                return this.compileWhereSub(query, where as WhereSub);
+                return this.compileWhereSub(query, where);
             case 'Exists':
-                return this.compileWhereExists(query, where as WhereExists);
+                return this.compileWhereExists(query, where);
             case 'RowValues':
-                return this.compileWhereRowValues(query, where as WhereMultiColumn);
+                return this.compileWhereRowValues(query, where);
             case 'JsonBoolean':
-                return this.compileWhereJsonBoolean(query, where as WhereBoolean);
+                return this.compileWhereJsonBoolean(query, where);
             case 'JsonContains':
-                return this.compileWhereJsonContains(query, where as WhereContains);
+                return this.compileWhereJsonContains(query, where);
             case 'JsonContainsKey':
-                return this.compileWhereJsonContainsKey(query, where as WhereKeyContains);
+                return this.compileWhereJsonContainsKey(query, where);
             case 'JsonLength':
-                return this.compileWhereJsonLength(query, where as WhereLength);
+                return this.compileWhereJsonLength(query, where);
             case 'Fulltext':
-                return this.compilewhereFulltext(query, where as whereFulltext);
+                return this.compilewhereFulltext(query, where);
             default:
-                return this.compileWhereBasic(query, where as WhereBasic);
+                return this.compileWhereBasic(query, where);
         }
     }
 
     /**
      * Format the where clause statements into one string.
      */
-    protected concatenateWhereClauses(query: BuilderContract, sqls: string[]): string {
+    protected concatenateWhereClauses(query: QueryBuilderI, sqls: string[]): string {
         const conjunction = query instanceof JoinClause ? 'on' : 'where';
 
         return `${conjunction} ${this.removeLeadingBoolean(sqls.join(' '))}`;
@@ -346,7 +350,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a basic where clause.
      */
-    protected compileWhereBasic(_query: BuilderContract, where: WhereBasic): string {
+    protected compileWhereBasic(_query: QueryBuilderI, where: WhereBasic): string {
         const value = this.parameter(where.value);
         const not = where.not ? 'not ' : '';
 
@@ -358,21 +362,28 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a raw where clause.
      */
-    protected compileWhereRaw(_query: BuilderContract, where: WhereRaw): string {
-        return where.sql;
+    protected compileWhereRaw(_query: QueryBuilderI, where: WhereRaw): string {
+        return where.sql instanceof ExpressionContract ? where.sql.getValue(this).toString() : where.sql;
+    }
+
+    /**
+     * Compile a "where expression" clause.
+     */
+    protected compileWhereExpression(_query: QueryBuilderI, where: WhereExpression): string {
+        return `${where.not ? 'not ' : ''}${where.column.getValue(this)}`;
     }
 
     /**
      * Compile a bitwise operator where clause.
      */
-    protected compileWhereBitwise(query: BuilderContract, where: WhereBasic): string {
+    protected compileWhereBitwise(query: QueryBuilderI, where: WhereBasic): string {
         return this.compileWhereBasic(query, where);
     }
 
     /**
      * Compile a "where in" clause.
      */
-    protected compileWhereIn(_query: BuilderContract, where: WhereIn): string {
+    protected compileWhereIn(_query: QueryBuilderI, where: WhereIn): string {
         if (where.values.length > 0) {
             const not = where.not ? 'not ' : '';
             return `${this.wrap(where.column)} ${not}in (${this.parameterize(where.values)})`;
@@ -386,7 +397,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      *
      * For safety, whereIntegerInRaw ensures this method is only used with integer values.
      */
-    protected compileWhereInRaw(_query: BuilderContract, where: WhereInRaw): string {
+    protected compileWhereInRaw(_query: QueryBuilderI, where: WhereInRaw): string {
         if (where.values.length > 0) {
             const not = where.not ? 'not ' : '';
             return `${this.wrap(where.column)} ${not}in (${where.values.join(', ')})`;
@@ -398,7 +409,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where null" clause.
      */
-    protected compileWhereNull(_query: BuilderContract, where: WhereNull): string {
+    protected compileWhereNull(_query: QueryBuilderI, where: WhereNull): string {
         const isNull = where.not ? 'is not null' : 'is null';
         return `${this.wrap(where.column)} ${isNull}`;
     }
@@ -406,7 +417,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "between" where clause.
      */
-    protected compileWhereBetween(_query: BuilderContract, where: WhereBetween): string {
+    protected compileWhereBetween(_query: QueryBuilderI, where: WhereBetween): string {
         const between = where.not ? 'not between' : 'between';
 
         const min = this.parameter(where.values[0]);
@@ -418,7 +429,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "between" where clause.
      */
-    protected compileWhereBetweenColumns(_query: BuilderContract, where: WhereBetweenColumns): string {
+    protected compileWhereBetweenColumns(_query: QueryBuilderI, where: WhereBetweenColumns): string {
         const between = where.not ? 'not between' : 'between';
 
         const min = this.wrap(where.values[0]);
@@ -430,42 +441,42 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where date" clause.
      */
-    protected compileWhereDate(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereDate(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('date', query, where);
     }
 
     /**
      * Compile a "where time" clause.
      */
-    protected compileWhereTime(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereTime(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('time', query, where);
     }
 
     /**
      * Compile a "where day" clause.
      */
-    protected compileWhereDay(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereDay(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('day', query, where);
     }
 
     /**
      * Compile a "where month" clause.
      */
-    protected compileWhereMonth(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereMonth(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('month', query, where);
     }
 
     /**
      * Compile a "where year" clause.
      */
-    protected compileWhereYear(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereYear(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('year', query, where);
     }
 
     /**
      * Compile a date based where clause.
      */
-    protected dateBasedWhere(type: string, _query: BuilderContract, where: WhereDateTime): string {
+    protected dateBasedWhere(type: string, _query: QueryBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
         const not = where.not ? 'not ' : '';
         return `${not}${type}(${this.wrap(where.column)}) ${where.operator} ${value}`;
@@ -474,7 +485,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a where clause comparing two columns.
      */
-    protected compileWhereColumn(_query: BuilderContract, where: WhereColumn): string {
+    protected compileWhereColumn(_query: QueryBuilderI, where: WhereColumn): string {
         const not = where.not ? 'not ' : '';
         return `${not}${this.wrap(where.first)} ${where.operator} ${this.wrap(where.second)}`;
     }
@@ -482,7 +493,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a nested where clause.
      */
-    protected compileWhereNested(_query: BuilderContract, where: WhereNested): string {
+    protected compileWhereNested(_query: QueryBuilderI, where: WhereNested): string {
         // Here we will calculate what portion of the string we need to remove. If this
         // is a join clause query, we need to remove the "on" portion of the SQL and
         // if it is a normal query we need to take the leading "where" of queries.
@@ -495,7 +506,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a where condition with a sub-select.
      */
-    protected compileWhereSub(_query: BuilderContract, where: WhereSub): string {
+    protected compileWhereSub(_query: QueryBuilderI, where: WhereSub): string {
         const select = this.compileSelect(where.query);
         const not = where.not ? 'not ' : '';
         return `${not}${this.wrap(where.column)} ${where.operator} (${select})`;
@@ -504,7 +515,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a where exists clause.
      */
-    protected compileWhereExists(_query: BuilderContract, where: WhereExists): string {
+    protected compileWhereExists(_query: QueryBuilderI, where: WhereExists): string {
         const not = where.not ? 'not ' : '';
         return `${not}exists (${this.compileSelect(where.query)})`;
     }
@@ -512,7 +523,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a where row values condition.
      */
-    protected compileWhereRowValues(_query: BuilderContract, where: WhereMultiColumn): string {
+    protected compileWhereRowValues(_query: QueryBuilderI, where: WhereMultiColumn): string {
         const columns = this.columnize(where.columns);
         const values = this.parameterize(where.values);
         const not = where.not ? 'not ' : '';
@@ -523,7 +534,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where JSON boolean" clause.
      */
-    protected compileWhereJsonBoolean(_query: BuilderContract, where: WhereBoolean): string {
+    protected compileWhereJsonBoolean(_query: QueryBuilderI, where: WhereBoolean): string {
         const column = this.wrapJsonBooleanSelector(where.column);
         const value = this.wrapJsonBooleanValue(this.parameter(where.value));
         const not = where.not ? 'not ' : '';
@@ -534,7 +545,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where JSON contains" clause.
      */
-    protected compileWhereJsonContains(_query: BuilderContract, where: WhereContains): string {
+    protected compileWhereJsonContains(_query: QueryBuilderI, where: WhereContains): string {
         const not = where.not ? 'not ' : '';
 
         return `${not}${this.compileJsonContains(where.column, this.parameter(where.value))}`;
@@ -557,7 +568,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where JSON contains key" clause.
      */
-    protected compileWhereJsonContainsKey(_query: BuilderContract, where: WhereKeyContains): string {
+    protected compileWhereJsonContainsKey(_query: QueryBuilderI, where: WhereKeyContains): string {
         const not = where.not ? 'not ' : '';
 
         return `${not}${this.compileJsonContainsKey(where.column)}`;
@@ -573,7 +584,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where JSON length" clause.
      */
-    protected compileWhereJsonLength(_query: BuilderContract, where: WhereLength): string {
+    protected compileWhereJsonLength(_query: QueryBuilderI, where: WhereLength): string {
         const not = where.not ? 'not ' : '';
 
         return `${not}${this.compileJsonLength(where.column, where.operator, this.parameter(where.value))}`;
@@ -589,7 +600,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "where fulltext" clause.
      */
-    protected compilewhereFulltext(query: BuilderContract, where: whereFulltext): string {
+    protected compilewhereFulltext(query: QueryBuilderI, where: whereFulltext): string {
         const not = where.not ? 'not ' : '';
 
         return `${not}${this.compileFulltext(query, where)}`;
@@ -598,21 +609,21 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a "fulltext" statement into SQL.
      */
-    protected compileFulltext(_query: BuilderContract, _where: whereFulltext): string {
+    protected compileFulltext(_query: QueryBuilderI, _where: whereFulltext): string {
         throw new Error('This database engine does not support fulltext search operations.');
     }
 
     /**
      * Compile the "group by" portions of the query.
      */
-    protected compileGroups(_query: BuilderContract, groups: Stringable[]): string {
+    protected compileGroups(_query: QueryBuilderI, groups: Stringable[]): string {
         return `group by ${this.columnize(groups)}`;
     }
 
     /**
      * Compile the "having" portions of the query.
      */
-    protected compileHavings(query: BuilderContract): string {
+    protected compileHavings(query: QueryBuilderI): string {
         return `having ${this.removeLeadingBoolean(
             query
                 .getRegistry()
@@ -626,13 +637,15 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a single having clause.
      */
-    protected compileHaving(query: BuilderContract, having: Having): string {
+    protected compileHaving(query: QueryBuilderI, having: Having): string {
         // If the having clause is "raw", we can just return the clause straight away
         // without doing any more processing on it. Otherwise, we will compile the
         // clause into SQL based on the components that make it up from builder.
         switch (having.type) {
             case 'Raw':
                 return this.compileHavingRaw(query, having);
+            case 'Expression':
+                return this.compileHavingExpression(query, having);
             case 'Between':
                 return this.compileHavingBetween(query, having);
             case 'Null':
@@ -649,7 +662,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a basic having clause.
      */
-    protected compileHavingBasic(_query: BuilderContract, having: HavingBasic): string {
+    protected compileHavingBasic(_query: QueryBuilderI, having: HavingBasic): string {
         const column = this.wrap(having.column);
         const parameter = this.parameter(having.value);
         const not = having.not ? 'not ' : '';
@@ -660,14 +673,21 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a having raw clause.
      */
-    protected compileHavingRaw(_query: BuilderContract, having: HavingRaw): string {
-        return having.sql;
+    protected compileHavingRaw(_query: QueryBuilderI, having: HavingRaw): string {
+        return having.sql instanceof ExpressionContract ? having.sql.getValue(this).toString() : having.sql;
+    }
+
+    /**
+     * Compile a having expression clause.
+     */
+    protected compileHavingExpression(_query: QueryBuilderI, having: HavingExpression): string {
+        return `${having.not ? 'not ' : ''}${having.column.getValue(this)}`;
     }
 
     /**
      * Compile a "between" having clause.
      */
-    protected compileHavingBetween(_query: BuilderContract, having: HavingBetween): string {
+    protected compileHavingBetween(_query: QueryBuilderI, having: HavingBetween): string {
         const between = having.not ? 'not between' : 'between';
         const column = this.wrap(having.column);
         const min = this.parameter(having.values[0]);
@@ -679,7 +699,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a having null clause.
      */
-    protected compileHavingNull(_query: BuilderContract, having: HavingNull): string {
+    protected compileHavingNull(_query: QueryBuilderI, having: HavingNull): string {
         const isNull = having.not ? 'is not null' : 'is null';
         const column = this.wrap(having.column);
 
@@ -689,7 +709,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a nested having clause.
      */
-    protected compileHavingNested(_query: BuilderContract, having: HavingNested): string {
+    protected compileHavingNested(_query: QueryBuilderI, having: HavingNested): string {
         const havings = this.compileHavings(having.query);
         const not = having.not ? 'not ' : '';
 
@@ -699,21 +719,21 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a having clause involving a bit operator.
      */
-    protected compileHavingBitwise(query: BuilderContract, having: HavingBasic): string {
+    protected compileHavingBitwise(query: QueryBuilderI, having: HavingBasic): string {
         return this.compileHavingBasic(query, having);
     }
 
     /**
      * Compile the "order by" portions of the query.
      */
-    protected compileOrders(query: BuilderContract, orders: Order[]): string {
+    protected compileOrders(query: QueryBuilderI, orders: Order[]): string {
         return `order by ${this.compileOrdersToArray(query, orders).join(', ')}`;
     }
 
     /**
      * Compile the query orders to an array.
      */
-    protected compileOrdersToArray(_query: BuilderContract, orders: Order[]): string[] {
+    protected compileOrdersToArray(_query: QueryBuilderI, orders: Order[]): string[] {
         return orders.map((order: Order) => {
             return 'sql' in order ? order.sql : `${this.wrap(order.column)} ${order.direction}`;
         });
@@ -722,28 +742,28 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile the "limit" portions of the query.
      */
-    protected compileLimit(_query: BuilderContract, limit: number): string {
+    protected compileLimit(_query: QueryBuilderI, limit: number): string {
         return `limit ${limit}`;
     }
 
     /**
      * Compile the "offset" portions of the query.
      */
-    protected compileOffset(_query: BuilderContract, offset: number): string {
+    protected compileOffset(_query: QueryBuilderI, offset: number): string {
         return `offset ${offset}`;
     }
 
     /**
      * Compile the lock into SQL.
      */
-    protected compileLock(_query: BuilderContract, value: boolean | string): string {
+    protected compileLock(_query: QueryBuilderI, value: boolean | string): string {
         return typeof value === 'string' ? value : '';
     }
 
     /**
      * Compile the "union" queries attached to the main query.
      */
-    protected compileUnions(query: BuilderContract): string {
+    protected compileUnions(query: QueryBuilderI): string {
         let sql = '';
 
         const registry = query.getRegistry();
@@ -786,7 +806,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a union aggregate query into SQL.
      */
-    protected compileUnionAggregate(query: BuilderContract): string {
+    protected compileUnionAggregate(query: QueryBuilderI): string {
         const registry = query.getRegistry();
 
         const sql = this.compileAggregate(query, registry.aggregate as Aggregate);
@@ -808,7 +828,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile an exists statement into SQL.
      */
-    public compileExists(query: BuilderContract): string {
+    public compileExists(query: QueryBuilderI): string {
         const select = this.compileSelect(query);
 
         return `select exists(${select}) as ${this.wrap('exists')}`;
@@ -817,7 +837,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile an insert statement into SQL.
      */
-    public compileInsert(query: BuilderContract, values: RowValues[] | RowValues): string {
+    public compileInsert(query: QueryBuilderI, values: RowValues[] | RowValues): string {
         // Essentially we will force every insert to be treated as a batch insert which
         // simply makes creating the SQL easier for us since we can utilize the same
         // basic routine regardless of an amount of records given to us to insert.
@@ -846,21 +866,21 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile an insert ignore statement into SQL.
      */
-    public compileInsertOrIgnore(_query: BuilderContract, _values: RowValues[] | RowValues): string {
+    public compileInsertOrIgnore(_query: QueryBuilderI, _values: RowValues[] | RowValues): string {
         throw new Error('This database engine does not support inserting while ignoring errors.');
     }
 
     /**
      * Compile an insert and get ID statement into SQL.
      */
-    public compileInsertGetId(query: BuilderContract, values: RowValues, _sequence: string | null): string {
+    public compileInsertGetId(query: QueryBuilderI, values: RowValues, _sequence: string | null): string {
         return this.compileInsert(query, values);
     }
 
     /**
      * Compile an insert statement using a subquery into SQL.
      */
-    public compileInsertUsing(query: BuilderContract, columns: Stringable[], sql: string): string {
+    public compileInsertUsing(query: QueryBuilderI, columns: Stringable[], sql: string): string {
         const table = this.wrapTable(query.getRegistry().from);
 
         if (
@@ -876,7 +896,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile an update statement into SQL.
      */
-    public compileUpdate(query: BuilderContract, values: RowValues): string {
+    public compileUpdate(query: QueryBuilderI, values: RowValues): string {
         const table = this.wrapTable(query.getRegistry().from);
 
         const columns = this.compileUpdateColumns(query, values);
@@ -890,14 +910,14 @@ class Grammar extends BaseGrammar implements GrammarI {
         ).trim();
     }
 
-    public compileUpdateFrom(_query: BuilderContract, _values: RowValues): string {
+    public compileUpdateFrom(_query: QueryBuilderI, _values: RowValues): string {
         throw new Error('This database engine does not support the updateFrom method.');
     }
 
     /**
      * Compile the columns for an update statement.
      */
-    protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+    protected compileUpdateColumns(_query: QueryBuilderI, values: RowValues): string {
         return Object.keys(values)
             .map((key: keyof RowValues & string) => {
                 return `${this.wrap(key)} = ${this.parameter(values[key])}`;
@@ -908,19 +928,14 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile an update statement without joins into SQL.
      */
-    protected compileUpdateWithoutJoins(
-        _query: BuilderContract,
-        table: string,
-        columns: string,
-        where: string
-    ): string {
+    protected compileUpdateWithoutJoins(_query: QueryBuilderI, table: string, columns: string, where: string): string {
         return `update ${table} set ${columns} ${where}`;
     }
 
     /**
      * Compile an update statement with joins into SQL.
      */
-    protected compileUpdateWithJoins(query: BuilderContract, table: string, columns: string, where: string): string {
+    protected compileUpdateWithJoins(query: QueryBuilderI, table: string, columns: string, where: string): string {
         const joins = this.compileJoins(query, query.getRegistry().joins);
 
         return `update ${table} ${joins} set ${columns} ${where}`;
@@ -930,7 +945,7 @@ class Grammar extends BaseGrammar implements GrammarI {
      * Compile an "upsert" statement into SQL.
      */
     public compileUpsert(
-        _query: BuilderContract,
+        _query: QueryBuilderI,
         _values: RowValues[],
         _uniqueBy: string[],
         _update: Array<string | RowValues>
@@ -959,7 +974,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a delete statement into SQL.
      */
-    public compileDelete(query: BuilderContract): string {
+    public compileDelete(query: QueryBuilderI): string {
         const table = this.wrapTable(query.getRegistry().from);
 
         const where = this.compileWheres(query);
@@ -974,7 +989,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a delete statement with joins into SQL.
      */
-    protected compileDeleteWithJoins(query: BuilderContract, table: string, where: string): string {
+    protected compileDeleteWithJoins(query: QueryBuilderI, table: string, where: string): string {
         const exploded = table.split(/ as /g);
         const alias = exploded.pop();
 
@@ -986,7 +1001,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a delete statement without joins into SQL.
      */
-    protected compileDeleteWithoutJoins(_query: BuilderContract, table: string, where: string): string {
+    protected compileDeleteWithoutJoins(_query: QueryBuilderI, table: string, where: string): string {
         return `delete from ${table} ${where}`;
     }
 
@@ -1004,7 +1019,7 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a truncate table statement into SQL.
      */
-    public compileTruncate(query: BuilderContract): { [key: string]: Binding[] } {
+    public compileTruncate(query: QueryBuilderI): { [key: string]: Binding[] } {
         return { [`truncate table ${this.wrapTable(query.getRegistry().from)}`]: [] };
     }
 

@@ -19,23 +19,20 @@ import TransactionCommitting from '../events/transaction-committing';
 import TransactionRolledBack from '../events/transaction-rolledback';
 import Builder from '../query/builder';
 import ExpressionContract from '../query/expression-contract';
-import { BindToI } from '../types';
+import BindToI from '../types/bind-to';
 import { FlattedConnectionConfig } from '../types/config';
 import DriverConnectionI, {
     BeforeExecutingCallback,
     ConnectionSessionI,
     LoggedQuery,
     PretendingCallback,
-    TransactionCallback
-} from '../types/connection';
-import BuilderI, {
-    Binding,
-    BindingExclude,
-    BindingExcludeObject,
-    BindingObject,
-    SubQuery
-} from '../types/query/builder';
+    TransactionCallback,
+    WithoutPretendingCallback
+} from '../types/connection/connection';
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
+import BuilderI from '../types/query/builder';
 import GrammarI from '../types/query/grammar';
+import { QueryAbleCallback } from '../types/query/query-builder';
 import SchemaGrammarI from '../types/schema/grammar';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
@@ -93,7 +90,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Begin a fluent query against a database table.
      */
-    public table(table: SubQuery<BuilderI>, as?: string): BuilderI {
+    public table(table: QueryAbleCallback<BuilderI> | BuilderI | Stringable, as?: string): BuilderI {
         return this.query().from(table, as);
     }
 
@@ -176,6 +173,39 @@ class ConnectionSession implements ConnectionSessionI {
             }
 
             return statement.fetchDictionary<T>().all();
+        });
+    }
+
+    /**
+     * Run a select statement against the database.
+     */
+    public async selectResultSets<T = Dictionary>(
+        query: string,
+        bindings: Binding[] | BindingObject = [],
+        useReadPdo?: boolean
+    ): Promise<T[][]> {
+        return this.run<T[][]>(query, bindings, async (query, bindings) => {
+            if (this.pretending()) {
+                return [];
+            }
+
+            const statement = this.prepared(await this.getPdoForSelect(useReadPdo).prepare(query));
+
+            this.bindValues(statement, this.prepareBindings(bindings));
+
+            await statement.execute();
+
+            if ('close' in statement && typeof statement.close === 'function') {
+                await statement.close();
+            }
+
+            const sets: T[][] = [];
+
+            do {
+                sets.push(statement.fetchDictionary<T>().all());
+            } while (statement.nextRowset());
+
+            return sets;
         });
     }
 
@@ -405,6 +435,27 @@ class ConnectionSession implements ConnectionSessionI {
     }
 
     /**
+     * Execute the given callback without "pretending".
+     */
+    public async withoutPretending<T>(callback: WithoutPretendingCallback<T>): Promise<T> {
+        if (!this.pretending()) {
+            return callback();
+        }
+
+        this.isPretending = false;
+
+        this.disableQueryLog();
+
+        const result = await callback();
+
+        this.isPretending = true;
+
+        this.enableQueryLog();
+
+        return result;
+    }
+
+    /**
      * Execute the given callback in "dry run" mode.
      */
     protected async withFreshQueryLog<T>(callback: () => Promise<T>): Promise<T> {
@@ -499,7 +550,10 @@ class ConnectionSession implements ConnectionSessionI {
         );
 
         if (this.loggingQueries) {
-            this.queryLog.push({ query, bindings });
+            this.queryLog.push({
+                query: this.getQueryGrammar().substituteBindingsIntoRawSql(query, this.prepareBindings(bindings)),
+                bindings
+            });
         }
     }
 
@@ -508,6 +562,13 @@ class ConnectionSession implements ConnectionSessionI {
      */
     protected enableQueryLog(): void {
         this.loggingQueries = true;
+    }
+
+    /**
+     * Disable the query log on the connection.
+     */
+    protected disableQueryLog(): void {
+        this.loggingQueries = false;
     }
 
     /**

@@ -5,6 +5,7 @@ import Connection from '../../../connections/connection';
 import ConnectionSession, { RunCallback } from '../../../connections/connection-session';
 import ConnectionFactory from '../../../connectors/connection-factory';
 import DatabaseManager from '../../../database-manager';
+import { QueryBuilder } from '../../../query';
 import Builder from '../../../query/builder';
 import Grammar from '../../../query/grammars/grammar';
 import MySqlGrammar from '../../../query/grammars/mysql-grammar';
@@ -23,12 +24,13 @@ import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
 import SQLiteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
 import SqlServerSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
 import { DriverFLattedConfig, ReadWriteType } from '../../../types/config';
-import DriverConnectionI from '../../../types/connection';
+import DriverConnectionI from '../../../types/connection/connection';
 import ConnectorI from '../../../types/connector';
-import BuilderI, { Arrayable, Binding } from '../../../types/query/builder';
+import { Binding } from '../../../types/generics';
 import JoinClauseI from '../../../types/query/join-clause';
+import QueryBuilderI, { Arrayable } from '../../../types/query/query-builder';
 import BlueprintI from '../../../types/schema/blueprint';
-import { BlueprintCallback } from '../../../types/schema/builder';
+import { BlueprintCallback } from '../../../types/schema/builder/schema-builder';
 import GrammarI from '../../../types/schema/grammar';
 import FakePdo from './fake-pdo';
 export { FakeConnection } from './fake-pdo';
@@ -38,6 +40,12 @@ Pdo.addDriver('fake', FakePdo);
 export const pdo = new Pdo('fake', {});
 export const schemaPdo = new Pdo('fake', {});
 
+export class MockedBuilder extends Builder {
+    public getBeforeQueryCallbacks(): any[] {
+        return this.beforeQueryCallbacks;
+    }
+}
+
 export function getConnection(): Connection {
     return new Connection(
         pdo,
@@ -46,13 +54,13 @@ export function getConnection(): Connection {
             driver: 'fake',
             name: 'fake',
             database: 'database',
-            prefix: 'prefix',
+            prefix: 'prefix_',
             pool: {
                 killResource: false
             }
         },
         'database',
-        'prefix'
+        'prefix_'
     );
 }
 export function getConnection2(): Connection {
@@ -63,27 +71,31 @@ export function getConnection2(): Connection {
             driver: 'fake',
             name: 'fake2',
             database: 'database2',
-            prefix: 'prefix2',
+            prefix: 'prefix2_',
             pool: {
                 killResource: false
             }
         },
         'database2',
-        'prefix2'
+        'prefix2_'
     );
 }
 
 const connection = getConnection();
 
-export function getBuilder(): BuilderI {
-    return new Builder(connection.session(), new Grammar());
+export function getQueryBuilder(): QueryBuilderI {
+    return new QueryBuilder(connection.session(), new Grammar());
+}
+
+export function getBuilder(): MockedBuilder {
+    return new MockedBuilder(connection.session(), new Grammar());
 }
 
 export function getJoin(table?: string): JoinClauseI {
     return new JoinClause(getBuilder(), 'inner', table ?? 'table');
 }
 
-export function getBuilderAlternative(): BuilderI {
+export function getBuilderAlternative(): MockedBuilder {
     const connection = new Connection(
         pdo,
         schemaPdo,
@@ -99,23 +111,23 @@ export function getBuilderAlternative(): BuilderI {
         'alternative',
         'prefix'
     );
-    return new Builder(connection.session(), new Grammar());
+    return new MockedBuilder(connection.session(), new Grammar());
 }
 
-export function getPostgresBuilder(): BuilderI {
-    return new Builder(connection.session(), new PostgresGrammar());
+export function getPostgresBuilder(): MockedBuilder {
+    return new MockedBuilder(connection.session(), new PostgresGrammar());
 }
 
-export function getSqlServerBuilder(): BuilderI {
-    return new Builder(connection.session(), new SqlServerGrammar());
+export function getSqlServerBuilder(): MockedBuilder {
+    return new MockedBuilder(connection.session(), new SqlServerGrammar());
 }
 
-export function getMySqlBuilder(): BuilderI {
-    return new Builder(connection.session(), new MySqlGrammar());
+export function getMySqlBuilder(): MockedBuilder {
+    return new MockedBuilder(connection.session(), new MySqlGrammar());
 }
 
-export function getSQLiteBuilder(): BuilderI {
-    return new Builder(connection.session(), new SQLiteGrammar());
+export function getSQLiteBuilder(): MockedBuilder {
+    return new MockedBuilder(connection.session(), new SQLiteGrammar());
 }
 
 export function getPostgresBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
@@ -190,6 +202,10 @@ export class MockedConnectionSession extends ConnectionSession {
         super.enableQueryLog();
     }
 
+    public disableQueryLog(): void {
+        super.disableQueryLog();
+    }
+
     public logQuery(query: string, bindings: Binding[], time: number): void {
         return super.logQuery(query, bindings, time);
     }
@@ -221,89 +237,126 @@ export class MockedConnectionSession extends ConnectionSession {
     }
 }
 
-export function mockedSessionWithResults(
-    connection: Connection,
-    results: PdoRowData[],
-    columns: string[]
-): MockedConnectionSession {
-    class MockedConnectionSessionWithResults extends MockedConnectionSession {
-        public prepared(
-            statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
-        ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
-            statement = super.prepared(statement);
-            const dictionary = results.map(row => {
-                const obj: Dictionary = {};
-                for (let x = 0; x < row.length; x++) {
-                    const col = columns[x];
-                    if (col) {
-                        obj[col] = row[x];
-                    }
-                }
-                return obj;
-            });
-            jest.spyOn(statement, 'fetchDictionary').mockImplementation(() => {
-                return {
-                    get: () => {
-                        return dictionary.shift() ?? null;
-                    },
-                    all: () => {
-                        return dictionary;
-                    },
-                    group: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    unique: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    [Symbol.iterator]() {
-                        return {
-                            next: () => {
-                                return { done: true, value: undefined };
-                            },
-                            return: () => {
-                                return { done: true, value: undefined };
-                            }
-                        };
-                    }
-                };
-            });
-            jest.spyOn(statement, 'fetchColumn').mockImplementation((column: number) => {
-                return {
-                    get: () => {
-                        const val = results.shift();
-                        return val ? val[column] : null;
-                    },
-                    all: () => {
-                        return results.map(row => {
-                            return row[column];
-                        });
-                    },
-                    group: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    unique: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    [Symbol.iterator]() {
-                        return {
-                            next: () => {
-                                return { done: true, value: undefined };
-                            },
-                            return: () => {
-                                return { done: true, value: undefined };
-                            }
-                        };
-                    }
-                };
-            });
-            return statement;
-        }
+export class MockedConnectionSessionWithResults extends MockedConnectionSession {
+    protected __results: PdoRowData[] = [];
+    protected __columns: string[] = [];
+    protected __dictionary: Dictionary[] = [];
+
+    constructor(driverConnection: DriverConnectionI, results: PdoRowData[], columns: string[]) {
+        super(driverConnection, false);
+        this.__results = results;
+        this.__columns = columns;
+        this.generateDictionary();
     }
-    return new MockedConnectionSessionWithResults(connection);
+
+    protected generateDictionary(): void {
+        this.__dictionary = this.__results.map(row => {
+            const obj: Dictionary = {};
+            for (let x = 0; x < row.length; x++) {
+                const col = this.__columns[x];
+                if (col) {
+                    obj[col] = row[x];
+                }
+            }
+            return obj;
+        });
+    }
+
+    public prepared(
+        statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
+    ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
+        statement = super.prepared(statement);
+
+        jest.spyOn(statement, 'fetchDictionary').mockImplementation(() => {
+            return {
+                get: () => {
+                    return this.__dictionary.shift() ?? null;
+                },
+                all: () => {
+                    return this.__dictionary;
+                },
+                group: () => {
+                    const map = new Map();
+                    return map;
+                },
+                unique: () => {
+                    const map = new Map();
+                    return map;
+                },
+                [Symbol.iterator]() {
+                    return {
+                        next: () => {
+                            return { done: true, value: undefined };
+                        },
+                        return: () => {
+                            return { done: true, value: undefined };
+                        }
+                    };
+                }
+            };
+        });
+        jest.spyOn(statement, 'fetchColumn').mockImplementation((column: number) => {
+            return {
+                get: () => {
+                    const val = this.__results.shift();
+                    return val ? val[column] : null;
+                },
+                all: () => {
+                    return this.__results.map(row => {
+                        return row[column];
+                    });
+                },
+                group: () => {
+                    const map = new Map();
+                    return map;
+                },
+                unique: () => {
+                    const map = new Map();
+                    return map;
+                },
+                [Symbol.iterator]() {
+                    return {
+                        next: () => {
+                            return { done: true, value: undefined };
+                        },
+                        return: () => {
+                            return { done: true, value: undefined };
+                        }
+                    };
+                }
+            };
+        });
+        return statement;
+    }
+}
+export class MockedConnectionSessionWithResultsSets extends MockedConnectionSessionWithResults {
+    protected __cursor = 0;
+    protected __resultsSet: PdoRowData[][] = [];
+    protected __columnsSet: string[][] = [];
+
+    constructor(driverConnection: DriverConnectionI, results: PdoRowData[][], columns: string[][]) {
+        super(driverConnection, results[0], columns[0]);
+        this.__resultsSet = results;
+        this.__columnsSet = columns;
+    }
+
+    public prepared(
+        statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
+    ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
+        const stmt = super.prepared(statement);
+        jest.spyOn(stmt, 'nextRowset').mockImplementation(() => {
+            if (this.__columnsSet.length - 1 < this.__cursor + 1) {
+                return false;
+            }
+            this.__cursor++;
+            this.__results = this.__resultsSet[this.__cursor];
+            this.__columns = this.__columnsSet[this.__cursor];
+            this.generateDictionary();
+
+            return true;
+        });
+        return stmt;
+    }
 }
 
 export class MockedSQLiteSchemaBuilder extends SQLiteSchemaBuilder {
@@ -456,12 +509,4 @@ export class MockedDatabaseManager extends DatabaseManager {
     }
 }
 
-export class MockedPostgresBuilder extends PostgresBuilder {
-    public async getAllTablesFromConnection(): Promise<Array<{ tablename: string; qualifiedname: string | null }>> {
-        return super.getAllTablesFromConnection();
-    }
-
-    public async getAllViewsFromConnection(): Promise<Array<{ viewname: string; qualifiedname: string | null }>> {
-        return super.getAllViewsFromConnection();
-    }
-}
+export class MockedPostgresBuilder extends PostgresBuilder {}

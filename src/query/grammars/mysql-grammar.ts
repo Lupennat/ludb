@@ -1,7 +1,7 @@
-import { Binding, RowValues, Stringable } from '../../types/query/builder';
+import { Binding, Stringable } from '../../types/generics';
+import QueryBuilderI, { RowValues } from '../../types/query/query-builder';
 import { BindingTypes, WhereNull, whereFulltext } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
-import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
@@ -14,7 +14,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Add a "where null" clause to the query.
      */
-    protected compileWhereNull(query: BuilderContract, where: WhereNull): string {
+    protected compileWhereNull(query: QueryBuilderI, where: WhereNull): string {
         if (this.isJsonSelector(where.column)) {
             const [field, path] = this.wrapJsonFieldAndPath(where.column);
             const isNullCondition = where.not ? 'is not null AND' : 'is null OR';
@@ -28,7 +28,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile a "fulltext" statement into SQL.
      */
-    public compileFulltext(_query: BuilderContract, where: whereFulltext): string {
+    public compileFulltext(_query: QueryBuilderI, where: whereFulltext): string {
         const columns = this.columnize(where.columns);
 
         const value = this.parameter(where.value);
@@ -43,7 +43,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile the index hints for the query.
      */
-    protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
+    protected compileIndexHint(_query: QueryBuilderI, indexHint: IndexHint): string {
         switch (indexHint.type) {
             case 'hint':
                 return `use index (${indexHint.index})`;
@@ -57,7 +57,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile an insert ignore statement into SQL.
      */
-    public compileInsertOrIgnore(query: BuilderContract, values: RowValues[] | RowValues): string {
+    public compileInsertOrIgnore(query: QueryBuilderI, values: RowValues[] | RowValues): string {
         return this.compileInsert(query, values).replace('insert', 'insert ignore');
     }
 
@@ -107,7 +107,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile the lock into SQL.
      */
-    protected compileLock(_query: BuilderContract, value: boolean | string): string {
+    protected compileLock(_query: QueryBuilderI, value: boolean | string): string {
         if (typeof value !== 'string') {
             return value ? 'for update' : 'lock in share mode';
         }
@@ -118,7 +118,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile an insert statement into SQL.
      */
-    public compileInsert(query: BuilderContract, values: RowValues[] | RowValues): string {
+    public compileInsert(query: QueryBuilderI, values: RowValues[] | RowValues): string {
         if ((Array.isArray(values) && values.length === 0) || Object.keys(values).length === 0) {
             values = [{}];
         }
@@ -129,7 +129,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile the columns for an update statement.
      */
-    protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+    protected compileUpdateColumns(_query: QueryBuilderI, values: RowValues): string {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
         return Object.keys(combinedValues)
@@ -148,7 +148,7 @@ class MySqlGrammar extends Grammar {
      * Compile an "upsert" statement into SQL.
      */
     public compileUpsert(
-        query: BuilderContract,
+        query: QueryBuilderI,
         values: RowValues[],
         _uniqueBy: string[],
         update: Array<string | RowValues>
@@ -211,7 +211,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile an update statement without joins into SQL.
      */
-    protected compileUpdateWithoutJoins(query: BuilderContract, table: string, columns: string, where: string): string {
+    protected compileUpdateWithoutJoins(query: QueryBuilderI, table: string, columns: string, where: string): string {
         let sql = super.compileUpdateWithoutJoins(query, table, columns, where);
 
         if (query.getRegistry().orders.length) {
@@ -265,7 +265,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile a delete query that does not use joins.
      */
-    protected compileDeleteWithoutJoins(query: BuilderContract, table: string, where: string): string {
+    protected compileDeleteWithoutJoins(query: QueryBuilderI, table: string, where: string): string {
         let sql = super.compileDeleteWithoutJoins(query, table, where);
 
         // When using MySQL, delete statements may contain order by statements and limits

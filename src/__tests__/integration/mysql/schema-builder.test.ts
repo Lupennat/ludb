@@ -1,18 +1,26 @@
+import MysqlConnectionI from '../../../types/connection/mysql-connection';
 import { DB, isMySql } from '../fixtures/config';
 
 const maybe = isMySql() ? describe : describe.skip;
 
 maybe('MySql Schema Builder', () => {
-    const Schema = DB.connection().getSchemaBuilder();
+    const Schema = DB.connection<MysqlConnectionI>().getSchemaBuilder();
 
     beforeAll(async () => {
+        await Schema.dropTableIfExists('test_schema_users');
+        await Schema.dropViewIfExists('test_schema_users_view');
+
+        await Schema.dropTableIfExists('test_schema_users');
         await Schema.create('test_schema_users', table => {
             table.integer('id');
             table.string('name');
             table.string('age');
             table.enum('color', ['red', 'blue']);
         });
-        await DB.connection().statement('CREATE view test_schema_users_view AS select name,age FROM test_schema_users');
+
+        await Schema.createView('test_schema_users_view', view =>
+            view.as(query => query.select('name', 'age').from('test_schema_users')).withCheckCascade()
+        );
     });
 
     afterAll(async () => {
@@ -26,33 +34,48 @@ maybe('MySql Schema Builder', () => {
             table.comment('This is a comment');
         });
 
-        const tableInfo = await DB.connection()
-            .table('information_schema.tables')
-            .where('table_schema', DB.connection().getDatabaseName())
-            .where('table_name', 'test_schema_posts')
-            .select('table_comment as table_comment')
-            .first();
+        const table = (await Schema.getTables()).find(table => table.name === 'test_schema_posts');
 
-        expect(tableInfo!.table_comment).toBe('This is a comment');
+        expect(table!.comment).toBe('This is a comment');
+
         await Schema.drop('test_schema_posts');
     });
 
-    it('Works Get All Tables And Column Listing', async () => {
-        expect(await Schema.getAllTables()).toEqual(['test_schema_users']);
-        expect(await Schema.getColumnListing('test_schema_users')).toEqual(
-            expect.arrayContaining(['id', 'name', 'age', 'color'])
-        );
+    it('Works Get Tables', async () => {
+        let tables = await Schema.getTables();
+        expect(tables.length).toBe(1);
+        expect(tables[0].collation).toBe('utf8_unicode_ci');
+        expect(tables[0].size).toBeGreaterThan(1);
+        expect(tables[0].comment).toBe('');
+        expect(tables[0].engine).toBe('InnoDB');
+        expect(tables[0].name).toBe('test_schema_users');
+
         await Schema.create('test_schema_posts', table => {
             table.integer('id');
             table.string('title');
         });
-        expect(await Schema.getAllTables()).toEqual(expect.arrayContaining(['test_schema_users', 'test_schema_posts']));
+
+        tables = await Schema.getTables();
+        expect(tables.length).toBe(2);
+        expect(tables[0].collation).toBe('utf8_unicode_ci');
+        expect(tables[0].size).toBeGreaterThan(1);
+        expect(tables[0].comment).toBe('');
+        expect(tables[0].engine).toBe('InnoDB');
+        expect(tables[0].name).toBe('test_schema_posts');
+
         await Schema.drop('test_schema_posts');
     });
 
-    it('Works Get All Views', async () => {
-        expect(await Schema.getAllViews()).toEqual(['test_schema_users_view']);
-        await DB.connection().statement('DROP VIEW IF EXISTS test_schema_users_view;');
-        expect(await Schema.getAllViews()).toEqual([]);
+    it('Works Get Views', async () => {
+        let views = await Schema.getViews();
+        expect(views.length).toBe(1);
+        expect(views[0].name).toBe('test_schema_users_view');
+        expect(views[0].definition).toBe(
+            'select `tempdb`.`test_schema_users`.`name` AS `name`,`tempdb`.`test_schema_users`.`age` AS `age` from `tempdb`.`test_schema_users`'
+        );
+
+        await Schema.dropViewIfExists('test_schema_users_view');
+        views = await Schema.getViews();
+        expect(views.length).toBe(0);
     });
 });

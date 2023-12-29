@@ -1,6 +1,6 @@
-import { getBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getQueryBuilder, pdo } from '../fixtures/mocked';
 
-describe('Query Builder Joins', () => {
+describe('Builder Joins', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -80,6 +80,16 @@ describe('Query Builder Joins', () => {
             });
         expect('select * from "users" right join "photos" on "users"."id" = "bar"').toBe(builder.toSql());
         expect([]).toEqual(builder.getBindings());
+
+        const query = getQueryBuilder();
+        query
+            .select('*')
+            .from('users')
+            .rightJoinWhere('photos', join => {
+                join.on('users.id', '=', 'bar');
+            });
+        expect('select * from "users" right join "photos" on "users"."id" = "bar"').toBe(query.toSql());
+        expect([]).toEqual(query.getBindings());
     });
 
     it('Works Cross Joins', () => {
@@ -546,7 +556,7 @@ describe('Query Builder Joins', () => {
         expect(() => {
             // @ts-expect-error test wrong argument
             builder.from('users').joinSub(['foo'], 'sub', 'users.id', '=', 'sub.id');
-        }).toThrowError('A subquery must be a query builder instance, a Closure, or a string.');
+        }).toThrow('A subquery must be a query builder instance, a Closure, or a string.');
     });
 
     it('Works Join Sub With Prefix', () => {
@@ -607,7 +617,7 @@ describe('Query Builder Joins', () => {
         expect(() => {
             // @ts-expect-error test wrong argument
             builder.from('users').leftJoinSub(['foo'], 'sub', 'users.id', '=', 'sub.id');
-        }).toThrowError('A subquery must be a query builder instance, a Closure, or a string.');
+        }).toThrow('A subquery must be a query builder instance, a Closure, or a string.');
     });
 
     it('Works Right Join Sub', () => {
@@ -659,6 +669,6 @@ describe('Query Builder Joins', () => {
         expect(() => {
             // @ts-expect-error test wrong argument
             builder.from('users').rightJoinSub(['foo'], 'sub', 'users.id', '=', 'sub.id');
-        }).toThrowError('A subquery must be a query builder instance, a Closure, or a string.');
+        }).toThrow('A subquery must be a query builder instance, a Closure, or a string.');
     });
 });

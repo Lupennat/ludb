@@ -1,5 +1,5 @@
-import { ConnectionSessionI } from '../types/connection';
-import { Binding, BindingObject } from '../types/query/builder';
+import { ConnectionSessionI } from '../types/connection/connection';
+import { Binding, BindingObject } from '../types/generics';
 import ConnectionEvent from './connection-event';
 
 class QueryExecuted extends ConnectionEvent {

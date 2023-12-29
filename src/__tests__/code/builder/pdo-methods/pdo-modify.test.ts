@@ -8,7 +8,7 @@ import {
     pdo
 } from '../../fixtures/mocked';
 
-describe('Query Builder Pdo Methods Modify', () => {
+describe('Builder Pdo Methods Modify', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -103,14 +103,14 @@ describe('Query Builder Pdo Methods Modify', () => {
     it('Works Insert Using Invalid Subquery', async () => {
         const builder = getBuilder();
         // @ts-expect-error test arguments error
-        await expect(builder.from('table1').insertUsing(['foo'], ['bar'])).rejects.toThrowError(
+        await expect(builder.from('table1').insertUsing(['foo'], ['bar'])).rejects.toThrow(
             'A subquery must be a query builder instance, a Closure, or a string.'
         );
     });
 
     it('Works Insert Or Ignore Method', async () => {
         const builder = getBuilder();
-        await expect(builder.from('users').insertOrIgnore({ email: 'foo' })).rejects.toThrowError(
+        await expect(builder.from('users').insertOrIgnore({ email: 'foo' })).rejects.toThrow(
             'This database engine does not support inserting while ignoring errors.'
         );
         expect(await builder.from('users').insertOrIgnore([])).toBe(0);
@@ -143,10 +143,10 @@ describe('Query Builder Pdo Methods Modify', () => {
         expect(await builder.from('users').insertOrIgnore([{ email: 'foo' }, { email: 'baz' }])).toBe(2);
         await expect(
             builder.from('users').insertOrIgnore([{ email: 'foo' }, { email: 'baz', name: 'test' }])
-        ).rejects.toThrowError('Missing columns [name], please add to each rows.');
+        ).rejects.toThrow('Missing columns [name], please add to each rows.');
         await expect(
             builder.from('users').insertOrIgnore([{ email: 'foo', name: 'test', role: 'test' }, { email: 'baz' }])
-        ).rejects.toThrowError('Missing columns [name, role], please add to each rows.');
+        ).rejects.toThrow('Missing columns [name, role], please add to each rows.');
     });
 
     it('Works SQLite Insert Or Ignore Method', async () => {
@@ -161,7 +161,7 @@ describe('Query Builder Pdo Methods Modify', () => {
 
     it('Works SqlServer Insert Or Ignore Method', async () => {
         const builder = getSqlServerBuilder();
-        await expect(builder.from('users').insertOrIgnore({ email: 'foo' })).rejects.toThrowError(
+        await expect(builder.from('users').insertOrIgnore({ email: 'foo' })).rejects.toThrow(
             'This database engine does not support inserting while ignoring errors.'
         );
     });
@@ -296,7 +296,7 @@ describe('Query Builder Pdo Methods Modify', () => {
                 ['email', 'role'],
                 ['email', 'name']
             )
-        ).rejects.toThrowError('This database engine does not support upserts.');
+        ).rejects.toThrow('This database engine does not support upserts.');
 
         builder = getMySqlBuilder();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(option => {
@@ -901,7 +901,7 @@ describe('Query Builder Pdo Methods Modify', () => {
                 .join('orders', 'users.id', '=', 'orders.user_id')
                 .where('users.id', '=', 1)
                 .updateFrom({ email: 'foo', name: 'bar' })
-        ).rejects.toThrowError('This database engine does not support the updateFrom method.');
+        ).rejects.toThrow('This database engine does not support the updateFrom method.');
 
         builder = getPostgresBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
@@ -1003,8 +1003,8 @@ describe('Query Builder Pdo Methods Modify', () => {
         jest.spyOn(builder, 'exists').mockImplementationOnce(async () => false);
 
         expect(await builder.updateOrInsert({ email: 'foo' }, { name: 'bar' })).toBeTruthy();
-        expect(spiedWhere).toBeCalledWith({ email: 'foo' });
-        expect(spiedInsert).toBeCalledWith({ email: 'foo', name: 'bar' });
+        expect(spiedWhere).toHaveBeenCalledWith({ email: 'foo' });
+        expect(spiedInsert).toHaveBeenCalledWith({ email: 'foo', name: 'bar' });
 
         builder = getBuilder();
         spiedWhere = jest.spyOn(builder, 'where');
@@ -1013,8 +1013,8 @@ describe('Query Builder Pdo Methods Modify', () => {
         jest.spyOn(builder, 'exists').mockImplementationOnce(async () => true);
 
         expect(await builder.updateOrInsert({ email: 'foo' }, { name: 'bar' })).toBeTruthy();
-        expect(spiedLimit).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith({ name: 'bar' });
+        expect(spiedLimit).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith({ name: 'bar' });
     });
 
     it('Works Update Or Insert Method With Empty Update Values', async () => {
@@ -1024,8 +1024,8 @@ describe('Query Builder Pdo Methods Modify', () => {
         jest.spyOn(builder, 'exists').mockImplementationOnce(async () => true);
 
         expect(await builder.updateOrInsert({ email: 'foo' })).toBeTruthy();
-        expect(spiedWhere).toBeCalledWith({ email: 'foo' });
-        expect(spiedUpdate).not.toBeCalled();
+        expect(spiedWhere).toHaveBeenCalledWith({ email: 'foo' });
+        expect(spiedUpdate).not.toHaveBeenCalled();
     });
 
     it('Works Increment', async () => {
@@ -1041,9 +1041,7 @@ describe('Query Builder Pdo Methods Modify', () => {
 
     it('Works Increment Throw Error When Not Numeric', async () => {
         const builder = getBuilder();
-        await expect(builder.increment('votes', 'ab')).rejects.toThrowError(
-            'Non-numeric value passed to increment method.'
-        );
+        await expect(builder.increment('votes', 'ab')).rejects.toThrow('Non-numeric value passed to increment method.');
     });
 
     it('Works Increment Each', async () => {
@@ -1075,7 +1073,7 @@ describe('Query Builder Pdo Methods Modify', () => {
 
     it('Works Increment Many Argument Validation', async () => {
         const builder = getBuilder();
-        await expect(builder.from('users').incrementEach({ col: 'a' })).rejects.toThrowError(
+        await expect(builder.from('users').incrementEach({ col: 'a' })).rejects.toThrow(
             "Non-numeric value passed as increment amount for column: 'col'."
         );
     });
@@ -1093,9 +1091,7 @@ describe('Query Builder Pdo Methods Modify', () => {
 
     it('Works Decrement Throw Error When Not Numeric', async () => {
         const builder = getBuilder();
-        await expect(builder.decrement('votes', 'ab')).rejects.toThrowError(
-            'Non-numeric value passed to decrement method.'
-        );
+        await expect(builder.decrement('votes', 'ab')).rejects.toThrow('Non-numeric value passed to decrement method.');
     });
 
     it('Works Decrement Each', async () => {
@@ -1127,7 +1123,7 @@ describe('Query Builder Pdo Methods Modify', () => {
 
     it('Works Decrement Many Argument Validation', async () => {
         const builder = getBuilder();
-        await expect(builder.from('users').decrementEach({ col: 'a' })).rejects.toThrowError(
+        await expect(builder.from('users').decrementEach({ col: 'a' })).rejects.toThrow(
             "Non-numeric value passed as decrement amount for column: 'col'."
         );
     });

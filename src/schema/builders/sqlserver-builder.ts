@@ -1,6 +1,123 @@
+import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
+import {
+    SqlServerColumnDictionary,
+    SqlServerForeignKeyDictionary,
+    SqlServerIndexDictionary,
+    SqlServerTableDictionary,
+    SqlServerViewDictionary
+} from '../../types/schema/generics';
 import Builder from './builder';
 
+type SqlServerColumnDefinition = {
+    name: string;
+    type_name: string;
+    length: number;
+    precision: number | string;
+    places: number | string;
+    nullable: number;
+    default: PdoColumnValue;
+    autoincrement: number;
+    collation: string;
+    comment: string;
+};
+
+type SqlServerIndexDefinition = {
+    name: string;
+    columns: string;
+    type: string;
+    unique: number;
+    primary: number;
+};
+
+type SqlServerForeignKeyDefinition = {
+    name: string;
+    columns: string;
+    foreign_schema: string;
+    foreign_table: string;
+    foreign_columns: string;
+    on_update: string;
+    on_delete: string;
+};
+
 class SqlServerBuilder extends Builder {
+    /**
+     * Get the tables that belong to the database.
+     */
+    public async getTables(): Promise<SqlServerTableDictionary[]> {
+        return await this.getTablesFromDatabase<SqlServerTableDictionary>();
+    }
+
+    /**
+     * Get the views that belong to the database.
+     */
+    public async getViews(): Promise<SqlServerViewDictionary[]> {
+        return await this.getViewsFromDatabase<SqlServerViewDictionary>();
+    }
+
+    /**
+     * Get the columns for a given table.
+     */
+    public async getColumns(table: string): Promise<SqlServerColumnDictionary[]> {
+        const columns = await this.getColumnsFromDatabase<SqlServerColumnDefinition>(table);
+
+        return columns.map<SqlServerColumnDictionary>((column: SqlServerColumnDefinition) => {
+            const { type_name, nullable, autoincrement, precision, length, places, ...keys } = column;
+
+            let type = type_name;
+
+            if (['binary', 'varbinary', 'char', 'varchar', 'nchar', 'nvarchar'].includes(type)) {
+                type = `${type}(${length == -1 ? 'max' : length.toString()})`;
+            } else if (['decimal', 'numeric'].includes(type)) {
+                type = `${type}(${precision},${places})`;
+            } else if (['float', 'datetime2', 'datetimeoffset', 'time'].includes(type)) {
+                type = `${type}(${precision})`;
+            }
+
+            return {
+                ...keys,
+                type_name: type_name,
+                type: type,
+                nullable: Boolean(nullable),
+                auto_increment: Boolean(autoincrement)
+            };
+        });
+    }
+
+    /**
+     * Get the indexes for a given table.
+     */
+    public async getIndexes(table: string): Promise<SqlServerIndexDictionary[]> {
+        const indexes = await this.getIndexesFromDatabase<SqlServerIndexDefinition>(table);
+
+        return indexes.map<SqlServerIndexDictionary>((index: SqlServerIndexDefinition) => {
+            return {
+                name: index.name.toLowerCase(),
+                columns: index.columns.split(','),
+                type: index.type.toLowerCase(),
+                unique: Boolean(index.unique),
+                primary: Boolean(index.primary)
+            };
+        });
+    }
+
+    /**
+     * Get the foreign keys for a given table.
+     */
+    public async getForeignKeys(table: string): Promise<SqlServerForeignKeyDictionary[]> {
+        const foreignKeys = await this.getForeignKeysFromDatabase<SqlServerForeignKeyDefinition>(table);
+
+        return foreignKeys.map<SqlServerForeignKeyDictionary>((foreignKey: SqlServerForeignKeyDefinition) => {
+            const { columns, foreign_columns, on_update, on_delete, ...keys } = foreignKey;
+            return {
+                ...keys,
+                columns: columns.split(','),
+                foreign_columns: foreign_columns.split(','),
+                on_delete: on_delete.toLowerCase().replace('_', ' '),
+                on_update: on_update.toLowerCase().replace('_', ' ')
+            };
+        });
+    }
+
     /**
      * Create a database in the schema.
      */
@@ -18,66 +135,24 @@ class SqlServerBuilder extends Builder {
     /**
      * Drop all tables from the database.
      */
-    public async dropAllTables(): Promise<void> {
-        await this.connection.statement(this.grammar.compileDropAllForeignKeys());
+    public async dropTables(): Promise<void> {
+        await this.connection.statement(this.grammar.compileDropForeignKeys());
 
-        await this.connection.statement(this.grammar.compileDropAllTables());
+        await this.connection.statement(this.grammar.compileDropTables());
     }
 
     /**
      * Drop all views from the database.
      */
-    public async dropAllViews(): Promise<void> {
-        await this.connection.statement(this.grammar.compileDropAllViews());
+    public async dropViews(): Promise<void> {
+        await this.connection.statement(this.grammar.compileDropViews());
     }
 
     /**
-     * Get all of the table names for the database.
+     * Drop a view from the schema if it exists.
      */
-    public async getAllTables(): Promise<string[]> {
-        const results = await this.connection.select<{ type: string; name: string }>(
-            this.grammar.compileGetAllTables()
-        );
-        return results.map(result => result.name);
-    }
-
-    /**
-     * Get all of the view names for the database.
-     */
-    public async getAllViews(): Promise<string[]> {
-        const results = await this.connection.select<{ type: string; name: string }>(this.grammar.compileGetAllViews());
-        return results.map(result => result.name);
-    }
-
-    /**
-     * Get the column listing for a given table.
-     */
-    public async getColumnListing(table: string): Promise<string[]> {
-        const results = await this.connection.selectFromWriteConnection<{ name: string }>(
-            this.grammar.compileColumnListing(),
-            [`${this.connection.getTablePrefix()}${table}`]
-        );
-
-        return results.map(result => result.name);
-    }
-
-    /**
-     * Get the data type for the given column name.
-     */
-    public async getColumnType(table: string, column: string): Promise<string> {
-        const result = await this.connection.selectOne<{ type: string }>(
-            this.grammar.compileColumnType(),
-            [`${this.connection.getTablePrefix()}${table}`, column],
-            false
-        );
-
-        if (result === null) {
-            throw new Error(
-                `column "${column}" not found on table "${`${this.connection.getTablePrefix()}${table}`}" with database "${this.getConnection().getDatabaseName()}".`
-            );
-        }
-
-        return result.type;
+    public async dropViewIfExists(name: string): Promise<boolean> {
+        return await this.connection.statement(this.grammar.compileDropViewIfExists(name));
     }
 }
 

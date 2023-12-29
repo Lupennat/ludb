@@ -1,6 +1,6 @@
 import TypedBinding, { TypeBindingOptions } from 'lupdo/dist/typings/typed-binding';
 import ExpressionContract from '../query/expression-contract';
-import { BindingExclude } from './query/builder';
+import { BindingExclude } from './generics';
 
 export default interface BindToI {
     bigInteger: (

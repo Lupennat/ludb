@@ -16,7 +16,7 @@ describe('Grammar', () => {
         const spiedWrap = jest.spyOn(grammar, 'wrap');
         const raw = new Raw('text');
         expect(grammar.wrapArray([raw, 'text'])).toEqual(['text', '"text"']);
-        expect(spiedWrap).toBeCalledTimes(2);
+        expect(spiedWrap).toHaveBeenCalledTimes(2);
         expect(spiedWrap).toHaveBeenNthCalledWith(1, raw);
         expect(spiedWrap).toHaveBeenNthCalledWith(2, 'text');
     });
@@ -26,7 +26,7 @@ describe('Grammar', () => {
         const spiedWrap = jest.spyOn(grammar, 'wrap');
         expect(grammar.wrapTable('table')).toBe('"test_table"');
         expect(grammar.wrapTable(new Raw('table'))).toBe('table');
-        expect(spiedWrap).toBeCalledTimes(1);
+        expect(spiedWrap).toHaveBeenCalledTimes(1);
         expect(spiedWrap).toHaveBeenNthCalledWith(1, 'test_table', true);
     });
 
@@ -55,7 +55,7 @@ describe('Grammar', () => {
         const grammar = new ExtendedGrammar();
         expect(() => {
             grammar.wrap('options->language', true);
-        }).toThrowError('This database engine does not support JSON operations.');
+        }).toThrow('This database engine does not support JSON operations.');
     });
 
     it('Works Grammar Wrap Segments', () => {
@@ -66,7 +66,7 @@ describe('Grammar', () => {
         expect(grammar.wrap('table.*')).toBe('"test_table".*');
         expect(grammar.wrap('table2.user')).toBe('"test_table2"."user"');
         expect(grammar.wrap('table3.')).toBe('"test_table3".""');
-        expect(spiedWrapTable).toBeCalledTimes(3);
+        expect(spiedWrapTable).toHaveBeenCalledTimes(3);
         expect(spiedWrapTable).toHaveBeenNthCalledWith(1, 'table');
         expect(spiedWrapTable).toHaveBeenNthCalledWith(2, 'table2');
         expect(spiedWrapTable).toHaveBeenNthCalledWith(3, 'table3');
@@ -77,7 +77,7 @@ describe('Grammar', () => {
         const spiedWrap = jest.spyOn(grammar, 'wrap');
         const raw = new Raw('text');
         expect(grammar.columnize([raw, 'text'])).toBe('text, "text"');
-        expect(spiedWrap).toBeCalledTimes(2);
+        expect(spiedWrap).toHaveBeenCalledTimes(2);
         expect(spiedWrap).toHaveBeenNthCalledWith(1, raw);
         expect(spiedWrap).toHaveBeenNthCalledWith(2, 'text');
     });
@@ -87,7 +87,7 @@ describe('Grammar', () => {
         const spiedParameter = jest.spyOn(grammar, 'parameter');
         const raw = new Raw('text');
         expect(grammar.parameterize([raw, 'text'])).toBe('text, ?');
-        expect(spiedParameter).toBeCalledTimes(2);
+        expect(spiedParameter).toHaveBeenCalledTimes(2);
         expect(spiedParameter).toHaveBeenNthCalledWith(1, raw);
         expect(spiedParameter).toHaveBeenNthCalledWith(2, 'text');
     });

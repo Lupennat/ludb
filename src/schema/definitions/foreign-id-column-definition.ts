@@ -1,5 +1,5 @@
 import { plural } from 'pluralize';
-import { Stringable } from '../../types/query/builder';
+import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
 import { ColumnRegistryI, ColumnType } from '../../types/schema/registry';
 import { beforeLast } from '../../utils';

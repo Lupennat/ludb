@@ -25,7 +25,7 @@ describe('Database Manager', () => {
         const db = new DatabaseManager();
         expect(() => {
             db.connection('sqlite2');
-        }).toThrowError('Database connection [sqlite2] not configured.');
+        }).toThrow('Database connection [sqlite2] not configured.');
         db.addConnection({ driver: 'sqlite', database: ':memory:' }, 'sqlite2');
         expect(db.connection('sqlite2')).toBeInstanceOf(SQLiteConnection);
     });
@@ -61,7 +61,7 @@ describe('Database Manager', () => {
         const spiedConfigure = jest.spyOn(db, 'configure');
         db.connection();
         db.connection();
-        expect(spiedConfigure).toBeCalledTimes(1);
+        expect(spiedConfigure).toHaveBeenCalledTimes(1);
     });
 
     it('Works Purge Connection Should Disconnect And Remove From Cache', async () => {
@@ -73,7 +73,7 @@ describe('Database Manager', () => {
         db.connection();
         expect('purge' in db.getConnections()).toBeTruthy();
         await db.purge();
-        expect(spiedDisconnect).toBeCalledWith('purge');
+        expect(spiedDisconnect).toHaveBeenCalledWith('purge');
         expect(db.getConnections()).toEqual({});
     });
 
@@ -171,7 +171,7 @@ describe('Database Manager', () => {
         });
         expect(() => {
             db.connection('test');
-        }).toThrowError('Unsupported driver [new-driver].');
+        }).toThrow('Unsupported driver [new-driver].');
         class TestConnection extends Connection {}
         db.extend('new-driver', (config, name) => {
             config.name = name;
@@ -188,6 +188,6 @@ describe('Database Manager', () => {
         db.forgetExtension('test-name');
         expect(() => {
             db.connection('test2');
-        }).toThrowError('Unsupported driver [new-driver].');
+        }).toThrow('Unsupported driver [new-driver].');
     });
 });

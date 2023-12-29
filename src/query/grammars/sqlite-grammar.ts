@@ -1,7 +1,7 @@
-import { Binding, RowValues, Stringable } from '../../types/query/builder';
+import { Binding, Stringable } from '../../types/generics';
+import QueryBuilderI, { RowValues } from '../../types/query/query-builder';
 import { BindingTypes, WhereDateTime } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
-import BuilderContract from '../builder-contract';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
@@ -43,42 +43,42 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile a "where date" clause.
      */
-    protected compileWhereDate(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereDate(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('%Y-%m-%d', query, where);
     }
 
     /**
      * Compile a "where day" clause.
      */
-    protected compileWhereDay(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereDay(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('%d', query, where);
     }
 
     /**
      * Compile a "where month" clause.
      */
-    protected compileWhereMonth(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereMonth(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('%m', query, where);
     }
 
     /**
      * Compile a "where year" clause.
      */
-    protected compileWhereYear(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereYear(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('%Y', query, where);
     }
 
     /**
      * Compile a "where time" clause.
      */
-    protected compileWhereTime(query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereTime(query: QueryBuilderI, where: WhereDateTime): string {
         return this.dateBasedWhere('%H:%M:%S', query, where);
     }
 
     /**
      * Compile a date based where clause.
      */
-    protected dateBasedWhere(type: string, _query: BuilderContract, where: WhereDateTime): string {
+    protected dateBasedWhere(type: string, _query: QueryBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `strftime('${type}', ${this.wrap(where.column)}) ${where.operator} cast(${value} as text)`;
@@ -87,7 +87,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile the index hints for the query.
      */
-    protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
+    protected compileIndexHint(_query: QueryBuilderI, indexHint: IndexHint): string {
         return indexHint.type === 'force' ? `indexed by ${indexHint.index}` : '';
     }
 
@@ -114,7 +114,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile an update statement into SQL.
      */
-    public compileUpdate(query: BuilderContract, values: RowValues): string {
+    public compileUpdate(query: QueryBuilderI, values: RowValues): string {
         const joins = query.getRegistry().joins;
         const limit = query.getRegistry().limit;
         if (joins.length || limit) {
@@ -127,14 +127,14 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile an insert ignore statement into SQL.
      */
-    public compileInsertOrIgnore(query: BuilderContract, values: RowValues[] | RowValues): string {
+    public compileInsertOrIgnore(query: QueryBuilderI, values: RowValues[] | RowValues): string {
         return this.compileInsert(query, values).replace('insert', 'insert or ignore');
     }
 
     /**
      * Compile the columns for an update statement.
      */
-    protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+    protected compileUpdateColumns(_query: QueryBuilderI, values: RowValues): string {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
         return Object.keys(combinedValues)
             .map(key => {
@@ -152,7 +152,7 @@ class SQLiteGrammar extends Grammar {
      * Compile an "upsert" statement into SQL.
      */
     public compileUpsert(
-        query: BuilderContract,
+        query: QueryBuilderI,
         values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
@@ -207,7 +207,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile an update statement with joins or limit into SQL.
      */
-    protected compileUpdateWithJoinsOrLimit(query: BuilderContract, values: RowValues): string {
+    protected compileUpdateWithJoinsOrLimit(query: QueryBuilderI, values: RowValues): string {
         const table = this.wrapTable(query.getRegistry().from);
         const columns = this.compileUpdateColumns(query, values);
         const alias = this.getValue(query.getRegistry().from)
@@ -257,7 +257,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile a delete statement into SQL.
      */
-    public compileDelete(query: BuilderContract): string {
+    public compileDelete(query: QueryBuilderI): string {
         const joins = query.getRegistry().joins;
         const limit = query.getRegistry().limit;
         if (joins.length || limit) {
@@ -270,7 +270,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile a delete statement with joins or limit into SQL.
      */
-    protected compileDeleteWithJoinsOrLimit(query: BuilderContract): string {
+    protected compileDeleteWithJoinsOrLimit(query: QueryBuilderI): string {
         const table = this.wrapTable(query.getRegistry().from);
         const alias = this.getValue(query.getRegistry().from)
             .toString()
@@ -284,7 +284,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile a truncate table statement into SQL.
      */
-    public compileTruncate(query: BuilderContract): { [key: string]: Binding[] } {
+    public compileTruncate(query: QueryBuilderI): { [key: string]: Binding[] } {
         return {
             [`delete from sqlite_sequence where name = ?`]: [query.getRegistry().from],
             [`delete from ${this.wrapTable(query.getRegistry().from)}`]: []

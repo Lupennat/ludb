@@ -305,7 +305,7 @@ describe('Postgres Connector', () => {
                 application_name: 'test',
                 sslcert: './not-exists-sslcert'
             });
-        }).toThrowError();
+        }).toThrow();
         expect(() => {
             connector.connect({
                 username: 'username',
@@ -317,7 +317,7 @@ describe('Postgres Connector', () => {
                 application_name: 'test',
                 sslkey: './not-exists-sslkey'
             });
-        }).toThrowError();
+        }).toThrow();
         expect(() => {
             connector.connect({
                 username: 'username',
@@ -329,7 +329,7 @@ describe('Postgres Connector', () => {
                 application_name: 'test',
                 sslrootcert: './not-exists-sslrootcert'
             });
-        }).toThrowError();
+        }).toThrow();
     });
 
     it('Works Created Callback', async () => {
@@ -359,8 +359,8 @@ describe('Postgres Connector', () => {
             }
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
 
         connector = new PostgresConnector();
@@ -382,7 +382,7 @@ describe('Postgres Connector', () => {
             application_name: 'test'
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
     });
 

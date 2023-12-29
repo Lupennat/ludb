@@ -9,7 +9,7 @@ import {
     pdo
 } from '../fixtures/mocked';
 
-describe('Query Builder Select-From', () => {
+describe('Builder Select-From', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -68,8 +68,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update `users` set `meta` = ?, `options` = ?, `group_id` = 45, `created_at` = ?, `json` = json_set(`json`, \'$."test"\', 30) where `active` = ?',
             [
                 JSON.stringify({ enabled: false, tags: ['white', 'large'] }, stringifyReplacer(builder.getGrammar())),
@@ -90,8 +90,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': 'John', 'name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update `users` set `name` = json_set(json_set(`name`, \'$."first_name"\', ?), \'$."last_name"\', ?) where `active` = ?',
             ['John', 'Doe', 1]
         );
@@ -102,8 +102,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': true, 'name->last_name': false });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update `users` set `name` = json_set(json_set(`name`, \'$."first_name"\', true), \'$."last_name"\', false) where `active` = ?',
             [1]
         );
@@ -116,8 +116,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'meta->name->first_name': 'John', 'meta->name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update `users` set `meta` = json_set(json_set(`meta`, \'$."name"."first_name"\', ?), \'$."name"."last_name"\', ?) where `active` = ?',
             ['John', 'Doe', 1]
         );
@@ -140,8 +140,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             "update `users` set `group_id` = 45, `created_at` = ?, `options` = json_set(json_set(json_set(`options`, '$.\"2fa\"', false), '$.\"presets\"', json_merge_patch('[]', ?)), '$.\"language\"', json_merge_patch('{}', ?)), `meta` = json_set(`meta`, '$.\"tags\"', json_merge_patch('[]', ?)) where `active` = ?",
             [
                 date,
@@ -162,8 +162,8 @@ describe('Query Builder Select-From', () => {
             'meta->tags[0][2]': 'large'
         });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update `users` set `options` = json_set(`options`, \'$[1]."2fa"\', false), `meta` = json_set(`meta`, \'$."tags"[0][2]\', ?) where `active` = ?',
             ['large', 1]
         );
@@ -177,8 +177,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('id', '=', 0)
             .update({ 'options->enable': false, updated_at: '2015-05-26 22:02:06' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update `users` set `updated_at` = ?, `options` = json_set(`options`, \'$."enable"\', false) where `id` = ?',
             ['2015-05-26 22:02:06', 0]
         );
@@ -190,8 +190,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('id', '=', 0)
             .update({ 'options->size': 45, updated_at: '2015-05-26 22:02:06' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update `users` set `updated_at` = ?, `options` = json_set(`options`, \'$."size"\', ?) where `id` = ?',
             ['2015-05-26 22:02:06', 45, 0]
         );
@@ -200,24 +200,28 @@ describe('Query Builder Select-From', () => {
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').update({ 'options->size': null });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith('update `users` set `options` = json_set(`options`, \'$."size"\', ?)', [
-            null
-        ]);
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
+            'update `users` set `options` = json_set(`options`, \'$."size"\', ?)',
+            [null]
+        );
 
         builder = getMySqlBuilder();
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').update({ 'options->size': new Raw('45') });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith('update `users` set `options` = json_set(`options`, \'$."size"\', 45)', []);
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
+            'update `users` set `options` = json_set(`options`, \'$."size"\', 45)',
+            []
+        );
     });
 
     it('Works Prepares Bindings For Update From', () => {
         const builder = getBuilder();
         expect(() => {
             builder.getGrammar().prepareBindingsForUpdateFrom(builder.getRegistry().bindings, {});
-        }).toThrowError('This database engine does not support the updateFrom method.');
+        }).toThrow('This database engine does not support the updateFrom method.');
     });
 
     it('Works Postgres Can Combine Json On Update', async () => {
@@ -238,8 +242,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "meta" = ?, "options" = ?, "group_id" = 45, "created_at" = ?, "json" = jsonb_set("json"::jsonb, \'{"test"}\', \'30\') where "active" = ?',
             [
                 JSON.stringify({ enabled: false, tags: ['white', 'large'] }, stringifyReplacer(builder.getGrammar())),
@@ -260,8 +264,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': 'John', 'name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "name" = jsonb_set(jsonb_set("name"::jsonb, \'{"first_name"}\', ?::jsonb), \'{"last_name"}\', ?::jsonb) where "active" = ?',
             ['"John"', '"Doe"', 1]
         );
@@ -272,8 +276,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': true, 'name->last_name': false });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "name" = jsonb_set(jsonb_set("name"::jsonb, \'{"first_name"}\', ?::jsonb), \'{"last_name"}\', ?::jsonb) where "active" = ?',
             ['true', 'false', 1]
         );
@@ -286,8 +290,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'meta->name->first_name': 'John', 'meta->name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "meta" = jsonb_set(jsonb_set("meta"::jsonb, \'{"name","first_name"}\', ?::jsonb), \'{"name","last_name"}\', ?::jsonb) where "active" = ?',
             ['"John"', '"Doe"', 1]
         );
@@ -312,8 +316,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "list" = ?, "group_id" = 45, "created_at" = ?, "options" = jsonb_set(jsonb_set(jsonb_set(jsonb_set("options"::jsonb, \'{"counter"}\', ?::jsonb), \'{"2fa"}\', ?::jsonb), \'{"presets"}\', ?::jsonb), \'{"language"}\', ?::jsonb), "meta" = jsonb_set("meta"::jsonb, \'{"tags"}\', ?::jsonb) where "active" = ?',
             [
                 JSON.stringify([1, 2, 3, 4, 5, 6]),
@@ -337,8 +341,8 @@ describe('Query Builder Select-From', () => {
             'meta->tags[0][2]': 'large'
         });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "options" = jsonb_set("options"::jsonb, \'{1,"2fa"}\', ?::jsonb), "meta" = jsonb_set("meta"::jsonb, \'{"tags",0,2}\', ?::jsonb) where "active" = ?',
             ['false', '"large"', 1]
         );
@@ -362,8 +366,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "meta" = ?, "options" = ?, "group_id" = 45, "created_at" = ?, "json" = json_set("json", \'$."test"\', 30) where "active" = ?',
             [
                 JSON.stringify({ enabled: false, tags: ['white', 'large'] }, stringifyReplacer(builder.getGrammar())),
@@ -384,8 +388,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': 'John', 'name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "name" = json_set(json_set("name", \'$."first_name"\', ?), \'$."last_name"\', ?) where "active" = ?',
             ['John', 'Doe', 1]
         );
@@ -396,8 +400,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': true, 'name->last_name': false });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "name" = json_set(json_set("name", \'$."first_name"\', json(\'true\')), \'$."last_name"\', json(\'false\')) where "active" = ?',
             [1]
         );
@@ -410,8 +414,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'meta->name->first_name': 'John', 'meta->name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "meta" = json_set(json_set("meta", \'$."name"."first_name"\', ?), \'$."name"."last_name"\', ?) where "active" = ?',
             ['John', 'Doe', 1]
         );
@@ -435,8 +439,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "list" = ?, "group_id" = 45, "created_at" = ?, "options" = json_set(json_set(json_set("options", \'$."2fa"\', json(\'false\')), \'$."presets"\', json(?)), \'$."language"\', json(?)), "meta" = json_set("meta", \'$."tags"\', json(?)) where "active" = ?',
             [
                 JSON.stringify([1, 2, 3, 4, 5, 6], stringifyReplacer(builder.getGrammar())),
@@ -458,8 +462,8 @@ describe('Query Builder Select-From', () => {
             'meta->tags[0][2]': 'large'
         });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update "users" set "options" = json_set("options", \'$[1]."2fa"\', json(\'false\')), "meta" = json_set("meta", \'$."tags"[0][2]\', ?) where "active" = ?',
             ['large', 1]
         );
@@ -483,8 +487,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update [users] set [meta] = ?, [options] = ?, [group_id] = 45, [created_at] = ?, [json] = json_query(json_modify([json], \'$."test"\', 30)) where [active] = ?',
             [
                 JSON.stringify({ enabled: false, tags: ['white', 'large'] }, stringifyReplacer(builder.getGrammar())),
@@ -505,8 +509,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': 'John', 'name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update [users] set [name] = json_query(json_modify(json_query(json_modify([name], \'$."first_name"\', ?)), \'$."last_name"\', ?)) where [active] = ?',
             ['John', 'Doe', 1]
         );
@@ -517,8 +521,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'name->first_name': true, 'name->last_name': false });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update [users] set [name] = json_query(json_modify(json_query(json_modify([name], \'$."first_name"\', ?)), \'$."last_name"\', ?)) where [active] = ?',
             [true, false, 1]
         );
@@ -531,8 +535,8 @@ describe('Query Builder Select-From', () => {
             .from('users')
             .where('active', '=', 1)
             .update({ 'meta->name->first_name': 'John', 'meta->name->last_name': 'Doe' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update [users] set [meta] = json_query(json_modify(json_query(json_modify([meta], \'$."name"."first_name"\', ?)), \'$."name"."last_name"\', ?)) where [active] = ?',
             ['John', 'Doe', 1]
         );
@@ -556,8 +560,8 @@ describe('Query Builder Select-From', () => {
                 created_at: date
             });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update [users] set [list] = ?, [group_id] = 45, [created_at] = ?, [options] = json_query(json_modify(json_query(json_modify(json_query(json_modify([options], \'$."2fa"\', ?)), \'$."presets"\', json_query(?))), \'$."language"\', json_query(?))), [meta] = json_query(json_modify([meta], \'$."tags"\', json_query(?))) where [active] = ?',
             [
                 JSON.stringify([1, 2, 3, 4, 5, 6], stringifyReplacer(builder.getGrammar())),
@@ -580,8 +584,8 @@ describe('Query Builder Select-From', () => {
             'meta->tags[0][2]': 'large'
         });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             'update [users] set [options] = json_query(json_modify([options], \'$[1]."2fa"\', ?)), [meta] = json_query(json_modify([meta], case when (select count(*) from openjson([meta], \'$."tags"[0]\')) >= 3 then \'$."tags"[0][2]\' else \'append $."tags"[0]\' end, ?)) where [active] = ?',
             [false, 'large', 1]
         );
@@ -596,8 +600,8 @@ describe('Query Builder Select-From', () => {
             'options->[2]': '2'
         });
 
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith(
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith(
             "update [users] set [options] = json_query(json_modify(json_query(json_modify(json_query(json_modify([options], case when (select count(*) from openjson([options], '$')) >= 2 then '$[1]' else 'append $' end, '')), 'strict $[1]', ?)), case when (select count(*) from openjson([options], '$')) >= 3 then '$[2]' else 'append $' end, ?)) where [active] = ?",
             [null, '2', 1]
         );

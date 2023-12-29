@@ -49,8 +49,8 @@ describe('SQLite Connector', () => {
             }
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
 
         connector = new SQLiteConnector();
@@ -68,7 +68,7 @@ describe('SQLite Connector', () => {
             foreign_key_constraints: false
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
     });
 
@@ -113,14 +113,14 @@ describe('SQLite Connector', () => {
         expect(() => {
             // @ts-expect-error test missing database
             connector.connect({ driver: 'sqlite' });
-        }).toThrowError('Database file path is required.');
+        }).toThrow('Database file path is required.');
     });
 
     it('Works Path Not Found Throw An Error', () => {
         const connector = new SQLiteConnector();
         expect(() => {
             connector.connect({ driver: 'sqlite', database: './not-exists.sql' });
-        }).toThrowError(
+        }).toThrow(
             'Database file at path [./not-exists.sql] does not exist. Ensure this is an absolute path to the database.'
         );
     });

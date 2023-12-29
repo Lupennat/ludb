@@ -2,10 +2,9 @@ import Cursor from '../../../paginations/cursor';
 import CursorPaginator from '../../../paginations/cursor-paginator';
 import LengthAwarePaginator from '../../../paginations/length-aware-paginator';
 import Paginator from '../../../paginations/paginator';
-import { Builder } from '../../../query';
-import { getBuilder, pdo } from '../fixtures/mocked';
+import { MockedBuilder, getBuilder, pdo } from '../fixtures/mocked';
 
-describe('Query Builder Paginate', () => {
+describe('Builder Paginate', () => {
     const path = 'http://foo.bar?page=3';
 
     beforeAll(() => {
@@ -126,8 +125,8 @@ describe('Query Builder Paginate', () => {
         const res = await builder.paginate(perPage, columns, name, page);
 
         expect(spiedForPage).toHaveBeenCalledWith(1, perPage);
-        expect(spiedForPage).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res).toBeInstanceOf(LengthAwarePaginator);
         expect(res.toObject()).toEqual(
             new LengthAwarePaginator(results, 2, perPage, 1, {
@@ -151,8 +150,8 @@ describe('Query Builder Paginate', () => {
         const res = await builder.paginate();
 
         expect(spiedForPage).toHaveBeenCalledWith(page, perPage);
-        expect(spiedForPage).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res.toObject()).toEqual(
             new LengthAwarePaginator(results, 2, perPage, page, {
                 path: path,
@@ -175,8 +174,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.paginate();
 
-        expect(spiedForPage).not.toBeCalled();
-        expect(spiedGet).not.toBeCalled();
+        expect(spiedForPage).not.toHaveBeenCalled();
+        expect(spiedGet).not.toHaveBeenCalled();
         expect(res.toObject()).toEqual(
             new LengthAwarePaginator(results, 0, perPage, page, {
                 path: path,
@@ -203,8 +202,8 @@ describe('Query Builder Paginate', () => {
         const res = await builder.paginate(perPage, columns, name, page);
 
         expect(spiedForPage).toHaveBeenCalledWith(page, perPage);
-        expect(spiedForPage).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res.toObject()).toEqual(
             new LengthAwarePaginator(results, 2, perPage, page, {
                 path: path,
@@ -234,8 +233,8 @@ describe('Query Builder Paginate', () => {
         const res = await builder.paginate(perPage, columns, name, page);
 
         expect(spiedForPage).toHaveBeenCalledWith(1, 16);
-        expect(spiedForPage).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res.toObject()).toEqual(
             new LengthAwarePaginator(results, 2, 16, 1, {
                 path: path,
@@ -261,13 +260,13 @@ describe('Query Builder Paginate', () => {
         const res = await builder.simplePaginate(perPage, columns, name, page);
 
         expect(spiedOffset).toHaveBeenCalledWith((page - 1) * perPage);
-        expect(spiedOffset).toBeCalledTimes(1);
+        expect(spiedOffset).toHaveBeenCalledTimes(1);
         expect(spiedLimit).toHaveBeenCalledWith(perPage + 1);
-        expect(spiedLimit).toBeCalledTimes(1);
-        expect(spiedCount).not.toBeCalled();
-        expect(spiedForPage).not.toBeCalled();
+        expect(spiedLimit).toHaveBeenCalledTimes(1);
+        expect(spiedCount).not.toHaveBeenCalled();
+        expect(spiedForPage).not.toHaveBeenCalled();
 
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res).toBeInstanceOf(Paginator);
         expect(res.toObject()).toEqual(
             new Paginator(results, perPage, page, {
@@ -293,13 +292,13 @@ describe('Query Builder Paginate', () => {
         const res = await builder.simplePaginate();
 
         expect(spiedOffset).toHaveBeenCalledWith((page - 1) * perPage);
-        expect(spiedOffset).toBeCalledTimes(1);
+        expect(spiedOffset).toHaveBeenCalledTimes(1);
         expect(spiedLimit).toHaveBeenCalledWith(perPage + 1);
-        expect(spiedLimit).toBeCalledTimes(1);
-        expect(spiedCount).not.toBeCalled();
-        expect(spiedForPage).not.toBeCalled();
+        expect(spiedLimit).toHaveBeenCalledTimes(1);
+        expect(spiedCount).not.toHaveBeenCalled();
+        expect(spiedForPage).not.toHaveBeenCalled();
 
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res).toBeInstanceOf(Paginator);
         expect(res.toObject()).toEqual(
             new Paginator(results, perPage, page, {
@@ -325,13 +324,13 @@ describe('Query Builder Paginate', () => {
         const res = await builder.simplePaginate();
 
         expect(spiedOffset).toHaveBeenCalledWith((page - 1) * perPage);
-        expect(spiedOffset).toBeCalledTimes(1);
+        expect(spiedOffset).toHaveBeenCalledTimes(1);
         expect(spiedLimit).toHaveBeenCalledWith(perPage + 1);
-        expect(spiedLimit).toBeCalledTimes(1);
-        expect(spiedCount).not.toBeCalled();
-        expect(spiedForPage).not.toBeCalled();
+        expect(spiedLimit).toHaveBeenCalledTimes(1);
+        expect(spiedCount).not.toHaveBeenCalled();
+        expect(spiedForPage).not.toHaveBeenCalled();
 
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res).toBeInstanceOf(Paginator);
         expect(res.toObject()).toEqual(
             new Paginator(results, perPage, page, {
@@ -361,13 +360,13 @@ describe('Query Builder Paginate', () => {
         const res = await builder.simplePaginate(perPage, columns, name, page);
 
         expect(spiedOffset).toHaveBeenCalledWith(0);
-        expect(spiedOffset).toBeCalledTimes(1);
+        expect(spiedOffset).toHaveBeenCalledTimes(1);
         expect(spiedLimit).toHaveBeenCalledWith(perPage + 1);
-        expect(spiedLimit).toBeCalledTimes(1);
-        expect(spiedCount).not.toBeCalled();
-        expect(spiedForPage).not.toBeCalled();
+        expect(spiedLimit).toHaveBeenCalledTimes(1);
+        expect(spiedCount).not.toHaveBeenCalled();
+        expect(spiedForPage).not.toHaveBeenCalled();
 
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res).toBeInstanceOf(Paginator);
         expect(res.toObject()).toEqual(
             new Paginator(results, perPage, 1, {
@@ -386,7 +385,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -405,8 +404,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -426,7 +425,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -445,8 +444,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor.encode());
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -466,7 +465,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').orderBy('test').orderBy('another');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -490,8 +489,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -510,7 +509,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -533,8 +532,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate();
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -553,7 +552,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -574,8 +573,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate();
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -595,7 +594,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').orderBy('id');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -617,8 +616,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -643,7 +642,7 @@ describe('Query Builder Paginate', () => {
             .orderBy('baz');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -667,8 +666,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -687,7 +686,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').select('*').selectRaw("(CONCAT(firstname, ' ', lastname)) as test").orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -712,8 +711,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate();
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -736,7 +735,7 @@ describe('Query Builder Paginate', () => {
             .orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -761,8 +760,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate();
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -781,7 +780,7 @@ describe('Query Builder Paginate', () => {
         builder.from('foobar').select('*').selectSub("CONCAT(firstname, ' ', lastname)", 'test').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -806,8 +805,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate();
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -829,7 +828,7 @@ describe('Query Builder Paginate', () => {
         builder.union(getBuilder().select('id', 'created_at').selectRaw("'news' as type").from('news'));
         builder.orderBy('created_at');
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -854,8 +853,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -887,7 +886,7 @@ describe('Query Builder Paginate', () => {
         );
         builder.orderByRaw('case when (id = 3 and type="news" then 0 else 1 end)').orderBy('created_at');
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -912,8 +911,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {
@@ -935,7 +934,7 @@ describe('Query Builder Paginate', () => {
         builder.union(getBuilder().select('id', 'created_at').selectRaw("'news' as type").from('news'));
         builder.orderBy('created_at').orderByDesc('id');
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -960,8 +959,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
         expect(res.toObject()).toEqual(
             new CursorPaginator(results.reverse(), perPage, cursor, {
                 path,
@@ -983,7 +982,7 @@ describe('Query Builder Paginate', () => {
         builder.orderByDesc('created_at').orderBy('id');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new Builder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -1008,8 +1007,8 @@ describe('Query Builder Paginate', () => {
 
         const res = await builder.cursorPaginate(perPage, columns, name, cursor);
 
-        expect(spiedNewQuery).toBeCalledTimes(1);
-        expect(spiedGet).toBeCalledTimes(1);
+        expect(spiedNewQuery).toHaveBeenCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
 
         expect(res.toObject()).toEqual(
             new CursorPaginator(results, perPage, cursor, {

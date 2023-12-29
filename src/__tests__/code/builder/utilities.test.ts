@@ -4,9 +4,17 @@ import Raw from '../../../query/expression';
 import MySqlGrammar from '../../../query/grammars/mysql-grammar';
 import BuilderI from '../../../types/query/builder';
 import { WhereBasic } from '../../../types/query/registry';
-import { getBuilder, getConnection, getJoin, getMySqlBuilder, pdo } from '../fixtures/mocked';
+import {
+    MockedBuilder,
+    getBuilder,
+    getConnection,
+    getJoin,
+    getMySqlBuilder,
+    getQueryBuilder,
+    pdo
+} from '../fixtures/mocked';
 
-describe('Query Builder Utilities', () => {
+describe('Builder Utilities', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -16,10 +24,10 @@ describe('Query Builder Utilities', () => {
         const spiedGrammar = jest.spyOn(session, 'getQueryGrammar');
         let builder = new Builder(session);
         expect(builder.getGrammar()).toBeInstanceOf(Grammar);
-        expect(spiedGrammar).toBeCalledTimes(1);
+        expect(spiedGrammar).toHaveBeenCalledTimes(1);
         builder = new Builder(session, new MySqlGrammar());
         expect(builder.getGrammar()).toBeInstanceOf(Grammar);
-        expect(spiedGrammar).toBeCalledTimes(1);
+        expect(spiedGrammar).toHaveBeenCalledTimes(1);
     });
 
     it('Works When Callback', () => {
@@ -53,7 +61,7 @@ describe('Query Builder Utilities', () => {
     });
 
     it('Works When Callback With Return', () => {
-        const callback = (query: BuilderI, condition: boolean): BuilderI => {
+        const callback = (query: MockedBuilder, condition: boolean): MockedBuilder => {
             expect(condition).toBeTruthy();
             return query.where('id', '=', 1);
         };
@@ -66,15 +74,15 @@ describe('Query Builder Utilities', () => {
     });
 
     it('Works When Callback With Default', () => {
-        const callback = (query: BuilderI, condition: string | number): BuilderI => {
+        const callback = (query: MockedBuilder, condition: string | number): MockedBuilder => {
             expect(condition).toBe('truthy');
             return query.where('id', '=', 1);
         };
-        const defaultCB = (query: BuilderI, condition: string | number): BuilderI => {
+        const defaultCB = (query: MockedBuilder, condition: string | number): MockedBuilder => {
             expect(condition).toBe(0);
             return query.where('id', '=', 2);
         };
-        const defaultCBNoReturn = (query: BuilderI, condition: string | number): void => {
+        const defaultCBNoReturn = (query: MockedBuilder, condition: string | number): void => {
             expect(condition).toBe(0);
             query.where('id', '=', 2);
         };
@@ -119,7 +127,7 @@ describe('Query Builder Utilities', () => {
     });
 
     it('Works Unless Callback With Return', () => {
-        const callback = (query: BuilderI, condition: boolean): BuilderI => {
+        const callback = (query: MockedBuilder, condition: boolean): MockedBuilder => {
             expect(condition).toBeFalsy();
             return query.where('id', '=', 1);
         };
@@ -132,15 +140,15 @@ describe('Query Builder Utilities', () => {
     });
 
     it('Works Unless Callback With Default', () => {
-        const callback = (query: BuilderI, condition: string | number): BuilderI => {
+        const callback = (query: MockedBuilder, condition: string | number): MockedBuilder => {
             expect(condition).toBe(0);
             return query.where('id', '=', 1);
         };
-        const defaultCB = (query: BuilderI, condition: string | number): BuilderI => {
+        const defaultCB = (query: MockedBuilder, condition: string | number): MockedBuilder => {
             expect(condition).toBe('truthy');
             return query.where('id', '=', 2);
         };
-        const defaultCBNoReturn = (query: BuilderI, condition: string | number): void => {
+        const defaultCBNoReturn = (query: MockedBuilder, condition: string | number): void => {
             expect(condition).toBe('truthy');
             query.where('id', '=', 2);
         };
@@ -195,16 +203,16 @@ describe('Query Builder Utilities', () => {
         const builder = getBuilder();
         const callback = function (): void {};
         builder.beforeQuery(callback);
-        expect(builder.getRegistry().beforeQueryCallbacks.length).toBe(1);
-        expect(builder.getRegistry().beforeQueryCallbacks[0]).toEqual(callback);
+        expect(builder.getBeforeQueryCallbacks().length).toBe(1);
+        expect(builder.getBeforeQueryCallbacks()[0]).toEqual(callback);
     });
 
     it('Works Apply Preserve Cleans Array', () => {
         const builder = getBuilder();
         builder.beforeQuery(function () {});
-        expect(builder.getRegistry().beforeQueryCallbacks.length).toBe(1);
+        expect(builder.getBeforeQueryCallbacks().length).toBe(1);
         builder.applyBeforeQueryCallbacks();
-        expect(builder.getRegistry().beforeQueryCallbacks.length).toBe(0);
+        expect(builder.getBeforeQueryCallbacks().length).toBe(0);
     });
 
     it('Works Preserved Are Applied By To Sql', () => {
@@ -223,8 +231,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         await builder.insert({ email: 'foo' });
-        expect(spiedInsert).toBeCalledTimes(1);
-        expect(spiedInsert).toBeCalledWith('insert into "users" ("email") values (?)', ['foo']);
+        expect(spiedInsert).toHaveBeenCalledTimes(1);
+        expect(spiedInsert).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo']);
     });
 
     it('Works Preserved Are Applied By Insert Get Id', async () => {
@@ -234,8 +242,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         await builder.insertGetId({ email: 'foo' }, 'id');
-        expect(spiedInsert).toBeCalledTimes(1);
-        expect(spiedInsert).toBeCalledWith('insert into "users" ("email") values (?)', ['foo'], 'id');
+        expect(spiedInsert).toHaveBeenCalledTimes(1);
+        expect(spiedInsert).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo'], 'id');
     });
 
     it('Works Preserved Are Applied By Insert Using', async () => {
@@ -245,8 +253,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         builder.insertUsing([], getBuilder());
-        expect(spiedAffecting).toBeCalledTimes(1);
-        expect(spiedAffecting).toBeCalledWith('insert into "users" select *', []);
+        expect(spiedAffecting).toHaveBeenCalledTimes(1);
+        expect(spiedAffecting).toHaveBeenCalledWith('insert into "users" select *', []);
     });
 
     it('Works Preserved Are Applied By Upsert', async () => {
@@ -257,8 +265,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         await builder.upsert({ email: 'foo' }, 'id');
-        expect(spiedAffecting).toBeCalledTimes(1);
-        expect(spiedAffecting).toBeCalledWith(
+        expect(spiedAffecting).toHaveBeenCalledTimes(1);
+        expect(spiedAffecting).toHaveBeenCalledWith(
             'insert into `users` (`email`) values (?) on duplicate key update `email` = values(`email`)',
             ['foo']
         );
@@ -270,8 +278,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         await builder.upsert({ email: 'foo' }, 'id');
-        expect(spiedAffecting).toBeCalledTimes(1);
-        expect(spiedAffecting).toBeCalledWith(
+        expect(spiedAffecting).toHaveBeenCalledTimes(1);
+        expect(spiedAffecting).toHaveBeenCalledWith(
             'insert into `users` (`email`) values (?) as laravel_upsert_alias on duplicate key update `email` = `laravel_upsert_alias`.`email`',
             ['foo']
         );
@@ -284,8 +292,8 @@ describe('Query Builder Utilities', () => {
             builder.where('id', 1);
         });
         await builder.update({ email: 'foo' });
-        expect(spiedUpdate).toBeCalledTimes(1);
-        expect(spiedUpdate).toBeCalledWith('update "users" set "email" = ? where "id" = ?', ['foo', 1]);
+        expect(spiedUpdate).toHaveBeenCalledTimes(1);
+        expect(spiedUpdate).toHaveBeenCalledWith('update "users" set "email" = ? where "id" = ?', ['foo', 1]);
     });
 
     it('Works Preserved Are Applied By Delete', async () => {
@@ -295,8 +303,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         await builder.delete();
-        expect(spiedDelete).toBeCalledTimes(1);
-        expect(spiedDelete).toBeCalledWith('delete from "users"', []);
+        expect(spiedDelete).toHaveBeenCalledTimes(1);
+        expect(spiedDelete).toHaveBeenCalledWith('delete from "users"', []);
     });
 
     it('Works Preserved Are Applied By Truncate', async () => {
@@ -306,8 +314,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         await builder.truncate();
-        expect(spiedStatement).toBeCalledTimes(1);
-        expect(spiedStatement).toBeCalledWith('truncate table "users"', []);
+        expect(spiedStatement).toHaveBeenCalledTimes(1);
+        expect(spiedStatement).toHaveBeenCalledWith('truncate table "users"', []);
     });
 
     it('Works Preserved Are Applied By Exists', async () => {
@@ -317,8 +325,8 @@ describe('Query Builder Utilities', () => {
             builder.from('users');
         });
         await builder.exists();
-        expect(spiedSelect).toBeCalledTimes(1);
-        expect(spiedSelect).toBeCalledWith('select exists(select * from "users") as "exists"', [], true);
+        expect(spiedSelect).toHaveBeenCalledTimes(1);
+        expect(spiedSelect).toHaveBeenCalledWith('select exists(select * from "users") as "exists"', [], true);
     });
 
     it('Works Merge Wheres Can Merge Wheres And Bindings', () => {
@@ -384,7 +392,7 @@ describe('Query Builder Utilities', () => {
         expect(() => {
             // @ts-expect-error test wrong argument
             builder.setBindings(['bar', 'baz'], 'noway');
-        }).toThrowError('Invalid binding type: noway.');
+        }).toThrow('Invalid binding type: noway.');
     });
 
     it('Works Add Binding With Array Merges Bindings', () => {
@@ -406,7 +414,7 @@ describe('Query Builder Utilities', () => {
         expect(() => {
             // @ts-expect-error test wrong argument
             builder.addBinding(['bar', 'baz'], 'noway');
-        }).toThrowError('Invalid binding type: noway.');
+        }).toThrow('Invalid binding type: noway.');
     });
 
     it('Works Merge Builders Bindings', () => {
@@ -430,20 +438,45 @@ describe('Query Builder Utilities', () => {
 
     it('Works Clone', () => {
         const builder = getBuilder();
-        builder.select('*').from('users');
-        const clone = builder.clone().where('email', 'foo');
+        builder
+            .select('*')
+            .from('users')
+            .beforeQuery(query => query.orderBy('foo', 'desc'));
+        const clone = builder
+            .clone()
+            .where('email', 'foo')
+            .beforeQuery(query => query.orderBy('baz', 'desc'));
 
         expect(builder).not.toEqual(clone);
-        expect('select * from "users"').toBe(builder.toSql());
-        expect('select * from "users" where "email" = ?').toBe(clone.toSql());
+        expect('select * from "users" order by "foo" desc').toBe(builder.toSql());
+        expect('select * from "users" where "email" = ? order by "foo" desc, "baz" desc').toBe(clone.toSql());
 
         const join = getJoin();
-        join.select('*').from('users');
-        const clonedJoin = join.clone().where('email', 'foo');
+        join.select('*')
+            .from('users')
+            .beforeQuery(query => query.orderBy('foo', 'desc'));
+        const clonedJoin = join
+            .clone()
+            .where('email', 'foo')
+            .beforeQuery(query => query.orderBy('baz', 'desc'));
 
         expect(join).not.toEqual(clonedJoin);
-        expect('select * from "users"').toBe(join.toSql());
-        expect('select * from "users" on "email" = ?').toBe(clonedJoin.toSql());
+        expect('select * from "users" order by "foo" desc').toBe(join.toSql());
+        expect('select * from "users" on "email" = ? order by "foo" desc, "baz" desc').toBe(clonedJoin.toSql());
+
+        const query = getQueryBuilder();
+        query
+            .select('*')
+            .from('users')
+            .beforeQuery(query => query.orderBy('foo', 'desc'));
+        const clonedQuery = query
+            .clone()
+            .where('email', 'foo')
+            .beforeQuery(query => query.orderBy('baz', 'desc'));
+
+        expect(query).not.toEqual(clonedQuery);
+        expect('select * from "users" order by "foo" desc').toBe(query.toSql());
+        expect('select * from "users" where "email" = ? order by "foo" desc, "baz" desc').toBe(clonedQuery.toSql());
     });
 
     it('Works Clone Without', () => {
@@ -460,6 +493,13 @@ describe('Query Builder Utilities', () => {
 
         expect('select * from "users" on "email" = ? order by "email" asc').toBe(join.toSql());
         expect('select * from "users" on "email" = ?').toBe(clonedJoin.toSql());
+
+        const query = getQueryBuilder();
+        query.select('*').from('users').where('email', 'foo').orderBy('email');
+        const clonedQuery = query.cloneWithout(['orders']);
+
+        expect('select * from "users" where "email" = ? order by "email" asc').toBe(query.toSql());
+        expect('select * from "users" where "email" = ?').toBe(clonedQuery.toSql());
     });
 
     it('Works Clone Without Bindings', () => {
@@ -480,7 +520,16 @@ describe('Query Builder Utilities', () => {
         expect('select * from "users" on "email" = ? order by "email" asc').toBe(join.toSql());
         expect(['foo']).toEqual(builder.getBindings());
         expect('select * from "users" order by "email" asc').toBe(clonedJoin.toSql());
-        expect([]).toEqual(clone.getBindings());
+        expect([]).toEqual(clonedJoin.getBindings());
+
+        const query = getQueryBuilder();
+        query.select('*').from('users').where('email', 'foo').orderBy('email');
+        const clonedQuery = query.cloneWithout(['wheres']).cloneWithoutBindings(['where']);
+
+        expect('select * from "users" where "email" = ? order by "email" asc').toBe(query.toSql());
+        expect(['foo']).toEqual(builder.getBindings());
+        expect('select * from "users" order by "email" asc').toBe(clonedQuery.toSql());
+        expect([]).toEqual(clonedQuery.getBindings());
     });
 
     it('Works Get Columns', () => {

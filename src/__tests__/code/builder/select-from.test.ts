@@ -8,7 +8,7 @@ import {
     getSqlServerBuilder,
     pdo
 } from '../fixtures/mocked';
-describe('Query Builder Select-From', () => {
+describe('Builder Select-From', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -66,13 +66,13 @@ describe('Query Builder Select-From', () => {
         let spyConnection = jest.spyOn(builder.getConnection(), 'select');
 
         await builder.useWritePdo().select('*').from('users').get();
-        expect(spyConnection).toBeCalledWith('select * from `users`', [], false);
+        expect(spyConnection).toHaveBeenCalledWith('select * from `users`', [], false);
 
         builder = getMySqlBuilder();
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
 
         await builder.select('*').from('users').get();
-        expect(spyConnection).toBeCalledWith('select * from `users`', [], true);
+        expect(spyConnection).toHaveBeenCalledWith('select * from `users`', [], true);
     });
 
     it('Works Adding Selects', () => {
@@ -301,7 +301,7 @@ describe('Query Builder Select-From', () => {
         expect(() => {
             // @ts-expect-error test wrong parameter
             builder.selectSub(['foo'], 'sub');
-        }).toThrowError('A subquery must be a query builder instance, a Closure, or a string.');
+        }).toThrow('A subquery must be a query builder instance, a Closure, or a string.');
     });
 
     it('Works Sub Select Cross Database', () => {
@@ -372,7 +372,7 @@ describe('Query Builder Select-From', () => {
         expect(() => {
             // @ts-expect-error test wrong parameter
             builder.fromSub(['invalid'], 'sessions').where('bar', '<', '10');
-        }).toThrowError('A subquery must be a query builder instance, a Closure, or a string.');
+        }).toThrow('A subquery must be a query builder instance, a Closure, or a string.');
     });
 
     it('Works From Sub With Prefix', () => {
@@ -402,7 +402,7 @@ describe('Query Builder Select-From', () => {
         expect(() => {
             // @ts-expect-error test wrong parameter
             builder.fromSub(['invalid'], 'sessions');
-        }).toThrowError('A subquery must be a query builder instance, a Closure, or a string.');
+        }).toThrow('A subquery must be a query builder instance, a Closure, or a string.');
     });
 
     it('Works From Raw', () => {
@@ -453,7 +453,7 @@ describe('Query Builder Select-From', () => {
         const builder = getPostgresBuilder();
         expect(() => {
             builder.select('foo').from('users').useIndex('test_index').toSql();
-        }).toThrowError('This database engine does not support index hints.');
+        }).toThrow('This database engine does not support index hints.');
     });
 
     it('Works Use Index MySql', () => {

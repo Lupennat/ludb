@@ -1,9 +1,10 @@
 import PostgresGrammar from '../query/grammars/postgres-grammar';
 import SchemaBuilder from '../schema/builders/postgres-builder';
 import SchemaGrammar from '../schema/grammars/postgres-grammar';
+import PostgresConnectionI from '../types/connection/postgres-connection';
 import Connection from './connection';
 
-class PostgresConnection extends Connection {
+class PostgresConnection extends Connection implements PostgresConnectionI {
     /**
      * Get the default query grammar instance.
      */

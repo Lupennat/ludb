@@ -1,9 +1,10 @@
 import SqlServerGrammar from '../query/grammars/sqlserver-grammar';
 import SchemaBuilder from '../schema/builders/sqlserver-builder';
 import SchemaGrammar from '../schema/grammars/sqlserver-grammar';
+import SqlServerConnectionI from '../types/connection/sqlserver-connection';
 import Connection from './connection';
 
-class SqlServerConnection extends Connection {
+class SqlServerConnection extends Connection implements SqlServerConnectionI {
     /**
      * Get the default query grammar instance.
      */

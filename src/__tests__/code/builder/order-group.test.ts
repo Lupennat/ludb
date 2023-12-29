@@ -1,5 +1,6 @@
 import Raw from '../../../query/expression';
 import BuilderI from '../../../types/query/builder';
+
 import {
     getBuilder,
     getMySqlBuilder,
@@ -9,7 +10,7 @@ import {
     pdo
 } from '../fixtures/mocked';
 
-describe('Query Builder Order-Group', () => {
+describe('Builder Order-Group', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -225,7 +226,7 @@ describe('Query Builder Order-Group', () => {
         expect(() => {
             // @ts-expect-error error on wrong direction
             builder.select('*').from('users').orderBy('age', 'asec');
-        }).toThrowError('Order direction must be "asc" or "desc".');
+        }).toThrow('Order direction must be "asc" or "desc".');
     });
 
     it('Works SQLite Order By', () => {

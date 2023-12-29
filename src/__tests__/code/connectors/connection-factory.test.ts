@@ -86,20 +86,20 @@ describe('Connection Factory', () => {
     it('Works If Driver Isnt Set Error Is Thrown', () => {
         expect(() => {
             new ConnectionFactory().make({}, 'unset');
-        }).toThrowError('A driver must be specified.');
+        }).toThrow('A driver must be specified.');
     });
 
     it('Works Error Is Thrown On Unsupported Driver', () => {
         expect(() => {
             new ConnectionFactory().make({ driver: 'foo' }, 'foo');
-        }).toThrowError('Unsupported driver [foo]');
+        }).toThrow('Unsupported driver [foo]');
     });
 
     it('Works Custom Connectors Can Be Resolved', () => {
         const callback = jest.fn();
         Connector.resolverFor('foo', callback);
         new MockedFactory().createConnector({ driver: 'foo', name: 'foo', database: '', prefix: '' });
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('Works Custom Connection Can Be Resolved', () => {
@@ -113,7 +113,7 @@ describe('Connection Factory', () => {
             '',
             ''
         );
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('Works Error Is Thrown On Unsupported Connection', () => {
@@ -126,7 +126,7 @@ describe('Connection Factory', () => {
                 '',
                 ''
             );
-        }).toThrowError('Unsupported driver [baz]');
+        }).toThrow('Unsupported driver [baz]');
     });
 
     it('Works MySql Driver', () => {

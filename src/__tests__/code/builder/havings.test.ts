@@ -1,7 +1,7 @@
 import Raw from '../../../query/expression';
 import { ObjectArrayable, getBuilder, getMySqlBuilder, pdo } from '../fixtures/mocked';
 
-describe('Query Builder Havings', () => {
+describe('Builder Havings', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -98,12 +98,12 @@ describe('Query Builder Havings', () => {
                 '=',
                 'test'
             );
-        }).toThrowError('Value must be null when column is a callback.');
+        }).toThrow('Value must be null when column is a callback.');
 
         builder = getBuilder();
         expect(() => {
             builder.select('*').from('users').having('id', '>', null);
-        }).toThrowError('Illegal operator and value combination.');
+        }).toThrow('Illegal operator and value combination.');
     });
 
     it('Works Nested Havings', () => {
@@ -384,6 +384,18 @@ describe('Query Builder Havings', () => {
         expect([{ category: 'rock', total: 5 }]).toEqual(result);
     });
 
+    it('Works Having Expression', () => {
+        let builder = getBuilder();
+        builder.select('*').from('users').having(new Raw('user_foo < user_bar'));
+        expect(builder.toSql()).toBe('select * from "users" having user_foo < user_bar');
+        expect(builder.getBindings()).toEqual([]);
+
+        builder = getBuilder();
+        builder.select('*').from('users').having(new Raw('user_foo < user_bar'), null, null, 'and', true);
+        expect(builder.toSql()).toBe('select * from "users" having not user_foo < user_bar');
+        expect(builder.getBindings()).toEqual([]);
+    });
+
     it('Works Raw Havings', () => {
         let builder = getBuilder();
         builder.select('*').from('users').havingRaw('user_foo < user_bar');
@@ -391,6 +403,10 @@ describe('Query Builder Havings', () => {
 
         builder = getBuilder();
         builder.select('*').from('users').having('baz', '=', 1).orHavingRaw('user_foo < user_bar');
+        expect('select * from "users" having "baz" = ? or user_foo < user_bar').toBe(builder.toSql());
+
+        builder = getBuilder();
+        builder.select('*').from('users').having('baz', '=', 1).orHavingRaw(new Raw('user_foo < user_bar'));
         expect('select * from "users" having "baz" = ? or user_foo < user_bar').toBe(builder.toSql());
 
         builder = getBuilder();

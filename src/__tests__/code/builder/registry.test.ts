@@ -1,7 +1,7 @@
 import Raw from '../../../query/expression';
 import IndexHint from '../../../query/index-hint';
 import createRegistry, { cloneRegistry } from '../../../query/registry';
-import { Binding } from '../../../types/query/builder';
+import { Binding } from '../../../types/generics';
 import {
     OrderColumn,
     OrderRaw,
@@ -15,7 +15,7 @@ import {
 } from '../../../types/query/registry';
 import { getBuilder, getJoin, pdo } from '../fixtures/mocked';
 
-describe('Query Builder Registry', () => {
+describe('Builder Registry', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -50,8 +50,7 @@ describe('Query Builder Registry', () => {
             unionLimit: null,
             unionOffset: null,
             unionOrders: [],
-            lock: null,
-            beforeQueryCallbacks: []
+            lock: null
         });
     });
 
@@ -1680,16 +1679,5 @@ describe('Query Builder Registry', () => {
         expect(cloned.lock).toBe('lock');
         registry.lock = null;
         expect(cloned.lock).toBe('lock');
-    });
-
-    it('Works Clone Before Query Callbacks', () => {
-        const registry = createRegistry();
-        registry.beforeQueryCallbacks = [() => {}, () => {}, () => {}];
-        const cloned = cloneRegistry(registry);
-        expect(cloned.beforeQueryCallbacks).toEqual([expect.any(Function), expect.any(Function), expect.any(Function)]);
-        registry.beforeQueryCallbacks.pop();
-        expect(cloned.beforeQueryCallbacks).toEqual([expect.any(Function), expect.any(Function), expect.any(Function)]);
-        registry.beforeQueryCallbacks = [];
-        expect(cloned.beforeQueryCallbacks).toEqual([expect.any(Function), expect.any(Function), expect.any(Function)]);
     });
 });

@@ -149,7 +149,7 @@ describe('Connection', () => {
         expect(() => {
             // @ts-expect-error test wrong binding
             connection.bindValues(statement, [new Raw('wrong')]);
-        }).toThrowError('Expression binding can not be binded directly to statement.');
+        }).toThrow('Expression binding can not be binded directly to statement.');
 
         await statement.close();
 
@@ -157,7 +157,7 @@ describe('Connection', () => {
         expect(() => {
             // @ts-expect-error test wrong binding
             connection.bindValues(statement, { wrong: new Raw('wrong') });
-        }).toThrowError('Expression binding can not be binded directly to statement.');
+        }).toThrow('Expression binding can not be binded directly to statement.');
 
         await statement.close();
     });
@@ -185,10 +185,10 @@ describe('Connection', () => {
         const spiedEvent = jest.spyOn(eventDispatcher, 'on');
         const callback = (): void => {};
         connection.listen(callback);
-        expect(spiedEvent).not.toBeCalled();
+        expect(spiedEvent).not.toHaveBeenCalled();
         connection.setEventDispatcher(eventDispatcher);
         connection.listen(callback);
-        expect(spiedEvent).toBeCalledWith(QueryExecuted.eventName, callback);
+        expect(spiedEvent).toHaveBeenCalledWith(QueryExecuted.eventName, callback);
     });
 
     it('Works UnListen', () => {
@@ -200,13 +200,13 @@ describe('Connection', () => {
         const spiedEvent = jest.spyOn(eventDispatcher, 'off');
         const callback = (): void => {};
         connection.unlisten(callback);
-        expect(spiedEvent).not.toBeCalled();
+        expect(spiedEvent).not.toHaveBeenCalled();
         connection.setEventDispatcher(eventDispatcher);
         connection.listen(callback);
-        expect(spiedEvent).not.toBeCalled();
+        expect(spiedEvent).not.toHaveBeenCalled();
         expect(eventDispatcher._eventsCount).toBe(1);
         connection.unlisten(callback);
-        expect(spiedEvent).toBeCalledWith(QueryExecuted.eventName, callback);
+        expect(spiedEvent).toHaveBeenCalledWith(QueryExecuted.eventName, callback);
         expect(eventDispatcher._eventsCount).toBe(0);
     });
 
@@ -253,16 +253,16 @@ describe('Connection', () => {
             return 'test-name';
         });
         expect(connection.getNameWithReadWriteType()).toBe('test-name');
-        expect(spiedName).toBeCalled();
+        expect(spiedName).toHaveBeenCalled();
         connection.setReadWriteType('write');
         expect(connection.getNameWithReadWriteType()).toBe('test-name::write');
-        expect(spiedName).toBeCalledTimes(2);
+        expect(spiedName).toHaveBeenCalledTimes(2);
         connection.setReadWriteType('read');
         expect(connection.getNameWithReadWriteType()).toBe('test-name::read');
-        expect(spiedName).toBeCalledTimes(3);
+        expect(spiedName).toHaveBeenCalledTimes(3);
         connection.setReadWriteType(null);
         expect(connection.getNameWithReadWriteType()).toBe('test-name');
-        expect(spiedName).toBeCalledTimes(4);
+        expect(spiedName).toHaveBeenCalledTimes(4);
     });
 
     it('Works Get Config', () => {
@@ -272,7 +272,7 @@ describe('Connection', () => {
             driver: 'fake',
             name: 'fake',
             pool: { killResource: false },
-            prefix: 'prefix'
+            prefix: 'prefix_'
         });
         expect(connection.getConfig<boolean>('pool.killResource', true)).toBeFalsy();
         expect(connection.getConfig<boolean>('pool.notExists', true)).toBeTruthy();
@@ -299,12 +299,12 @@ describe('Connection', () => {
         const grammar = new TestGrammar();
         const spiedTablePrefix = jest.spyOn(grammar, 'setTablePrefix');
         const connection = getConnection();
-        expect(connection.getTablePrefix()).toBe('prefix');
+        expect(connection.getTablePrefix()).toBe('prefix_');
         connection.setTablePrefix('test-prefix');
         expect(connection.getTablePrefix()).toBe('test-prefix');
-        expect(spiedTablePrefix).not.toBeCalled();
+        expect(spiedTablePrefix).not.toHaveBeenCalled();
         expect(connection.withTablePrefix(grammar)).toEqual(grammar);
-        expect(spiedTablePrefix).toBeCalledWith('test-prefix');
+        expect(spiedTablePrefix).toHaveBeenCalledWith('test-prefix');
     });
 
     it('Works Table', () => {
@@ -313,7 +313,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'table');
         expect(connection.table('test', 'name')).toBeInstanceOf(Builder);
-        expect(spiedSession).toBeCalledWith('test', 'name');
+        expect(spiedSession).toHaveBeenCalledWith('test', 'name');
     });
 
     it('Works Query', () => {
@@ -322,7 +322,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'query');
         expect(connection.query()).toBeInstanceOf(Builder);
-        expect(spiedSession).toBeCalledTimes(1);
+        expect(spiedSession).toHaveBeenCalledTimes(1);
     });
 
     it('Works Select One', async () => {
@@ -331,7 +331,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'selectOne');
         await connection.selectOne('select * from users', [], false);
-        expect(spiedSession).toBeCalledWith('select * from users', [], false);
+        expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
 
     it('Works Scalar', async () => {
@@ -340,7 +340,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'scalar');
         await connection.scalar('select * from users', [], false);
-        expect(spiedSession).toBeCalledWith('select * from users', [], false);
+        expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
 
     it('Works Select', async () => {
@@ -349,7 +349,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'select');
         await connection.select('select * from users', [], false);
-        expect(spiedSession).toBeCalledWith('select * from users', [], false);
+        expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
 
     it('Works Select Column', async () => {
@@ -358,7 +358,16 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'selectColumn');
         await connection.selectColumn(0, 'select * from users', [], false);
-        expect(spiedSession).toBeCalledWith(0, 'select * from users', [], false);
+        expect(spiedSession).toHaveBeenCalledWith(0, 'select * from users', [], false);
+    });
+
+    it('Works Select Resultsets', async () => {
+        const connection = getConnection();
+        const session = new ConnectionSession(connection);
+        jest.spyOn(connection, 'session').mockReturnValue(session);
+        const spiedSession = jest.spyOn(session, 'selectResultSets');
+        await connection.selectResultSets('CALL a_procedure(?)', [], false);
+        expect(spiedSession).toHaveBeenCalledWith('CALL a_procedure(?)', [], false);
     });
 
     it('Works Select From Write Connection', async () => {
@@ -367,7 +376,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'selectFromWriteConnection');
         await connection.selectFromWriteConnection('select * from users', []);
-        expect(spiedSession).toBeCalledWith('select * from users', []);
+        expect(spiedSession).toHaveBeenCalledWith('select * from users', []);
     });
 
     it('Works Cursor', async () => {
@@ -376,7 +385,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'cursor');
         await connection.cursor('select * from users', [], false);
-        expect(spiedSession).toBeCalledWith('select * from users', [], false);
+        expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
 
     it('Works Insert', async () => {
@@ -385,7 +394,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'insert');
         await connection.insert('insert into "users" ("email") values (?)', ['foo']);
-        expect(spiedSession).toBeCalledWith('insert into "users" ("email") values (?)', ['foo']);
+        expect(spiedSession).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo']);
     });
 
     it('Works Insert Get Id', async () => {
@@ -394,7 +403,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'insertGetId');
         await connection.insertGetId('insert into "users" ("email") values (?)', ['foo'], 'id');
-        expect(spiedSession).toBeCalledWith('insert into "users" ("email") values (?)', ['foo'], 'id');
+        expect(spiedSession).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo'], 'id');
     });
 
     it('Works Update', async () => {
@@ -403,7 +412,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'update');
         await connection.update('update "users" set "email" = ?, "name" = ? where "id" = ?', ['foo', 'bar', 1]);
-        expect(spiedSession).toBeCalledWith('update "users" set "email" = ?, "name" = ? where "id" = ?', [
+        expect(spiedSession).toHaveBeenCalledWith('update "users" set "email" = ?, "name" = ? where "id" = ?', [
             'foo',
             'bar',
             1
@@ -416,7 +425,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'delete');
         await connection.delete('delete from "users" where "email" = ?', ['foo']);
-        expect(spiedSession).toBeCalledWith('delete from "users" where "email" = ?', ['foo']);
+        expect(spiedSession).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
     });
 
     it('Works Statement', async () => {
@@ -425,7 +434,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'statement');
         await connection.statement('insert into "users" ("email") values (?)', ['foo']);
-        expect(spiedSession).toBeCalledWith('insert into "users" ("email") values (?)', ['foo']);
+        expect(spiedSession).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo']);
     });
 
     it('Works Affecting Statement', async () => {
@@ -434,7 +443,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'affectingStatement');
         await connection.affectingStatement('delete from "users" where "email" = ?', ['foo']);
-        expect(spiedSession).toBeCalledWith('delete from "users" where "email" = ?', ['foo']);
+        expect(spiedSession).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
     });
 
     it('Works Unprepared', async () => {
@@ -443,7 +452,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'unprepared');
         await connection.unprepared('delete from "users" where "email" = "foo"');
-        expect(spiedSession).toBeCalledWith('delete from "users" where "email" = "foo"');
+        expect(spiedSession).toHaveBeenCalledWith('delete from "users" where "email" = "foo"');
     });
 
     it('Works Pretend', async () => {
@@ -453,7 +462,7 @@ describe('Connection', () => {
         const spiedSession = jest.spyOn(session, 'pretend');
         const callback = (): void => {};
         await connection.pretend(callback);
-        expect(spiedSession).toBeCalledWith(callback);
+        expect(spiedSession).toHaveBeenCalledWith(callback);
     });
 
     it('Works Transaction', async () => {
@@ -463,7 +472,7 @@ describe('Connection', () => {
         const spiedSession = jest.spyOn(session, 'transaction');
         const callback = (): void => {};
         await connection.transaction(callback, 2);
-        expect(spiedSession).toBeCalledWith(callback, 2);
+        expect(spiedSession).toHaveBeenCalledWith(callback, 2);
     });
 
     it('Works Begin Transaction', async () => {
@@ -473,7 +482,7 @@ describe('Connection', () => {
         const spiedSession = jest.spyOn(session, 'beginTransaction');
         const sess = await connection.beginTransaction();
         expect(sess).toEqual(session);
-        expect(spiedSession).toBeCalled();
+        expect(spiedSession).toHaveBeenCalled();
         await sess.rollBack();
     });
 
@@ -483,7 +492,7 @@ describe('Connection', () => {
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'useWriteConnectionWhenReading');
         expect(connection.useWriteConnectionWhenReading(true)).toEqual(session);
-        expect(spiedSession).toBeCalledWith(true);
+        expect(spiedSession).toHaveBeenCalledWith(true);
     });
 
     it('Works Raw Return Expression', () => {

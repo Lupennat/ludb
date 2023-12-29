@@ -1,4 +1,4 @@
-import { Stringable } from '../../../types/query/builder';
+import { Stringable } from '../../../types/generics';
 import { ForeignKeyRegistryI } from '../../../types/schema/registry';
 import CommandIndexDefinition from './command-index-definition';
 
@@ -52,6 +52,13 @@ class CommandForeignKeyDefinition<
      */
     public restrictOnUpdate(): this {
         return this.onUpdate('restrict');
+    }
+
+    /**
+     * Indicate that updates should have "no action".
+     */
+    public noActionOnUpdate(): this {
+        return this.onUpdate('no action');
     }
 
     /**

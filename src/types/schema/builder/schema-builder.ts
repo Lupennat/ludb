@@ -1,12 +1,24 @@
-import { ConnectionSessionI } from '..';
-import Blueprint from '../../schema/blueprint';
-import { Stringable } from '../query/builder';
-import BlueprintI from './blueprint';
-import GrammarI from './grammar';
+import { ConnectionSessionI } from '../..';
+import Blueprint from '../../../schema/blueprint';
+import CommandViewDefinition from '../../../schema/definitions/commands/command-view-definition';
+import { Stringable } from '../../generics';
+import BlueprintI from '../blueprint';
+import {
+    ColumnDictionary,
+    ForeignKeyDictionary,
+    IndexDictionary,
+    TableDictionary,
+    TypeDictionary,
+    ViewDictionary
+} from '../generics';
+import GrammarI from '../grammar';
+import { ViewRegistryI } from '../registry';
 
 export type MorphKeyType = 'int' | 'ulid' | 'uuid';
 
 export type BlueprintCallback = (blueprint: Blueprint) => void;
+
+export type ViewCallback = (definition: CommandViewDefinition<ViewRegistryI>) => CommandViewDefinition<ViewRegistryI>;
 
 export type BlueprintResolver = (
     table: string,
@@ -15,43 +27,60 @@ export type BlueprintResolver = (
     prefix?: string
 ) => BlueprintI;
 
-export default interface Builder {
+export default interface SchemaBuilder {
     /**
      * Create a database in the schema.
      */
-    createDatabase(_name: string): Promise<boolean>;
+    createDatabase(name: string): Promise<boolean>;
+
     /**
      * Drop all tables from the database.
      */
-    dropAllTables(): Promise<void>;
+    dropTables(): Promise<void>;
     /**
      * Drop all types from the database.
      */
-    dropAllTypes(): Promise<void>;
+    dropTypes(): Promise<void>;
     /**
      * Drop all views from the database.
      */
-    dropAllViews(): Promise<void>;
+    dropViews(): Promise<void>;
     /**
      * Drop a database from the schema if the database exists.
      */
-    dropDatabaseIfExists(_name: string): Promise<boolean>;
+    dropDatabaseIfExists(name: string): Promise<boolean>;
     /**
-     * Get all of the table names for the database.
+     * Get the tables that belong to the database.
      */
-    getAllTables(): Promise<string[]>;
+    getTables(): Promise<TableDictionary[]>;
     /**
-     * Get all of the view names for the database.
+     * Get the views that belong to the database.
      */
-    getAllViews(): Promise<string[]>;
+    getViews(): Promise<ViewDictionary[]>;
     /**
-     * Get all of the type names for the database.
+     * Get the user-defined types that belong to the database.
      */
-    getAllTypes(): Promise<string[]>;
+    getTypes(): Promise<TypeDictionary[]>;
+    /**
+     * Get the columns for a given table.
+     */
+    getColumns(table: string): Promise<ColumnDictionary[]>;
+    /**
+     * Get the indexes for a given table.
+     */
+    getIndexes(table: string): Promise<IndexDictionary[]>;
+    /**
+     * Get the foreign keys for a given table.
+     */
+    getForeignKeys(table: string): Promise<ForeignKeyDictionary[]>;
     /**
      * Determine if the given table exists.
      */
     hasTable(table: string): Promise<boolean>;
+    /**
+     * Determine if the given view exists.
+     */
+    hasView(view: string): Promise<boolean>;
     /**
      * Determine if the given table has a given column.
      */
@@ -71,11 +100,7 @@ export default interface Builder {
     /**
      * Get the data type for the given column name.
      */
-    getColumnType(_table: string, _column: string): Promise<string>;
-    /**
-     * Get the column listing for a given table.
-     */
-    getColumnListing(_table: string): Promise<string[]>;
+    getColumnType(table: string, column: string, fullDefinition?: boolean): Promise<string>;
     /**
      * Modify a table on the schema.
      */
@@ -85,13 +110,21 @@ export default interface Builder {
      */
     create(table: string, callback: BlueprintCallback): Promise<void>;
     /**
+     * Create a new table on the schema.
+     */
+    createView(view: Stringable, callback: ViewCallback): Promise<boolean>;
+    /**
      * Drop a table from the schema.
      */
     drop(table: string): Promise<void>;
     /**
      * Drop a table from the schema if it exists.
      */
-    dropIfExists(table: string): Promise<void>;
+    dropTableIfExists(table: string): Promise<void>;
+    /**
+     * Drop a view from the schema if it exists.
+     */
+    dropViewIfExists(view: string): Promise<boolean>;
     /**
      * Drop columns from a table schema.
      */

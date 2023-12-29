@@ -161,4 +161,99 @@ maybe('Column Types', () => {
         expect(await Schema.getColumnType('test_column_type_table', 'uuid')).toBe('char');
         expect(await Schema.getColumnType('test_column_type_table', 'year')).toBe('year');
     });
+
+    it('Works Get Column Type Full Definition', async () => {
+        expect(await Schema.getColumnType('test_column_type_table', 'id', true)).toBe('bigint(20) unsigned');
+        expect(await Schema.getColumnType('test_column_type_table', 'biginteger', true)).toBe('bigint(20)');
+        expect(await Schema.getColumnType('test_column_type_table', 'binary', true)).toBe('blob');
+        expect(await Schema.getColumnType('test_column_type_table', 'boolean', true)).toBe('tinyint(1)');
+        expect(await Schema.getColumnType('test_column_type_table', 'char', true)).toBe('char(255)');
+        expect(await Schema.getColumnType('test_column_type_table', 'datetimetz', true)).toBe('datetime');
+        expect(await Schema.getColumnType('test_column_type_table', 'datetime', true)).toBe('datetime');
+        expect(await Schema.getColumnType('test_column_type_table', 'date', true)).toBe('date');
+        expect(await Schema.getColumnType('test_column_type_table', 'decimal', true)).toBe('decimal(8,2)');
+        expect(await Schema.getColumnType('test_column_type_table', 'double', true)).toBe('double');
+        expect(await Schema.getColumnType('test_column_type_table', 'enum', true)).toBe("enum('test')");
+        expect(await Schema.getColumnType('test_column_type_table', 'foreignid', true)).toBe('bigint(20) unsigned');
+        expect(await Schema.getColumnType('test_column_type_table', 'foreignulid', true)).toBe('char(26)');
+        expect(await Schema.getColumnType('test_column_type_table', 'foreignuuid', true)).toBe('char(36)');
+        expect(
+            ['geomcollection', 'geometrycollection'].includes(
+                await Schema.getColumnType('test_column_type_table', 'geographycollection', true)
+            )
+        ).toBeTruthy();
+        expect(
+            ['geomcollection', 'geometrycollection'].includes(
+                await Schema.getColumnType('test_column_type_table', 'geometrycollection', true)
+            )
+        ).toBeTruthy();
+        expect(await Schema.getColumnType('test_column_type_table', 'geography', true)).toBe('geometry');
+        expect(await Schema.getColumnType('test_column_type_table', 'geometry', true)).toBe('geometry');
+        expect(await Schema.getColumnType('test_column_type_table', 'integer', true)).toBe('int(11)');
+        expect(await Schema.getColumnType('test_column_type_table', 'ipaddress', true)).toBe('varchar(45)');
+        expect(
+            ['json', 'longtext'].includes(await Schema.getColumnType('test_column_type_table', 'json', true))
+        ).toBeTruthy();
+        expect(
+            ['json', 'longtext'].includes(await Schema.getColumnType('test_column_type_table', 'jsonb', true))
+        ).toBeTruthy();
+        expect(await Schema.getColumnType('test_column_type_table', 'geographylinestring', true)).toBe('linestring');
+        expect(await Schema.getColumnType('test_column_type_table', 'linestring', true)).toBe('linestring');
+        expect(await Schema.getColumnType('test_column_type_table', 'longtext', true)).toBe('longtext');
+        expect(await Schema.getColumnType('test_column_type_table', 'macaddress', true)).toBe('varchar(17)');
+        expect(await Schema.getColumnType('test_column_type_table', 'mediuminteger', true)).toBe('mediumint(9)');
+        expect(await Schema.getColumnType('test_column_type_table', 'mediumtext', true)).toBe('mediumtext');
+        expect(await Schema.getColumnType('test_column_type_table', 'morphs_type', true)).toBe('varchar(255)');
+        expect(await Schema.getColumnType('test_column_type_table', 'morphs_id', true)).toBe('bigint(20) unsigned');
+        expect(await Schema.getColumnType('test_column_type_table', 'geographymultilinestring', true)).toBe(
+            'multilinestring'
+        );
+        expect(await Schema.getColumnType('test_column_type_table', 'multilinestring', true)).toBe('multilinestring');
+        expect(await Schema.getColumnType('test_column_type_table', 'geographymultipoint', true)).toBe('multipoint');
+        expect(await Schema.getColumnType('test_column_type_table', 'multipoint', true)).toBe('multipoint');
+        expect(await Schema.getColumnType('test_column_type_table', 'geographymultipolygon', true)).toBe(
+            'multipolygon'
+        );
+        expect(await Schema.getColumnType('test_column_type_table', 'multipolygon', true)).toBe('multipolygon');
+        expect(await Schema.getColumnType('test_column_type_table', 'nullablemorphs_type', true)).toBe('varchar(255)');
+        expect(await Schema.getColumnType('test_column_type_table', 'nullablemorphs_id', true)).toBe(
+            'bigint(20) unsigned'
+        );
+        expect(await Schema.getColumnType('test_column_type_table', 'geographypoint', true)).toBe('point');
+        expect(await Schema.getColumnType('test_column_type_table', 'point', true)).toBe('point');
+        expect(await Schema.getColumnType('test_column_type_table', 'geographypolygon', true)).toBe('polygon');
+        expect(await Schema.getColumnType('test_column_type_table', 'polygon', true)).toBe('polygon');
+        expect(await Schema.getColumnType('test_column_type_table', 'smallinteger', true)).toBe('smallint(6)');
+        expect(await Schema.getColumnType('test_column_type_table', 'set', true)).toBe("set('test')");
+        expect(await Schema.getColumnType('test_column_type_table', 'softdeletestz', true)).toBe('timestamp');
+        expect(await Schema.getColumnType('test_column_type_table', 'softdeletes', true)).toBe('timestamp');
+        expect(await Schema.getColumnType('test_column_type_table', 'string', true)).toBe('varchar(255)');
+        expect(await Schema.getColumnType('test_column_type_table', 'text', true)).toBe('text');
+        expect(await Schema.getColumnType('test_column_type_table', 'timetz', true)).toBe('time');
+        expect(await Schema.getColumnType('test_column_type_table', 'time', true)).toBe('time');
+        expect(await Schema.getColumnType('test_column_type_table', 'timestamptz', true)).toBe('timestamp');
+        expect(await Schema.getColumnType('test_column_type_table', 'timestamp', true)).toBe('timestamp');
+        expect(await Schema.getColumnType('test_column_type_table', 'tinyinteger', true)).toBe('tinyint(4)');
+        expect(await Schema.getColumnType('test_column_type_table', 'tinytext', true)).toBe('tinytext');
+        expect(await Schema.getColumnType('test_column_type_table', 'unsignedbiginteger', true)).toBe(
+            'bigint(20) unsigned'
+        );
+        expect(await Schema.getColumnType('test_column_type_table', 'unsigneddecimal', true)).toBe(
+            'decimal(8,2) unsigned'
+        );
+        expect(await Schema.getColumnType('test_column_type_table', 'unsignedinteger', true)).toBe('int(10) unsigned');
+        expect(await Schema.getColumnType('test_column_type_table', 'unsignedmediuminteger', true)).toBe(
+            'mediumint(8) unsigned'
+        );
+        expect(await Schema.getColumnType('test_column_type_table', 'unsignedsmallinteger', true)).toBe(
+            'smallint(5) unsigned'
+        );
+        expect(await Schema.getColumnType('test_column_type_table', 'ulidmorphs_type', true)).toBe('varchar(255)');
+        expect(await Schema.getColumnType('test_column_type_table', 'ulidmorphs_id', true)).toBe('char(26)');
+        expect(await Schema.getColumnType('test_column_type_table', 'uuidmorphs_type', true)).toBe('varchar(255)');
+        expect(await Schema.getColumnType('test_column_type_table', 'uuidmorphs_id', true)).toBe('char(36)');
+        expect(await Schema.getColumnType('test_column_type_table', 'ulid', true)).toBe('char(26)');
+        expect(await Schema.getColumnType('test_column_type_table', 'uuid', true)).toBe('char(36)');
+        expect(await Schema.getColumnType('test_column_type_table', 'year', true)).toBe('year(4)');
+    });
 });

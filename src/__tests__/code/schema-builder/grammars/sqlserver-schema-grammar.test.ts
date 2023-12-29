@@ -56,7 +56,7 @@ describe('SqlServer Schema Grammar', () => {
     it('Works Drop Table If Exists', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSqlServerBlueprint('users');
-        blueprint.dropIfExists();
+        blueprint.dropTableIfExists();
         const statements = blueprint.toSql(connection);
 
         expect(1).toBe(statements.length);
@@ -1056,5 +1056,15 @@ describe('SqlServer Schema Grammar', () => {
         statement = new SqlServerSchemaGrammar().compileDropDatabaseIfExists('my_database_b');
 
         expect('drop database if exists "my_database_b"').toBe(statement);
+    });
+
+    it('Works Drop View If Exists', () => {
+        let statement = new SqlServerSchemaGrammar().compileDropViewIfExists('my_view_a');
+
+        expect('drop view if exists "my_view_a"').toBe(statement);
+
+        statement = new SqlServerSchemaGrammar().compileDropViewIfExists('my_view_b');
+
+        expect('drop view if exists "my_view_b"').toBe(statement);
     });
 });

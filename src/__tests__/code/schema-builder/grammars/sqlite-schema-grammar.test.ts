@@ -56,7 +56,7 @@ describe('SQLite Schema Grammar', () => {
     it('Works Drop Table If Exists', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getSQLiteBlueprint('users');
-        blueprint.dropIfExists();
+        blueprint.dropTableIfExists();
         const statements = blueprint.toSql(connection);
 
         expect(1).toBe(statements.length);
@@ -93,7 +93,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.dropPrimary();
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support primary key removal.');
+        }).toThrow('This database driver does not support primary key removal.');
     });
 
     it('Works Drop Unique', () => {
@@ -122,7 +122,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.dropFulltext(['foo']);
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support fulltext index removal.');
+        }).toThrow('This database driver does not support fulltext index removal.');
     });
 
     it('Works Drop Spatial Index', () => {
@@ -131,7 +131,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.dropSpatialIndex(['coordinates']);
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support spatial index removal.');
+        }).toThrow('This database driver does not support spatial index removal.');
     });
 
     it('Works Drop Foreign', () => {
@@ -140,7 +140,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.dropForeign('foo');
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support foreign index removal.');
+        }).toThrow('This database driver does not support foreign index removal.');
     });
 
     it('Works Drop Timestamps', () => {
@@ -205,7 +205,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.renameIndex('foo', 'bar');
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support index renaming.');
+        }).toThrow('This database driver does not support index renaming.');
     });
 
     it('Works Adding Primary Key', () => {
@@ -272,7 +272,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.spatialIndex('coordinates');
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support spatial index creation.');
+        }).toThrow('This database driver does not support spatial index creation.');
     });
 
     it('Works Adding Fluent Spatial Index', () => {
@@ -281,7 +281,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.point('coordinates').spatialIndex();
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support spatial index creation.');
+        }).toThrow('This database driver does not support spatial index creation.');
     });
 
     it('Works Adding Fulltext Index', () => {
@@ -290,7 +290,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.fulltext('coordinates');
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support fulltext index creation.');
+        }).toThrow('This database driver does not support fulltext index creation.');
     });
 
     it('Works Adding Fluent Fulltext Index', () => {
@@ -299,7 +299,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.point('coordinates').fulltext();
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support fulltext index creation.');
+        }).toThrow('This database driver does not support fulltext index creation.');
     });
 
     it('Works Adding Raw Index', () => {
@@ -597,7 +597,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.set('role', ['member', 'admin']);
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the set type.');
+        }).toThrow('This Database driver does not support the set type.');
     });
 
     it('Works Adding Year', () => {
@@ -1037,7 +1037,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.multiPolygonZ('coordinates');
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the multipolygonz type');
+        }).toThrow('This Database driver does not support the multipolygonz type');
     });
 
     it('Works Adding Computed', () => {
@@ -1046,7 +1046,7 @@ describe('SQLite Schema Grammar', () => {
         blueprint.computed('discounted_virtual', 'price - 5').persisted();
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the computed type');
+        }).toThrow('This Database driver does not support the computed type');
     });
 
     it('Works Adding Generated Column', () => {

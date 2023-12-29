@@ -1,7 +1,7 @@
-import { Binding, RowValues, Stringable } from '../../types/query/builder';
+import { Binding, Stringable } from '../../types/generics';
+import QueryBuilderI, { RowValues } from '../../types/query/query-builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime } from '../../types/query/registry';
 import { beforeLast, escapeQuoteForSql, stringifyReplacer } from '../../utils';
-import BuilderContract from '../builder-contract';
 import Expression from '../expression';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -52,7 +52,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a select query into SQL.
      */
-    public compileSelect(query: BuilderContract): string {
+    public compileSelect(query: QueryBuilderI): string {
         const registry = query.getRegistry();
         // An order by clause is required for SQL Server offset to function...
         if (registry.offset && registry.orders.length === 0) {
@@ -65,7 +65,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "select *" portion of the query.
      */
-    protected compileColumns(query: BuilderContract, columns: Stringable[]): string {
+    protected compileColumns(query: QueryBuilderI, columns: Stringable[]): string {
         if (query.getRegistry().aggregate !== null) {
             return '';
         }
@@ -87,7 +87,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "from" portion of the query.
      */
-    protected compileFrom(query: BuilderContract, table: Stringable): string {
+    protected compileFrom(query: QueryBuilderI, table: Stringable): string {
         const from = super.compileFrom(query, table);
         const lock = query.getRegistry().lock;
 
@@ -105,14 +105,14 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the index hints for the query.
      */
-    protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
+    protected compileIndexHint(_query: QueryBuilderI, indexHint: IndexHint): string {
         return indexHint.type === 'force' ? `with (index(${indexHint.index}))` : '';
     }
 
     /**
      * Compile a bitwise operator where clause.
      */
-    protected compileWhereBitwise(_query: BuilderContract, where: WhereBasic): string {
+    protected compileWhereBitwise(_query: QueryBuilderI, where: WhereBasic): string {
         const value = this.parameter(where.value);
         const operator = where.operator.replace(/\?/g, '??');
 
@@ -122,7 +122,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a "where date" clause.
      */
-    protected compileWhereDate(_query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereDate(_query: QueryBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `cast(${this.wrap(where.column)} as date) ${where.operator} ${value}`;
@@ -131,7 +131,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a "where time" clause.
      */
-    protected compileWhereTime(_query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereTime(_query: QueryBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `cast(${this.wrap(where.column)} as time) ${where.operator} ${value}`;
@@ -186,7 +186,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a having clause involving a bitwise operator.
      */
-    protected compileHavingBitwise(_query: BuilderContract, having: HavingBasic): string {
+    protected compileHavingBitwise(_query: QueryBuilderI, having: HavingBasic): string {
         const column = this.wrap(having.column);
         const parameter = this.parameter(having.value);
 
@@ -196,7 +196,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a delete statement without joins into SQL.
      */
-    protected compileDeleteWithoutJoins(query: BuilderContract, table: string, where: string): string {
+    protected compileDeleteWithoutJoins(query: QueryBuilderI, table: string, where: string): string {
         const sql = super.compileDeleteWithoutJoins(query, table, where);
         const limit = query.getRegistry().limit;
 
@@ -215,7 +215,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "limit" portions of the query.
      */
-    protected compileLimit(query: BuilderContract, limit: number): string {
+    protected compileLimit(query: QueryBuilderI, limit: number): string {
         if (limit && Number(query.getRegistry().offset) > 0) {
             return `fetch next ${limit} rows only`;
         }
@@ -226,7 +226,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "offset" portions of the query.
      */
-    protected compileOffset(_query: BuilderContract, offset: number): string {
+    protected compileOffset(_query: QueryBuilderI, offset: number): string {
         if (offset > 0) {
             return `offset ${offset} rows`;
         }
@@ -251,7 +251,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile an exists statement into SQL.
      */
-    public compileExists(query: BuilderContract): string {
+    public compileExists(query: QueryBuilderI): string {
         const existsQuery = query.clone();
         const registry = existsQuery.getRegistry();
         registry.columns = [];
@@ -263,7 +263,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the columns for an update statement.
      */
-    protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+    protected compileUpdateColumns(_query: QueryBuilderI, values: RowValues): string {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
         return Object.keys(combinedValues)
             .map(key => {
@@ -365,7 +365,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile an update statement with joins into SQL.
      */
-    protected compileUpdateWithJoins(query: BuilderContract, table: string, columns: string, where: string): string {
+    protected compileUpdateWithJoins(query: QueryBuilderI, table: string, columns: string, where: string): string {
         const alias = table.split(' as ').pop() as string;
         const joins = this.compileJoins(query, query.getRegistry().joins);
 
@@ -376,7 +376,7 @@ class SqlServerGrammar extends Grammar {
      * Compile an "upsert" statement into SQL.
      */
     public compileUpsert(
-        query: BuilderContract,
+        query: QueryBuilderI,
         values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>

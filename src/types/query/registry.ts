@@ -1,22 +1,18 @@
-import BuilderContract from '../../query/builder-contract';
 import ExpressionContract from '../../query/expression-contract';
 import IndexHint from '../../query/index-hint';
-import {
+import { Binding, Stringable } from '../generics';
+import JoinClauseI from './join-clause';
+import QueryBuilderI, {
     BetweenColumnsTuple,
     BetweenTuple,
-    Binding,
     ConditionBoolean,
     FulltextOptions,
-    OrderDirection,
-    QueryAbleCallback,
-    Stringable
-} from './builder';
-
-import JoinClauseI from './join-clause';
+    OrderDirection
+} from './query-builder';
 
 export interface WhereRaw {
     type: 'Raw';
-    sql: string;
+    sql: Stringable;
     boolean: ConditionBoolean;
 }
 
@@ -25,21 +21,26 @@ interface WhereBase {
     not: boolean;
 }
 
+export interface WhereExpression extends WhereBase {
+    type: 'Expression';
+    column: ExpressionContract;
+}
+
 export interface WhereExists extends WhereBase {
     type: 'Exists';
-    query: BuilderContract;
+    query: QueryBuilderI;
 }
 
 export interface WhereNested extends WhereBase {
     type: 'Nested';
-    query: BuilderContract;
+    query: QueryBuilderI;
 }
 
 export interface WhereSub extends WhereBase {
     type: 'Sub';
     column: Stringable;
     operator: string;
-    query: BuilderContract;
+    query: QueryBuilderI;
 }
 
 export interface WhereNull extends WhereBase {
@@ -131,12 +132,13 @@ export interface WhereDateTime extends WhereBase {
 }
 
 export type HavingRaw = WhereRaw;
+export type HavingExpression = WhereExpression;
 export type HavingBasic = WhereBasic;
 export type HavingNested = WhereNested;
 export type HavingNull = WhereNull;
 export type HavingBetween = WhereBetween;
 
-export type Having = HavingRaw | HavingBasic | HavingNested | HavingNull | HavingBetween;
+export type Having = HavingExpression | HavingRaw | HavingBasic | HavingNested | HavingNull | HavingBetween;
 
 export interface OrderColumn {
     column: Stringable;
@@ -149,7 +151,7 @@ export interface OrderRaw {
 }
 
 export interface Union {
-    query: BuilderContract;
+    query: QueryBuilderI;
     all: boolean;
 }
 
@@ -161,6 +163,7 @@ export interface Aggregate {
 export type Order = OrderColumn | OrderRaw;
 
 export type Where =
+    | WhereExpression
     | WhereRaw
     | WhereBasic
     | WhereIn
@@ -288,9 +291,4 @@ export default interface RegistryI {
      * Indicates whether row locking is being used.
      */
     lock: boolean | string | null;
-
-    /**
-     * The callbacks that should be invoked before the query is executed.
-     */
-    beforeQueryCallbacks: QueryAbleCallback<BuilderContract>[];
 }

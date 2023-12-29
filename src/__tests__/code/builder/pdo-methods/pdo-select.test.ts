@@ -1,7 +1,7 @@
 import Raw from '../../../../query/expression';
 import { getBuilder, getSqlServerBuilder, pdo } from '../../fixtures/mocked';
 
-describe('Query Builder Pdo Methods Select', () => {
+describe('Builder Pdo Methods Select', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -20,8 +20,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').find(1);
         expect({ foo: 'bar' }).toEqual(results);
-        expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedConnection).toBeCalledWith('select * from "users" where "id" = ? limit 1', [1], true);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledWith('select * from "users" where "id" = ? limit 1', [1], true);
     });
 
     it('Works Find Or Returns First Result By ID', async () => {
@@ -67,8 +67,8 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').where('id', '=', 1).first();
         expect({ foo: 'bar' }).toEqual(results);
-        expect(spiedConnection).toBeCalledTimes(1);
-        expect(spiedConnection).toBeCalledWith('select * from "users" where "id" = ? limit 1', [1], true);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledWith('select * from "users" where "id" = ? limit 1', [1], true);
     });
 
     it('Works Sole Method Returns Only If Sole', async () => {
@@ -83,7 +83,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').where('id', '=', 1).sole('foo');
         expect({ foo: 'bar' }).toEqual(results);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -96,7 +96,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results2 = await builder.from('users').where('id', '=', 1).sole();
         expect({ foo: 'bar' }).toEqual(results2);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -107,7 +107,7 @@ describe('Query Builder Pdo Methods Select', () => {
             return [];
         });
 
-        await expect(builder.from('users').where('id', '=', 1).sole<string>('foo')).rejects.toThrowError(
+        await expect(builder.from('users').where('id', '=', 1).sole<string>('foo')).rejects.toThrow(
             'no records were found.'
         );
 
@@ -120,7 +120,7 @@ describe('Query Builder Pdo Methods Select', () => {
             return [{ foo: 'bar' }, { foo: 'baz' }];
         });
 
-        await expect(builder.from('users').where('id', '=', 1).sole<string>('foo')).rejects.toThrowError(
+        await expect(builder.from('users').where('id', '=', 1).sole<string>('foo')).rejects.toThrow(
             '2 records were found.'
         );
     });
@@ -135,7 +135,7 @@ describe('Query Builder Pdo Methods Select', () => {
         const results = await builder.from('users').where('id', '=', 1).pluck<string>('foo');
 
         expect(['bar', 'baz']).toEqual(results);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -148,7 +148,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results2 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
         expect({ 1: 'bar', null: 'baz' }).toEqual(results2);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -159,7 +159,7 @@ describe('Query Builder Pdo Methods Select', () => {
             ];
         });
 
-        await expect(builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id')).rejects.toThrowError(
+        await expect(builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id')).rejects.toThrow(
             'key value [Buffer] is not stringable'
         );
 
@@ -172,7 +172,7 @@ describe('Query Builder Pdo Methods Select', () => {
             ];
         });
 
-        await expect(builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id')).rejects.toThrowError(
+        await expect(builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id')).rejects.toThrow(
             'key value [Array] is not stringable'
         );
 
@@ -184,7 +184,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results3 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'id');
         expect({}).toEqual(results3);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -194,7 +194,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results4 = await builder.from('users').where('id', '=', 1).pluck<string>('foo');
         expect([]).toEqual(results4);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -207,7 +207,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results5 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', new Raw('baz as id'));
         expect({ 1: 'bar', null: 'baz' }).toEqual(results5);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -220,7 +220,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results6 = await builder.from('users').where('id', '=', 1).pluck<string>('foo', 'table.id');
         expect({ 1: 'bar', null: 'baz' }).toEqual(results6);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
     });
 
     it('Works Implode', async () => {
@@ -234,7 +234,7 @@ describe('Query Builder Pdo Methods Select', () => {
         let results = await builder.from('users').where('id', '=', 1).implode('foo');
 
         expect('barbaz').toEqual(results);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -245,7 +245,7 @@ describe('Query Builder Pdo Methods Select', () => {
         results = await builder.from('users').where('id', '=', 1).implode('foo', ',');
 
         expect('bar,baz').toEqual(results);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
     });
 
     it('Works Value Method Returns Single Column', async () => {
@@ -260,7 +260,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').where('id', '=', 1).value<string>('foo');
         expect('bar').toBe(results);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -273,7 +273,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results2 = await builder.from('users').where('id', '=', 1).value<string>('foo');
         expect(results2).toBeNull();
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
     });
 
     it('Works Sole Value Method Returns Single Column', async () => {
@@ -288,7 +288,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').where('id', '=', 1).soleValue<string>('foo');
         expect('bar').toBe(results);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
     });
 
     it('Works RawValue Method Returns Single Column', async () => {
@@ -303,7 +303,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results = await builder.from('users').where('id', '=', 1).rawValue<string>('UPPER("foo")');
         expect('BAR').toBe(results);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -316,7 +316,7 @@ describe('Query Builder Pdo Methods Select', () => {
 
         const results2 = await builder.from('users').where('id', '=', 1).rawValue<string>('"foo"');
         expect(results2).toBeNull();
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
     });
 
     it('Works Aggregate Functions', async () => {
@@ -330,7 +330,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').count()).toBe(1);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -342,7 +342,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').count([new Raw('distinct access'), 'id'])).toBe(1);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -354,7 +354,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').exists()).toBeTruthy();
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -366,7 +366,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').doesntExist()).toBeTruthy();
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -378,7 +378,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').max('id')).toBe(1);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -390,7 +390,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').min('id')).toBe(1);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -402,7 +402,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').sum('id')).toBe(1);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -414,7 +414,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').sum('id')).toBe(0);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -426,7 +426,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').avg('id')).toBe(1);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
 
         builder = getBuilder();
         spiedConnection = jest.spyOn(builder.getConnection(), 'select');
@@ -438,7 +438,7 @@ describe('Query Builder Pdo Methods Select', () => {
         });
 
         expect(await builder.from('users').average('id')).toBe(1);
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
     });
 
     it('Works Aggregate', async () => {
@@ -529,7 +529,7 @@ describe('Query Builder Pdo Methods Select', () => {
             return [{ exists: 1 }];
         });
         expect(await builder.from('users').exists()).toBeTruthy();
-        expect(spiedConnection).toBeCalledTimes(1);
+        expect(spiedConnection).toHaveBeenCalledTimes(1);
     });
 
     it('Works DoesntExistsOr', async () => {
@@ -709,20 +709,20 @@ describe('Query Builder Pdo Methods Select', () => {
         builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
         expect(() => {
             builder.lazy(0);
-        }).toThrowError('The chunk size should be at least 1');
+        }).toThrow('The chunk size should be at least 1');
 
         expect(() => {
             builder.lazyById(0);
-        }).toThrowError('The chunk size should be at least 1');
+        }).toThrow('The chunk size should be at least 1');
 
         expect(() => {
             builder.lazyByIdDesc(0);
-        }).toThrowError('The chunk size should be at least 1');
+        }).toThrow('The chunk size should be at least 1');
 
         builder = getBuilder();
         expect(() => {
             builder.lazy(10);
-        }).toThrowError('You must specify an orderBy clause when using this function.');
+        }).toThrow('You must specify an orderBy clause when using this function.');
     });
 
     it('Works Lazy Methods Return Async Generator', () => {
@@ -761,12 +761,12 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(item);
         }
 
-        expect(spiedGet).toBeCalledTimes(3);
-        expect(spiedForPage).toBeCalledTimes(3);
+        expect(spiedGet).toHaveBeenCalledTimes(3);
+        expect(spiedForPage).toHaveBeenCalledTimes(3);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(3, 3, 2);
-        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenCalledTimes(4);
         expect(callback).toHaveBeenNthCalledWith(1, 'foo1');
         expect(callback).toHaveBeenNthCalledWith(2, 'foo2');
         expect(callback).toHaveBeenNthCalledWith(3, 'foo3');
@@ -814,12 +814,12 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(item);
         }
 
-        expect(spiedClone).toBeCalledTimes(3);
+        expect(spiedClone).toHaveBeenCalledTimes(3);
         expect(spiedForPage.length).toBe(3);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
-        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
-        expect(spiedForPage[2]).toBeCalledWith(2, 11, 'someIdField');
-        expect(callback).toBeCalledTimes(4);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
+        expect(spiedForPage[2]).toHaveBeenCalledWith(2, 11, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(4);
         expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 1 });
         expect(callback).toHaveBeenNthCalledWith(2, { someIdField: 2 });
         expect(callback).toHaveBeenNthCalledWith(3, { someIdField: 10 });
@@ -867,12 +867,12 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(item);
         }
 
-        expect(spiedClone).toBeCalledTimes(3);
+        expect(spiedClone).toHaveBeenCalledTimes(3);
         expect(spiedForPage.length).toBe(3);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
-        expect(spiedForPage[1]).toBeCalledWith(2, 10, 'someIdField');
-        expect(spiedForPage[2]).toBeCalledWith(2, 1, 'someIdField');
-        expect(callback).toBeCalledTimes(4);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 10, 'someIdField');
+        expect(spiedForPage[2]).toHaveBeenCalledWith(2, 1, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(4);
         expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 11 });
         expect(callback).toHaveBeenNthCalledWith(2, { someIdField: 10 });
         expect(callback).toHaveBeenNthCalledWith(3, { someIdField: 2 });
@@ -906,10 +906,10 @@ describe('Query Builder Pdo Methods Select', () => {
             );
         }
 
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
-        expect(callback).toBeCalledTimes(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 1 });
         expect(callback).toHaveBeenNthCalledWith(2, { notId: 2 });
 
@@ -938,10 +938,10 @@ describe('Query Builder Pdo Methods Select', () => {
                 'The lazyById operation was aborted because the [id] column is not present in the query result.'
             );
         }
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
-        expect(callback).toBeCalledTimes(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, { id: 10 });
         expect(callback).toHaveBeenNthCalledWith(2, { id: null });
     });
@@ -975,7 +975,7 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(item);
         }
 
-        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenCalledTimes(4);
         expect(callback).toHaveBeenNthCalledWith(1, { id: 1 });
         expect(callback).toHaveBeenNthCalledWith(2, { id: 2 });
         expect(callback).toHaveBeenNthCalledWith(3, { id: 3 });
@@ -1003,7 +1003,7 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(item);
         }
 
-        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenCalledTimes(4);
         expect(callback).toHaveBeenNthCalledWith(1, { id: 1 });
         expect(callback).toHaveBeenNthCalledWith(2, { id: 2 });
         expect(callback).toHaveBeenNthCalledWith(3, { id: 3 });
@@ -1035,12 +1035,12 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(2, results => {
             callback(results);
         });
-        expect(spiedGet).toBeCalledTimes(3);
-        expect(spiedForPage).toBeCalledTimes(3);
+        expect(spiedGet).toHaveBeenCalledTimes(3);
+        expect(spiedForPage).toHaveBeenCalledTimes(3);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(3, 3, 2);
-        expect(callback).toBeCalledTimes(2);
+        expect(callback).toHaveBeenCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -1048,7 +1048,7 @@ describe('Query Builder Pdo Methods Select', () => {
     it('Works Chunk With Orders Throw Error', async () => {
         const builder = getBuilder();
 
-        await expect(builder.chunk(2, () => {})).rejects.toThrowError(
+        await expect(builder.chunk(2, () => {})).rejects.toThrow(
             'You must specify an orderBy clause when using this function.'
         );
     });
@@ -1074,11 +1074,11 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(2, results => {
             callback(results);
         });
-        expect(spiedGet).toBeCalledTimes(2);
-        expect(spiedForPage).toBeCalledTimes(2);
+        expect(spiedGet).toHaveBeenCalledTimes(2);
+        expect(spiedForPage).toHaveBeenCalledTimes(2);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
-        expect(callback).toBeCalledTimes(2);
+        expect(callback).toHaveBeenCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -1105,10 +1105,10 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(results);
             return false;
         });
-        expect(spiedGet).toBeCalledTimes(1);
-        expect(spiedForPage).toBeCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -1128,10 +1128,10 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(0, results => {
             callback(results);
         });
-        expect(spiedGet).toBeCalledTimes(1);
-        expect(spiedForPage).toBeCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 0);
-        expect(callback).toBeCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -1151,10 +1151,10 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.chunk(0, results => {
             callback(results);
         });
-        expect(spiedGet).toBeCalledTimes(1);
-        expect(spiedForPage).toBeCalledTimes(1);
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 0);
-        expect(callback).toBeCalledTimes(0);
+        expect(callback).toHaveBeenCalledTimes(0);
     });
 
     it('Works Each', async () => {
@@ -1183,14 +1183,14 @@ describe('Query Builder Pdo Methods Select', () => {
         await builder.each(async item => {
             callback(item);
         }, 2);
-        expect(spiedChunk).toBeCalledTimes(1);
-        expect(spiedChunk).toBeCalledWith(2, expect.any(Function));
-        expect(spiedGet).toBeCalledTimes(3);
-        expect(spiedForPage).toBeCalledTimes(3);
+        expect(spiedChunk).toHaveBeenCalledTimes(1);
+        expect(spiedChunk).toHaveBeenCalledWith(2, expect.any(Function));
+        expect(spiedGet).toHaveBeenCalledTimes(3);
+        expect(spiedForPage).toHaveBeenCalledTimes(3);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(2, 2, 2);
         expect(spiedForPage).toHaveBeenNthCalledWith(3, 3, 2);
-        expect(callback).toBeCalledTimes(4);
+        expect(callback).toHaveBeenCalledTimes(4);
         expect(callback).toHaveBeenNthCalledWith(1, 'foo1');
         expect(callback).toHaveBeenNthCalledWith(2, 'foo2');
         expect(callback).toHaveBeenNthCalledWith(3, 'foo3');
@@ -1242,13 +1242,13 @@ describe('Query Builder Pdo Methods Select', () => {
             2,
             'someIdField'
         );
-        expect(spiedChunk).toBeCalledTimes(1);
-        expect(spiedClone).toBeCalledTimes(3);
+        expect(spiedChunk).toHaveBeenCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(3);
         expect(spiedForPage.length).toBe(3);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
-        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
-        expect(spiedForPage[2]).toBeCalledWith(2, 11, 'someIdField');
-        expect(callback).toBeCalledTimes(4);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
+        expect(spiedForPage[2]).toHaveBeenCalledWith(2, 11, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(4);
         expect(callback).toHaveBeenNthCalledWith(1, { someIdField: 1 });
         expect(callback).toHaveBeenNthCalledWith(2, { someIdField: 2 });
         expect(callback).toHaveBeenNthCalledWith(3, { someIdField: 10 });
@@ -1277,11 +1277,11 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(result);
             return false;
         });
-        expect(spiedChunk).toBeCalledTimes(1);
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedChunk).toHaveBeenCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(1000, null, 'id');
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(1000, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, { id: 1 });
     });
 
@@ -1302,10 +1302,10 @@ describe('Query Builder Pdo Methods Select', () => {
                 return Number(item.replace('foo', ''));
             })
         ).toEqual([1, 2, 5, 7]);
-        expect(spiedChunk).toBeCalledTimes(1);
-        expect(spiedChunk).toBeCalledWith(1000, expect.any(Function));
-        expect(spiedGet).toBeCalledTimes(1);
-        expect(spiedForPage).toBeCalledTimes(1);
+        expect(spiedChunk).toHaveBeenCalledTimes(1);
+        expect(spiedChunk).toHaveBeenCalledWith(1000, expect.any(Function));
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 1000);
     });
 
@@ -1329,12 +1329,12 @@ describe('Query Builder Pdo Methods Select', () => {
             }
             return;
         });
-        expect(spiedChunk).toBeCalledTimes(1);
-        expect(spiedChunk).toBeCalledWith(1000, expect.any(Function));
-        expect(spiedGet).toBeCalledTimes(1);
-        expect(spiedForPage).toBeCalledTimes(1);
+        expect(spiedChunk).toHaveBeenCalledTimes(1);
+        expect(spiedChunk).toHaveBeenCalledWith(1000, expect.any(Function));
+        expect(spiedGet).toHaveBeenCalledTimes(1);
+        expect(spiedForPage).toHaveBeenCalledTimes(1);
         expect(spiedForPage).toHaveBeenNthCalledWith(1, 1, 1000);
-        expect(callback).toBeCalledTimes(3);
+        expect(callback).toHaveBeenCalledTimes(3);
         expect(callback).toHaveBeenNthCalledWith(1, 'foo1');
         expect(callback).toHaveBeenNthCalledWith(2, 'foo2');
         expect(callback).toHaveBeenNthCalledWith(3, 'foo3');
@@ -1384,12 +1384,12 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toBeCalledTimes(3);
+        expect(spiedClone).toHaveBeenCalledTimes(3);
         expect(spiedForPage.length).toBe(3);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
-        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
-        expect(spiedForPage[2]).toBeCalledWith(2, 11, 'someIdField');
-        expect(callback).toBeCalledTimes(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
+        expect(spiedForPage[2]).toHaveBeenCalledWith(2, 11, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -1426,10 +1426,49 @@ describe('Query Builder Pdo Methods Select', () => {
             callback(results);
             return false;
         });
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk Desc Paginates Using Id Can Be Stopped By Returning False', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = [{ id: 1 }, { id: 2 }];
+        const chunk2 = [{ id: 10 }, { id: 11 }];
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.chunkByIdDesc(2, results => {
+            callback(results);
+            return false;
+        });
+        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -1454,13 +1493,13 @@ describe('Query Builder Pdo Methods Select', () => {
             builder.chunkById(2, results => {
                 callback(results);
             })
-        ).rejects.toThrowError(
+        ).rejects.toThrow(
             'The chunkById operation was aborted because the [id] column is not present in the query result.'
         );
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
 
         builder = getBuilder();
@@ -1483,13 +1522,73 @@ describe('Query Builder Pdo Methods Select', () => {
             builder.chunkById(2, results => {
                 callback(results);
             })
-        ).rejects.toThrowError(
+        ).rejects.toThrow(
             'The chunkById operation was aborted because the [id] column is not present in the query result.'
         );
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'id');
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk Desc Paginates Using Id Throw Error When Column Is Null Or Does Not Exists', async () => {
+        let builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        let chunk1: Array<{ [key: string]: number | null }> = [{ id: 1 }, { notId: 2 }];
+        let spiedForPage: jest.SpyInstance[] = [];
+        let spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+            return builder;
+        });
+
+        let callback = jest.fn();
+
+        await expect(
+            builder.chunkByIdDesc(2, results => {
+                callback(results);
+            })
+        ).rejects.toThrow(
+            'The chunkById operation was aborted because the [id] column is not present in the query result.'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+
+        builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        chunk1 = [{ id: 1 }, { id: null }];
+        spiedForPage = [];
+        spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+            return builder;
+        });
+
+        callback = jest.fn();
+
+        await expect(
+            builder.chunkByIdDesc(2, results => {
+                callback(results);
+            })
+        ).rejects.toThrow(
+            'The chunkById operation was aborted because the [id] column is not present in the query result.'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'id');
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -1528,11 +1627,55 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toBeCalledTimes(2);
+        expect(spiedClone).toHaveBeenCalledTimes(2);
         expect(spiedForPage.length).toBe(2);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'someIdField');
-        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'someIdField');
-        expect(callback).toBeCalledTimes(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(2);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+        expect(callback).toHaveBeenNthCalledWith(2, chunk2);
+    });
+
+    it('Works Chunk Desc Paginates Using Id With Last Chunk Partial', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = [{ someIdField: 1 }, { someIdField: 2 }];
+        const chunk2 = [{ someIdField: 10 }];
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.chunkByIdDesc(
+            2,
+            results => {
+                callback(results);
+            },
+            'someIdField'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(2);
+        expect(spiedForPage.length).toBe(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'someIdField');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(2);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
         expect(callback).toHaveBeenNthCalledWith(2, chunk2);
     });
@@ -1563,10 +1706,43 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(0, null, 'someIdField');
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk Desc Paginates Using Id With Count Zero', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = [{ someIdField: 1 }, { someIdField: 2 }];
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+            return builder;
+        });
+
+        const callback = jest.fn();
+
+        await builder.chunkByIdDesc(
+            0,
+            results => {
+                callback(results);
+            },
+            'someIdField'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 
@@ -1596,10 +1772,42 @@ describe('Query Builder Pdo Methods Select', () => {
             },
             'someIdField'
         );
-        expect(spiedClone).toBeCalledTimes(1);
+        expect(spiedClone).toHaveBeenCalledTimes(1);
         expect(spiedForPage.length).toBe(1);
-        expect(spiedForPage[0]).toBeCalledWith(0, null, 'someIdField');
-        expect(callback).toBeCalledTimes(0);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(0);
+    });
+
+    it('Works Chunk Desc Paginates Using Id Without Results', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1: any[] = [];
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest.spyOn(builder, 'clone').mockImplementationOnce(() => {
+            const builder = getBuilder();
+            jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                return chunk1;
+            });
+            spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+            return builder;
+        });
+
+        const callback = jest.fn();
+
+        await builder.chunkByIdDesc(
+            0,
+            results => {
+                callback(results);
+            },
+            'someIdField'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(1);
+        expect(spiedForPage.length).toBe(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(0, null, 'someIdField');
+        expect(callback).toHaveBeenCalledTimes(0);
     });
 
     it('Works Chunk Paginates Using Id With Alias', async () => {
@@ -1638,11 +1846,55 @@ describe('Query Builder Pdo Methods Select', () => {
             'table.id',
             'table_id'
         );
-        expect(spiedClone).toBeCalledTimes(2);
+        expect(spiedClone).toHaveBeenCalledTimes(2);
         expect(spiedForPage.length).toBe(2);
-        expect(spiedForPage[0]).toBeCalledWith(2, null, 'table.id');
-        expect(spiedForPage[1]).toBeCalledWith(2, 2, 'table.id');
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'table.id');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'table.id');
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenNthCalledWith(1, chunk1);
+    });
+
+    it('Works Chunk Desc Paginates Using Id With Alias', async () => {
+        const builder = getBuilder();
+        builder.getRegistry().orders = [{ column: 'foobar', direction: 'asc' }];
+
+        const chunk1 = [{ table_id: 1 }, { table_id: 2 }];
+        const chunk2: any[] = [];
+        const spiedForPage: jest.SpyInstance[] = [];
+        const spiedClone = jest
+            .spyOn(builder, 'clone')
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk1;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            })
+            .mockImplementationOnce(() => {
+                const builder = getBuilder();
+                jest.spyOn(builder, 'get').mockImplementationOnce(async () => {
+                    return chunk2;
+                });
+                spiedForPage.push(jest.spyOn(builder, 'forPageBeforeId'));
+                return builder;
+            });
+
+        const callback = jest.fn();
+
+        await builder.chunkByIdDesc(
+            2,
+            results => {
+                callback(results);
+            },
+            'table.id',
+            'table_id'
+        );
+        expect(spiedClone).toHaveBeenCalledTimes(2);
+        expect(spiedForPage.length).toBe(2);
+        expect(spiedForPage[0]).toHaveBeenCalledWith(2, null, 'table.id');
+        expect(spiedForPage[1]).toHaveBeenCalledWith(2, 2, 'table.id');
+        expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenNthCalledWith(1, chunk1);
     });
 });

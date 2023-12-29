@@ -1,7 +1,7 @@
-import { BuilderI } from '../../types';
+import BuilderI from '../../types/query/builder';
 import { DB } from './fixtures/config';
 
-describe('Query Builder', () => {
+describe('Builder', () => {
     const Schema = DB.connection().getSchemaBuilder();
 
     beforeAll(async () => {
@@ -182,13 +182,13 @@ describe('Query Builder', () => {
     it('Works Sole Fails For Multiple Records', async () => {
         await expect(
             DB.connection().table('test_query_builder_posts').where('title', 'Foo Post').sole()
-        ).rejects.toThrowError('2 records were found.');
+        ).rejects.toThrow('2 records were found.');
     });
 
     it('Works Sole Fails If No Records', async () => {
         await expect(
             DB.connection().table('test_query_builder_posts').where('title', 'Baz Post').sole()
-        ).rejects.toThrowError('no records were found.');
+        ).rejects.toThrow('no records were found.');
     });
 
     it('Works Select', async () => {

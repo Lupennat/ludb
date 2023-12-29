@@ -1,4 +1,4 @@
-import { Stringable } from '../../types/query/builder';
+import { Stringable } from '../../types/generics';
 import { ColumnIndex, ColumnRegistryI, ColumnType } from '../../types/schema/registry';
 import { createColumnRegistry } from '../registries';
 

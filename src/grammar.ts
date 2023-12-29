@@ -2,7 +2,7 @@
 
 import ExpressionContract from './query/expression-contract';
 import BaseGrammarI from './types/base-grammar';
-import { Stringable } from './types/query/builder';
+import { Stringable } from './types/generics';
 import { beforeLast, isExpression } from './utils';
 
 abstract class Grammar implements BaseGrammarI {
@@ -23,7 +23,7 @@ abstract class Grammar implements BaseGrammarI {
      */
     public wrapTable(table: Stringable): string {
         if (!this.isExpression(table)) {
-            return this.wrap(`${this.tablePrefix}${table}`, true);
+            return this.wrap(`${this.getTablePrefix()}${table}`, true);
         }
 
         return this.getValue(table).toString();
@@ -64,7 +64,7 @@ abstract class Grammar implements BaseGrammarI {
         // as well in order to generate proper syntax. If this is a column of course
         // no prefix is necessary. The condition will be true when from wrapTable.
         if (prefixAlias) {
-            segments[1] = `${this.tablePrefix}${segments[1] ?? ''}`;
+            segments[1] = `${this.getTablePrefix()}${segments[1] ?? ''}`;
         }
 
         return `${this.wrap(segments[0])} as ${this.wrapValue(segments[1] ?? '')}`;

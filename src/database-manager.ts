@@ -5,7 +5,7 @@ import ConnectionFactory from './connectors/connection-factory';
 import ExpressionContract from './query/expression-contract';
 import BindToI from './types/bind-to';
 import DatabaseConfig, { ConnectionConfig, DriverConfig, ReadWriteType } from './types/config';
-import DriverConnectionI from './types/connection';
+import DriverConnectionI from './types/connection/connection';
 import DatabaseI, { Extension } from './types/database';
 import { raw } from './utils';
 
@@ -47,19 +47,19 @@ class DatabaseManager implements DatabaseI {
     /**
      * Get a database connection instance.
      */
-    public connection(name?: string): DriverConnectionI {
+    public connection<T extends DriverConnectionI = DriverConnectionI>(name?: string): T {
         const [database, type] = this.parseConnectionName(name);
 
-        name = name || database;
+        const foundedName = name || database;
 
         // If we haven't created this connection, we'll create it based on the config
         // provided in the application. Once we've created the connections we will
         // set the "fetch mode" for PDO which determines the query return types.
-        if (!(name in this.connections)) {
-            this.connections[name] = this.configure(this.makeConnection(database), type);
+        if (!(foundedName in this.connections)) {
+            this.connections[foundedName] = this.configure(this.makeConnection(database), type);
         }
 
-        return this.connections[name];
+        return this.connections[foundedName] as T;
     }
 
     /**

@@ -410,7 +410,7 @@ session.commit();
 
 -   The `DatabaseManager` instance do not proxy methods to default connection, you always need to call `connection(name)` method to access method of `Connection`.
 -   Methods `whenQueryingForLongerThan` and `allowQueryDurationHandlersToRunAgain` do not exist, [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time) offer a valid alternative.
--   Method `getQueryLog` does not exists, logging query is used only internally for `pretend` method.
+-   Methods `getQueryLog` and `getRawQueryLog` do not exist, logging query is used only internally for `pretend` method.
 -   Methods `beginTransaction` and `useWriteConnectionWhenReading` return a `ConnectionSession` you must use the session instead the original connection for the queries you want to execute them within the transaction or against the write pdo.
 -   Callbacks for methods `transaction` and `pretend` are called with a `ConnectionSession` you must use the session instead the original connection inside the callback if you want to execute the queries within the transaction or to pretend the execution.
 -   Query Builder return `Array` instead of `Collection`

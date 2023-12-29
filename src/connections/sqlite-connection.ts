@@ -1,9 +1,10 @@
 import SQLiteGrammar from '../query/grammars/sqlite-grammar';
 import SchemaBuilder from '../schema/builders/sqlite-builder';
 import SchemaGrammar from '../schema/grammars/sqlite-grammar';
+import SQLiteConnectionI from '../types/connection/sqlite-connection';
 import Connection from './connection';
 
-class SQLiteConnection extends Connection {
+class SQLiteConnection extends Connection implements SQLiteConnectionI {
     /**
      * Get the default query grammar instance.
      */

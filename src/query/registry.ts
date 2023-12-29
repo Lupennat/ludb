@@ -1,5 +1,5 @@
-import { BetweenColumnsTuple, BetweenTuple } from '../types/query/builder';
 import JoinClauseI from '../types/query/join-clause';
+import { BetweenColumnsTuple, BetweenTuple } from '../types/query/query-builder';
 import RegistryI, {
     Aggregate,
     BindingTypes,
@@ -47,8 +47,7 @@ export default function createRegistry(): RegistryI {
         unionLimit: null,
         unionOffset: null,
         unionOrders: [],
-        lock: null,
-        beforeQueryCallbacks: []
+        lock: null
     };
 }
 
@@ -229,10 +228,6 @@ function cloneBase(
 
     if (!propertiesToExclude.includes('lock')) {
         cloned.lock = registry.lock;
-    }
-
-    if (!propertiesToExclude.includes('beforeQueryCallbacks')) {
-        cloned.beforeQueryCallbacks = registry.beforeQueryCallbacks.slice();
     }
 
     return cloned;

@@ -662,7 +662,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support foreign index removal.');
+        }).toThrow('This database driver does not support foreign index removal.');
         blueprint = getSqlServerBlueprint('posts', table => {
             table.dropForeignIdFor(new User());
         });
@@ -678,7 +678,7 @@ describe('Blueprint', () => {
 
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError("SQLite doesn't support dropping foreign keys (you would need to re-create the table).");
+        }).toThrow("SQLite doesn't support dropping foreign keys (you would need to re-create the table).");
     });
 
     it('Works Drop Relationship Column With Uuid Model', () => {
@@ -707,7 +707,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support foreign index removal.');
+        }).toThrow('This database driver does not support foreign index removal.');
         blueprint = getSqlServerBlueprint('posts', table => {
             table.dropForeignIdFor(new User());
         });
@@ -746,7 +746,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support foreign index removal.');
+        }).toThrow('This database driver does not support foreign index removal.');
         blueprint = getSqlServerBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(new User());
         });
@@ -788,7 +788,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support foreign index removal.');
+        }).toThrow('This database driver does not support foreign index removal.');
         blueprint = getSqlServerBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(new User());
         });

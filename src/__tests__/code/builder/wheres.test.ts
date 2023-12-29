@@ -6,12 +6,13 @@ import {
     getBuilder,
     getMySqlBuilder,
     getPostgresBuilder,
+    getQueryBuilder,
     getSQLiteBuilder,
     getSqlServerBuilder,
     pdo
 } from '../fixtures/mocked';
 
-describe('Query Builder Wheres', () => {
+describe('Builder Wheres', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -25,7 +26,20 @@ describe('Query Builder Wheres', () => {
         builder = getBuilder();
         expect(() => {
             builder.select('*').from('users').where('id', '>', null);
-        }).toThrowError('Illegal operator and value combination.');
+        }).toThrow('Illegal operator and value combination.');
+    });
+
+    it('Works Where Expression', () => {
+        let builder = getBuilder();
+
+        builder.select('*').from('users').where(new Raw('id = 1'));
+        expect(builder.toSql()).toBe('select * from "users" where id = 1');
+        expect(builder.getBindings()).toEqual([]);
+
+        builder = getBuilder();
+        builder.select('*').from('users').where(new Raw('id = 1'), null, null, 'and', true);
+        expect(builder.toSql()).toBe('select * from "users" where not id = 1');
+        expect(builder.getBindings()).toEqual([]);
     });
 
     it('Works Where With Queryables', () => {
@@ -69,7 +83,31 @@ describe('Query Builder Wheres', () => {
                         query.from('two').select('baz').where('subkey', '=', 'subval');
                     }
                 );
-        }).toThrowError('Value Cannot be a closure when column is instance of Query Builder or closure.');
+        }).toThrow('Value Cannot be a closure when column is instance of Query Builder or closure.');
+    });
+
+    it('Works Where Value Sub Query Builder', () => {
+        const subQuery = getBuilder().from('posts').selectRaw("'Sub query value'").limit(1);
+
+        expect(getBuilder().from('posts').where(subQuery, 'Sub query value').toRawSql()).toBe(
+            `select * from "posts" where (select 'Sub query value' from "posts" limit 1) = 'Sub query value'`
+        );
+        expect(getBuilder().from('posts').where(subQuery, 'Does not match').toRawSql()).toBe(
+            `select * from "posts" where (select 'Sub query value' from "posts" limit 1) = 'Does not match'`
+        );
+        expect(getBuilder().from('posts').where(subQuery, '!=', 'Does not match').toRawSql()).toBe(
+            `select * from "posts" where (select 'Sub query value' from "posts" limit 1) != 'Does not match'`
+        );
+
+        expect(getBuilder().from('posts').where(new Raw("'Sub query value'"), subQuery).toRawSql()).toBe(
+            'select * from "posts" where \'Sub query value\' = (select \'Sub query value\' from "posts" limit 1)'
+        );
+        expect(getBuilder().from('posts').where(new Raw("'Does not match'"), subQuery).toRawSql()).toBe(
+            'select * from "posts" where \'Does not match\' = (select \'Sub query value\' from "posts" limit 1)'
+        );
+        expect(getBuilder().from('posts').where(new Raw("'Does not match'"), '!=', subQuery).toRawSql()).toBe(
+            'select * from "posts" where \'Does not match\' != (select \'Sub query value\' from "posts" limit 1)'
+        );
     });
 
     it('Works Basic Where Not', () => {
@@ -699,8 +737,13 @@ describe('Query Builder Wheres', () => {
     });
 
     it('Works Raw Wheres', () => {
-        const builder = getBuilder();
+        let builder = getBuilder();
         builder.select('*').from('users').whereRaw('id = ? or email = ?', [1, 'foo']);
+        expect(builder.toSql()).toBe('select * from "users" where id = ? or email = ?');
+        expect(builder.getBindings()).toEqual([1, 'foo']);
+
+        builder = getBuilder();
+        builder.select('*').from('users').whereRaw(new Raw('id = ? or email = ?'), [1, 'foo']);
         expect(builder.toSql()).toBe('select * from "users" where id = ? or email = ?');
         expect(builder.getBindings()).toEqual([1, 'foo']);
     });
@@ -739,7 +782,7 @@ describe('Query Builder Wheres', () => {
                 .where('id', '=', 1)
                 // @ts-expect-error test wrong parameter
                 .orWhereIn('id', [1, [1, 2, 3]]);
-        }).toThrowError('Nested arrays may not be passed to whereIn method.');
+        }).toThrow('Nested arrays may not be passed to whereIn method.');
     });
 
     it('Works Basic Where Not Ins', () => {
@@ -888,7 +931,7 @@ describe('Query Builder Wheres', () => {
         builder = getBuilder();
         expect(() => {
             builder.select('*').from('users').whereColumn('updated_at', '=');
-        }).toThrowError('Second Parameter must be string or Expression.');
+        }).toThrow('Second Parameter must be string or Expression.');
     });
 
     it('Works Array Where Column', () => {
@@ -924,7 +967,7 @@ describe('Query Builder Wheres', () => {
         builder = getBuilder();
         expect(() => {
             builder.select('*').from('users').whereColumnNot('updated_at', '=');
-        }).toThrowError('Second Parameter must be string or Expression.');
+        }).toThrow('Second Parameter must be string or Expression.');
     });
 
     it('Works Array Where Column Noy', () => {
@@ -945,7 +988,7 @@ describe('Query Builder Wheres', () => {
         builder.select('*').from('users').whereFulltext('body', 'Hello World');
         expect(() => {
             builder.toSql();
-        }).toThrowError('This database engine does not support fulltext search operations.');
+        }).toThrow('This database engine does not support fulltext search operations.');
     });
 
     it('Works Where Fulltext MySql', () => {
@@ -1414,6 +1457,17 @@ describe('Query Builder Wheres', () => {
         expect(
             'select * from "orders" where "id" = ? or not exists (select * from "products" where "products"."id" = "orders"."id")'
         ).toBe(builder.toSql());
+
+        const query = getQueryBuilder();
+        query
+            .select('*')
+            .from('orders')
+            .whereExists(query => {
+                query.select('*').from('products').where('products.id', '=', new Raw('"orders"."id"'));
+            });
+        expect(
+            'select * from "orders" where exists (select * from "products" where "products"."id" = "orders"."id")'
+        ).toBe(query.toSql());
     });
 
     it('Works Add Where Exists Query', () => {
@@ -1447,11 +1501,11 @@ describe('Query Builder Wheres', () => {
         const builder = getBuilder();
         expect(() => {
             builder.where('foo');
-        }).toThrowError('Illegal operator and value combination.');
+        }).toThrow('Illegal operator and value combination.');
 
         expect(() => {
             builder.where('foo', null, '20');
-        }).toThrowError('Illegal operator and value combination.');
+        }).toThrow('Illegal operator and value combination.');
     });
 
     it('Works Providing Null With Operators Builds Correctly', () => {
@@ -1535,7 +1589,7 @@ describe('Query Builder Wheres', () => {
         const builder = getBuilder();
         expect(() => {
             builder.select('*').from('orders').whereRowValues(['last_update'], '<', [1, 2]);
-        }).toThrowError('The number of columns must match the number of values');
+        }).toThrow('The number of columns must match the number of values');
     });
 
     it('Works Where Json Contains MySql', () => {
@@ -1590,7 +1644,7 @@ describe('Query Builder Wheres', () => {
         const builder = getSQLiteBuilder();
         expect(() => {
             builder.select('*').from('users').whereJsonContains('options->languages', ['en']).toSql();
-        }).toThrowError('This database engine does not support JSON contains operations.');
+        }).toThrow('This database engine does not support JSON contains operations.');
     });
 
     it('Works Where Json Contains SqlServer', () => {
@@ -1659,7 +1713,7 @@ describe('Query Builder Wheres', () => {
         const builder = getSQLiteBuilder();
         expect(() => {
             builder.select('*').from('users').whereJsonDoesntContain('options->languages', ['en']).toSql();
-        }).toThrowError('This database engine does not support JSON contains operations.');
+        }).toThrow('This database engine does not support JSON contains operations.');
     });
 
     it('Works Where Json Doesnt Contain SqlServer', () => {
@@ -1687,7 +1741,7 @@ describe('Query Builder Wheres', () => {
         builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
         expect(() => {
             builder.toSql();
-        }).toThrowError('This database engine does not support JSON contains key operations.');
+        }).toThrow('This database engine does not support JSON contains key operations.');
     });
 
     it('Works Where Json Contains Key MySql', () => {
@@ -1915,7 +1969,7 @@ describe('Query Builder Wheres', () => {
         builder.select('*').from('users').whereJsonLength('options', 0);
         expect(() => {
             builder.toSql();
-        }).toThrowError('This database engine does not support JSON length operations.');
+        }).toThrow('This database engine does not support JSON length operations.');
     });
 
     it('Works Where Json Length MySql', () => {

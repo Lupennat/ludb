@@ -100,18 +100,19 @@ describe('MySql Schema Grammar', () => {
         let blueprint = getMySqlBlueprint('users');
         blueprint.create();
         blueprint.increments('id');
+        blueprint.primary(['id'], 'baz', 'hash');
         blueprint.string('email');
         blueprint.engine('InnoDB');
         jest.spyOn(connection, 'getConfig').mockReturnValueOnce('utf8').mockReturnValueOnce('utf8_unicode_ci');
         let statements = blueprint.toSql(connection);
         expect(statements.length).toBe(1);
         expect(
-            "create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null) default character set utf8 collate 'utf8_unicode_ci' engine = InnoDB"
+            "create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null, primary key using hash(`id`)) default character set utf8 collate 'utf8_unicode_ci' engine = InnoDB"
         ).toBe(statements[0]);
 
         blueprint = getMySqlBlueprint('users');
         blueprint.create();
-        blueprint.increments('id');
+        blueprint.increments('id').primary();
         blueprint.string('email');
         jest.spyOn(connection, 'getConfig')
             .mockReturnValueOnce('utf8')
@@ -120,7 +121,7 @@ describe('MySql Schema Grammar', () => {
         statements = blueprint.toSql(connection);
         expect(statements.length).toBe(1);
         expect(
-            "create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null) default character set utf8 collate 'utf8_unicode_ci' engine = InnoDB"
+            "create table `users` (`id` int unsigned not null auto_increment primary key, `email` varchar(255) not null, primary key (`id`)) default character set utf8 collate 'utf8_unicode_ci' engine = InnoDB"
         ).toBe(statements[0]);
     });
 
@@ -195,7 +196,7 @@ describe('MySql Schema Grammar', () => {
     it('Works Drop Table If Exists', () => {
         const connection = getConnection().sessionSchema();
         const blueprint = getMySqlBlueprint('users');
-        blueprint.dropIfExists();
+        blueprint.dropTableIfExists();
         const statements = blueprint.toSql(connection);
 
         expect(1).toBe(statements.length);
@@ -1638,7 +1639,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.multiPolygonZ('coordinates');
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the multipolygonz type');
+        }).toThrow('This Database driver does not support the multipolygonz type');
     });
 
     it('Works Adding Computed', () => {
@@ -1647,7 +1648,7 @@ describe('MySql Schema Grammar', () => {
         blueprint.computed('discounted_virtual', 'price - 5').persisted();
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the computed type');
+        }).toThrow('This Database driver does not support the computed type');
     });
 
     it('Works Adding Comment', () => {
@@ -1805,14 +1806,24 @@ describe('MySql Schema Grammar', () => {
         expect('drop database if exists *').toBe(statement);
     });
 
-    it('Works Drop All Tables', () => {
-        const statement = new MySqlSchemaGrammar().compileDropAllTables(['alpha', 'beta', 'gamma']);
+    it('Works Drop View If Exists', () => {
+        let statement = new MySqlSchemaGrammar().compileDropViewIfExists('my_view_a');
+
+        expect('drop view if exists `my_view_a`').toBe(statement);
+
+        statement = new MySqlSchemaGrammar().compileDropViewIfExists('my_view_b');
+
+        expect('drop view if exists `my_view_b`').toBe(statement);
+    });
+
+    it('Works Drop Tables', () => {
+        const statement = new MySqlSchemaGrammar().compileDropTables(['alpha', 'beta', 'gamma']);
 
         expect('drop table `alpha`,`beta`,`gamma`').toBe(statement);
     });
 
-    it('Works Drop All Views', () => {
-        const statement = new MySqlSchemaGrammar().compileDropAllViews(['alpha', 'beta', 'gamma']);
+    it('Works Drop Views', () => {
+        const statement = new MySqlSchemaGrammar().compileDropViews(['alpha', 'beta', 'gamma']);
 
         expect('drop view `alpha`,`beta`,`gamma`').toBe(statement);
     });

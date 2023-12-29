@@ -1,19 +1,19 @@
-import BuilderContract from '../../query/builder-contract';
 import ExpressionContract from '../../query/expression-contract';
 import BaseGrammarI from '../base-grammar';
-import { Binding, BindingExclude, BindingExcludeObject, RowValues, Stringable } from './builder';
+import { Binding, BindingExclude, BindingExcludeObject, Stringable } from '../generics';
+import QueryBuilderI, { RowValues } from './query-builder';
 import { BindingTypes } from './registry';
 
 export default interface GrammarI extends BaseGrammarI {
     /**
      * Compile a select query into SQL.
      */
-    compileSelect(query: BuilderContract): string;
+    compileSelect(query: QueryBuilderI): string;
 
     /**
      * Compile the "where" portions of the query.
      */
-    compileWheres(query: BuilderContract): string;
+    compileWheres(query: QueryBuilderI): string;
 
     /**
      * Prepare the binding for a "JSON contains" statement.
@@ -28,43 +28,43 @@ export default interface GrammarI extends BaseGrammarI {
     /**
      * Compile an exists statement into SQL.
      */
-    compileExists(query: BuilderContract): string;
+    compileExists(query: QueryBuilderI): string;
 
     /**
      * Compile an insert statement into SQL.
      */
-    compileInsert(query: BuilderContract, values: RowValues[] | RowValues): string;
+    compileInsert(query: QueryBuilderI, values: RowValues[] | RowValues): string;
 
     /**
      * Compile an insert ignore statement into SQL.
      */
-    compileInsertOrIgnore(query: BuilderContract, values: RowValues[] | RowValues): string;
+    compileInsertOrIgnore(query: QueryBuilderI, values: RowValues[] | RowValues): string;
 
     /**
      * Compile an insert and get ID statement into SQL.
      */
-    compileInsertGetId(query: BuilderContract, values: RowValues, sequence: string | null): string;
+    compileInsertGetId(query: QueryBuilderI, values: RowValues, sequence: string | null): string;
 
     /**
      * Compile an insert statement using a subquery into SQL.
      */
-    compileInsertUsing(query: BuilderContract, columns: Stringable[], sql: string): string;
+    compileInsertUsing(query: QueryBuilderI, columns: Stringable[], sql: string): string;
 
     /**
      * Compile an update statement into SQL.
      */
-    compileUpdate(query: BuilderContract, values: RowValues): string;
+    compileUpdate(query: QueryBuilderI, values: RowValues): string;
 
     /**
      * Compile an update from statement into SQL.
      */
-    compileUpdateFrom(query: BuilderContract, values: RowValues): string;
+    compileUpdateFrom(query: QueryBuilderI, values: RowValues): string;
 
     /**
      * Compile an "upsert" statement into SQL.
      */
     compileUpsert(
-        query: BuilderContract,
+        query: QueryBuilderI,
         values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
@@ -83,7 +83,7 @@ export default interface GrammarI extends BaseGrammarI {
     /**
      * Compile a delete statement into SQL.
      */
-    compileDelete(query: BuilderContract): string;
+    compileDelete(query: QueryBuilderI): string;
 
     /**
      * Prepare the bindings for a delete statement.
@@ -93,7 +93,7 @@ export default interface GrammarI extends BaseGrammarI {
     /**
      * Compile a truncate table statement into SQL.
      */
-    compileTruncate(query: BuilderContract): { [key: string]: Binding[] };
+    compileTruncate(query: QueryBuilderI): { [key: string]: Binding[] };
 
     /**
      * Determine if the grammar supports savepoints.
