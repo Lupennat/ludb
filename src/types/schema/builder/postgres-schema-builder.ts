@@ -2,60 +2,18 @@ import PostgresConnection from '../../../connections/postgres-connection';
 import { ConnectionSessionI } from '../../connection';
 import { Stringable } from '../../generics';
 import {
+    PostgresArrayType,
     PostgresColumnDictionary,
+    PostgresDomainType,
     PostgresForeignKeyDictionary,
+    PostgresFunctionType,
     PostgresIndexDictionary,
+    PostgresRangeType,
     PostgresTableDictionary,
     PostgresTypeDictionary,
     PostgresViewDictionary
 } from '../generics';
 import SchemaBuilder from './schema-builder';
-
-export interface RangeType {
-    subtype: string;
-    subtype_opclass?: string;
-    collation?: string;
-    canonical?: string;
-    subtype_diff?: string;
-    multirange_type_name?: string;
-}
-
-export interface ArrayType {
-    name: string;
-    type: string;
-    collation?: string;
-}
-
-export interface FunctionType {
-    input: string;
-    output: string;
-    receive?: string;
-    send?: string;
-    typmod_in?: string;
-    typmod_out?: string;
-    analyze?: string;
-    subscript?: string;
-    internallength?: number | string;
-    precision: string;
-    alignement?: 'char' | 'int2' | 'int4' | 'double';
-    storage?: 'plain' | 'external' | 'extended' | 'main';
-    like_type?: string;
-    category?: string;
-    preferred?: boolean;
-    default?: string;
-    element?: string;
-    delimiter?: string;
-    collatable?: boolean;
-}
-
-export interface DomainType {
-    type: string;
-    default?: string;
-    collate?: string;
-    constraint?: string;
-    nullable?: boolean;
-    check?: string;
-}
 
 export default interface PostgresSchemaBuilderI extends SchemaBuilder<ConnectionSessionI<PostgresConnection>> {
     /**
@@ -86,13 +44,8 @@ export default interface PostgresSchemaBuilderI extends SchemaBuilder<Connection
      * create user-defined type.
      */
     createType(name: Stringable, type: 'enum', definition: string[]): Promise<boolean>;
-    createType(name: Stringable, type: 'range', definition: RangeType): Promise<boolean>;
-    createType(name: Stringable, type: 'array', definition: ArrayType[]): Promise<boolean>;
-    createType(name: Stringable, type: 'fn', definition: FunctionType): Promise<boolean>;
-    createType(name: Stringable, type: 'domain', definition: DomainType): Promise<boolean>;
-    createType(
-        name: Stringable,
-        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
-        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
-    ): Promise<boolean>;
+    createType(name: Stringable, type: 'range', definition: PostgresRangeType): Promise<boolean>;
+    createType(name: Stringable, type: 'array', definition: PostgresArrayType[]): Promise<boolean>;
+    createType(name: Stringable, type: 'fn', definition: PostgresFunctionType): Promise<boolean>;
+    createType(name: Stringable, type: 'domain', definition: PostgresDomainType): Promise<boolean>;
 }

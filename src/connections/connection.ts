@@ -13,8 +13,8 @@ import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQ
 
 import DatabaseConnections, { DatabaseConfig } from '../types/config';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
-import BuilderI from '../types/query/builder';
-import { QueryAbleCallback } from '../types/query/query-builder';
+import { QueryAbleCallback } from '../types/query/grammar-builder';
+import QueryBuilderI from '../types/query/query-builder';
 import SchemaBuilderI from '../types/schema/builder/schema-builder';
 import { raw } from '../utils';
 import ConnectionSession from './connection-session';
@@ -79,7 +79,7 @@ abstract class Connection implements DriverConnectionI {
     public abstract getQueryGrammar(): Grammar;
 
     /**
-     * Start Connection session for Builder
+     * Start Connection session for QueryBuilder
      */
     public session(): ConnectionSessionI<this> {
         return new ConnectionSession(this);
@@ -343,14 +343,14 @@ abstract class Connection implements DriverConnectionI {
     /**
      * Begin a fluent query against a database table.
      */
-    public table(table: QueryAbleCallback<BuilderI> | BuilderI | Stringable, as?: string): BuilderI {
+    public table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI {
         return this.session().table(table, as);
     }
 
     /**
      * Get a new query builder instance.
      */
-    public query(): BuilderI {
+    public query(): QueryBuilderI {
         return this.session().query();
     }
 

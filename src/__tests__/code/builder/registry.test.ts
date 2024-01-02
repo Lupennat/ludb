@@ -15,7 +15,7 @@ import {
 } from '../../../types/query/registry';
 import { getBuilder, getJoin, pdo } from '../fixtures/mocked';
 
-describe('Builder Registry', () => {
+describe('QueryBuilder Registry', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -24,6 +24,7 @@ describe('Builder Registry', () => {
         expect(createRegistry()).toEqual({
             useWritePdo: false,
             bindings: {
+                expressions: [],
                 select: [],
                 from: [],
                 join: [],
@@ -34,6 +35,7 @@ describe('Builder Registry', () => {
                 union: [],
                 unionOrder: []
             },
+            expressions: [],
             aggregate: null,
             columns: null,
             distinct: false,
@@ -44,10 +46,13 @@ describe('Builder Registry', () => {
             groups: [],
             havings: [],
             orders: [],
+            recursionLimit: null,
             limit: null,
             offset: null,
             unions: [],
+            unionExpressions: [],
             unionLimit: null,
+            unionRecursionLimit: null,
             unionOffset: null,
             unionOrders: [],
             lock: null
@@ -71,6 +76,7 @@ describe('Builder Registry', () => {
 
     it('Works Clone Bindings', () => {
         const registry = createRegistry();
+        registry.bindings.expressions = [1, 2, 3, Buffer.from('2'), 'foo', true];
         registry.bindings.select = [1, 2, 3, Buffer.from('2'), 'foo', true];
         registry.bindings.from = [1, 2, 3, Buffer.from('2'), 'foo', true];
         registry.bindings.join = [1, 2, 3, Buffer.from('2'), 'foo', true];
@@ -82,6 +88,7 @@ describe('Builder Registry', () => {
         registry.bindings.unionOrder = [1, 2, 3, Buffer.from('2'), 'foo', true];
         const cloned = cloneRegistry(registry);
         expect(cloned.bindings).toEqual({
+            expressions: [1, 2, 3, Buffer.from('2'), 'foo', true],
             select: [1, 2, 3, Buffer.from('2'), 'foo', true],
             from: [1, 2, 3, Buffer.from('2'), 'foo', true],
             join: [1, 2, 3, Buffer.from('2'), 'foo', true],
@@ -92,6 +99,7 @@ describe('Builder Registry', () => {
             union: [1, 2, 3, Buffer.from('2'), 'foo', true],
             unionOrder: [1, 2, 3, Buffer.from('2'), 'foo', true]
         });
+        registry.bindings.expressions.push('test');
         registry.bindings.select.push('test');
         registry.bindings.from = [];
         registry.bindings.join.slice(0, 3);
@@ -102,6 +110,7 @@ describe('Builder Registry', () => {
         registry.bindings.union.push('test');
         registry.bindings.unionOrder.push('test');
         expect(cloned.bindings).toEqual({
+            expressions: [1, 2, 3, Buffer.from('2'), 'foo', true],
             select: [1, 2, 3, Buffer.from('2'), 'foo', true],
             from: [1, 2, 3, Buffer.from('2'), 'foo', true],
             join: [1, 2, 3, Buffer.from('2'), 'foo', true],
@@ -204,6 +213,160 @@ describe('Builder Registry', () => {
         registry.joins.push(getJoin('table4'));
         expect(cloned.joins).toEqual(joinsCloned);
         expect(cloned.joins).not.toEqual(registry.joins);
+    });
+
+    it('Works Clone Expressions', () => {
+        const registry = createRegistry();
+        registry.expressions = [
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ];
+        const cloned = cloneRegistry(registry);
+        expect(cloned.expressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ]);
+        registry.expressions = [];
+        expect(cloned.expressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ]);
+        registry.expressions = [
+            {
+                columns: ['a1', 'b1', new Raw('test1')],
+                name: new Raw('a1'),
+                query: 'query string1',
+                materialized: true,
+                recursive: false,
+                cycle: {
+                    columns: ['c1', 'd1', new Raw('test21')],
+                    pathColumn: 'a1',
+                    markColumn: 'b1'
+                }
+            }
+        ];
+        expect(cloned.expressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ]);
+        expect(cloned.expressions).not.toEqual(registry.expressions);
+    });
+
+    it('Works Clone Union Expressions', () => {
+        const registry = createRegistry();
+        registry.unionExpressions = [
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ];
+        const cloned = cloneRegistry(registry);
+        expect(cloned.unionExpressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ]);
+        registry.unionExpressions = [];
+        expect(cloned.unionExpressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ]);
+        registry.unionExpressions = [
+            {
+                columns: ['a1', 'b1', new Raw('test1')],
+                name: new Raw('a1'),
+                query: 'query string1',
+                materialized: true,
+                recursive: false,
+                cycle: {
+                    columns: ['c1', 'd1', new Raw('test21')],
+                    pathColumn: 'a1',
+                    markColumn: 'b1'
+                }
+            }
+        ];
+        expect(cloned.unionExpressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: {
+                    columns: ['c', 'd', new Raw('test2')],
+                    pathColumn: 'a',
+                    markColumn: 'b'
+                }
+            }
+        ]);
+        expect(cloned.unionExpressions).not.toEqual(registry.unionExpressions);
     });
 
     it('Works Clone Where Raw', () => {
@@ -1599,6 +1762,17 @@ describe('Builder Registry', () => {
         expect(cloned.limit).toBe(1);
     });
 
+    it('Works Clone Recursion Limit', () => {
+        const registry = createRegistry();
+        registry.recursionLimit = 1;
+        const cloned = cloneRegistry(registry);
+        expect(cloned.recursionLimit).toBe(1);
+        registry.recursionLimit = 2;
+        expect(cloned.recursionLimit).toBe(1);
+        registry.recursionLimit = null;
+        expect(cloned.recursionLimit).toBe(1);
+    });
+
     it('Works Clone Union Limit', () => {
         const registry = createRegistry();
         registry.unionLimit = 1;
@@ -1608,6 +1782,17 @@ describe('Builder Registry', () => {
         expect(cloned.unionLimit).toBe(1);
         registry.unionLimit = null;
         expect(cloned.unionLimit).toBe(1);
+    });
+
+    it('Works Clone Recursion Union Limit', () => {
+        const registry = createRegistry();
+        registry.unionRecursionLimit = 1;
+        const cloned = cloneRegistry(registry);
+        expect(cloned.unionRecursionLimit).toBe(1);
+        registry.unionRecursionLimit = 2;
+        expect(cloned.unionRecursionLimit).toBe(1);
+        registry.unionRecursionLimit = null;
+        expect(cloned.unionRecursionLimit).toBe(1);
     });
 
     it('Works Clone Offset', () => {

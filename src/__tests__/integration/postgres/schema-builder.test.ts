@@ -3,7 +3,7 @@ import { DB, config, currentDB, isPostgres } from '../fixtures/config';
 
 const maybe = isPostgres() ? describe : describe.skip;
 
-maybe('Postgres Schema Builder', () => {
+maybe('Postgres Schema QueryBuilder', () => {
     const connection = DB.connections[currentDB];
 
     (config[currentDB] as PostgresConfig).search_path = 'public,test_schema_private';

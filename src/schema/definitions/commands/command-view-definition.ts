@@ -1,9 +1,9 @@
 import { Stringable } from '../../../types/generics';
-import QueryBuilderI from '../../../types/query/query-builder';
+import GrammarBuilderI from '../../../types/query/grammar-builder';
 import { CommandType, ViewRegistryI } from '../../../types/schema/registry';
 import CommandDefinition from './command-definition';
 
-type ViewAsCallback = (query: QueryBuilderI) => QueryBuilderI;
+type ViewAsCallback = (query: GrammarBuilderI) => GrammarBuilderI;
 
 class CommandViewDefinition<Registry extends ViewRegistryI = ViewRegistryI> extends CommandDefinition<Registry> {
     constructor(public readonly name: CommandType, protected registry: Registry) {

@@ -2,7 +2,7 @@ import MysqlGrammar from '../../../query/grammars/mysql-grammar';
 import MysqlBuilder from '../../../schema/builders/mysql-builder';
 import { getMysqlConnection } from '../fixtures/mocked';
 
-describe('Mysql Schema Builder Test', () => {
+describe('Mysql Schema QueryBuilder Test', () => {
     it('Works Enable Foreign Key Constraints', async () => {
         const connection = getMysqlConnection();
         const session = connection.sessionSchema();

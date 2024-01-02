@@ -2,17 +2,20 @@ import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import PostgresConnection from '../../connections/postgres-connection';
 import { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
-import { ArrayType, DomainType, FunctionType, RangeType } from '../../types/schema/builder/postgres-schema-builder';
 import {
+    PostgresArrayType,
     PostgresColumnDictionary,
+    PostgresDomainType,
     PostgresForeignKeyDictionary,
+    PostgresFunctionType,
     PostgresIndexDictionary,
+    PostgresRangeType,
     PostgresTableDictionary,
     PostgresTypeDictionary,
     PostgresViewDictionary
 } from '../../types/schema/generics';
 import { parseSearchPath } from '../../utils';
-import Builder from './builder';
+import QueryBuilder from './builder';
 
 type PostgresTypeDefinition = {
     name: string;
@@ -50,7 +53,7 @@ type PostgresForeignKeyDefinition = {
     on_delete: string;
 };
 
-class PostgresBuilder extends Builder<ConnectionSessionI<PostgresConnection>> {
+class PostgresBuilder extends QueryBuilder<ConnectionSessionI<PostgresConnection>> {
     /**
      * Create a database in the schema.
      */
@@ -61,20 +64,16 @@ class PostgresBuilder extends Builder<ConnectionSessionI<PostgresConnection>> {
     /**
      * create user-defined type.
      */
+    public async createType(name: Stringable): Promise<boolean>;
     public async createType(name: Stringable, type: 'enum', definition: string[]): Promise<boolean>;
-    public async createType(name: Stringable, type: 'range', definition: RangeType): Promise<boolean>;
-    public async createType(name: Stringable, type: 'array', definition: ArrayType[]): Promise<boolean>;
-    public async createType(name: Stringable, type: 'fn', definition: FunctionType): Promise<boolean>;
-    public async createType(name: Stringable, type: 'domain', definition: DomainType): Promise<boolean>;
+    public async createType(name: Stringable, type: 'range', definition: PostgresRangeType): Promise<boolean>;
+    public async createType(name: Stringable, type: 'array', definition: PostgresArrayType[]): Promise<boolean>;
+    public async createType(name: Stringable, type: 'fn', definition: PostgresFunctionType): Promise<boolean>;
+    public async createType(name: Stringable, type: 'domain', definition: PostgresDomainType): Promise<boolean>;
     public async createType(
         name: Stringable,
-        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
-        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
-    ): Promise<boolean>;
-    public async createType(
-        name: Stringable,
-        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
-        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
+        type?: 'enum' | 'range' | 'array' | 'fn' | 'domain',
+        definition?: string[] | PostgresRangeType | PostgresArrayType[] | PostgresFunctionType | PostgresDomainType
     ): Promise<boolean> {
         return await this.getConnection().statement(this.getGrammar().compileCreateType(name, type, definition));
     }
@@ -167,6 +166,25 @@ class PostgresBuilder extends Builder<ConnectionSessionI<PostgresConnection>> {
         for (const value of views) {
             if (
                 view.toLowerCase() === value.name.toLowerCase() &&
+                schema.toLowerCase() === value.schema.toLowerCase()
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if the given type exists.
+     */
+    public async hasType(type: string): Promise<boolean> {
+        const [schema, realType] = this.parseSchemaAndTable(type);
+        const types = await this.getTypes();
+
+        for (const value of types) {
+            if (
+                realType.toLowerCase() === value.name.toLowerCase() &&
                 schema.toLowerCase() === value.schema.toLowerCase()
             ) {
                 return true;

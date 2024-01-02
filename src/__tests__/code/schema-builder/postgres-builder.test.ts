@@ -1,7 +1,7 @@
 import PostgresBuilder from '../../../schema/builders/postgres-builder';
 import { getPostgresConnection } from '../fixtures/mocked';
 
-describe('Postgres Schema Builder Test', () => {
+describe('Postgres Schema QueryBuilder Test', () => {
     it('Works Enable Foreign Key Constraints', async () => {
         const connection = getPostgresConnection();
         const session = connection.sessionSchema();
@@ -125,6 +125,173 @@ describe('Postgres Schema Builder Test', () => {
         ).toBeTruthy();
     });
 
+    it('Works Create Type', async () => {
+        const connection = getPostgresConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement')
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create type simple');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create type array_type as (f1 int, f2 text collate "und-x-icu")');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create type range_type as range (subtype = float8)');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    'create type range_type as range (subtype = float8, subtype_opclass = float8_opclass, collation = "und-x-icu", canonical = canonical_function, subtype_diff = float8mi, multirange_type_name = range_type_multirange)'
+                );
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create domain domain as float8');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    "create domain domain as text collate \"und-x-icu\" default 0 constraint constraint_name NULL check(VALUE ~ '^d{5}$' OR VALUE ~ '^d{5}-d{4}$')"
+                );
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create domain domain as text NOT NULL');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe("create type enum as enum ('enum1', 'enum2', 'enum3')");
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create type fn (INPUT = input_fn, OUTPUT = output_fn)');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    'create type fn (INPUT = input_fn, OUTPUT = output_fn, PREFERRED = false, COLLATABLE = false)'
+                );
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    "create type fn (INPUT = input_fn, OUTPUT = output_fn, RECEIVE = receive_fn, SEND = send_fn, TYPMOD_IN = type_modifier_input_fn, TYPMOD_OUT = type_modifier_output_fn, ANALYZE = analyze_fn, SUBSCRIPT = subscript_fn, INTERNALLENGTH = 16, PASSEDBYVALUE, ALIGNMENT = char, STORAGE = plain, LIKE = varchar, CATEGORY = E, PREFERRED = true, DEFAULT = 0, ELEMENT = float4, DELIMITER = ',', COLLATABLE = true)"
+                );
+                expect(bindings).toBeUndefined();
+                return true;
+            });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.createType('simple')).toBeTruthy();
+
+        expect(
+            await builder.createType('array_type', 'array', [
+                {
+                    name: 'f1',
+                    type: 'int'
+                },
+                {
+                    name: 'f2',
+                    type: 'text',
+                    collation: 'und-x-icu'
+                }
+            ])
+        ).toBeTruthy();
+        expect(
+            await builder.createType('range_type', 'range', {
+                subtype: 'float8'
+            })
+        ).toBeTruthy();
+        expect(
+            await builder.createType('range_type', 'range', {
+                subtype: 'float8',
+                subtype_opclass: 'float8_opclass',
+                collation: 'und-x-icu',
+                canonical: 'canonical_function',
+                subtype_diff: 'float8mi',
+                multirange_type_name: 'range_type_multirange'
+            })
+        ).toBeTruthy();
+        expect(
+            await builder.createType('domain', 'domain', {
+                type: 'float8'
+            })
+        ).toBeTruthy();
+        expect(
+            await builder.createType('domain', 'domain', {
+                type: 'text',
+                default: '0',
+                collate: 'und-x-icu',
+                constraint: 'constraint_name',
+                nullable: true,
+                check: "VALUE ~ '^d{5}$' OR VALUE ~ '^d{5}-d{4}$'"
+            })
+        ).toBeTruthy();
+        expect(
+            await builder.createType('domain', 'domain', {
+                type: 'text',
+                nullable: false
+            })
+        ).toBeTruthy();
+
+        expect(await builder.createType('enum', 'enum', ['enum1', 'enum2', 'enum3'])).toBeTruthy();
+
+        expect(
+            await builder.createType('fn', 'fn', {
+                input: 'input_fn',
+                output: 'output_fn'
+            })
+        ).toBeTruthy();
+
+        expect(
+            await builder.createType('fn', 'fn', {
+                input: 'input_fn',
+                output: 'output_fn',
+                default: '',
+                passedbyvalue: false,
+                preferred: false,
+                collatable: false
+            })
+        ).toBeTruthy();
+
+        expect(
+            await builder.createType('fn', 'fn', {
+                input: 'input_fn',
+                output: 'output_fn',
+                receive: 'receive_fn',
+                send: 'send_fn',
+                typmod_in: 'type_modifier_input_fn',
+                typmod_out: 'type_modifier_output_fn',
+                analyze: 'analyze_fn',
+                subscript: 'subscript_fn',
+                internallength: 16,
+                passedbyvalue: true,
+                alignment: 'char',
+                storage: 'plain',
+                like: 'varchar',
+                category: 'E',
+                preferred: true,
+                default: '0',
+                element: 'float4',
+                delimiter: ',',
+                collatable: true
+            })
+        ).toBeTruthy();
+    });
+
     it('Works Has Table', async () => {
         const connection = getPostgresConnection();
         const session = connection.sessionSchema();
@@ -222,6 +389,63 @@ describe('Postgres Schema Builder Test', () => {
         jest.spyOn(session, 'getConfig').mockReturnValueOnce('$user').mockReturnValueOnce('claudio');
         expect(await builder.hasView('table')).toBeTruthy();
         expect(await builder.hasView('table2')).toBeFalsy();
+    });
+
+    it('Works Has Type', async () => {
+        const connection = getPostgresConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        const builder = new PostgresBuilder(session);
+
+        jest.spyOn(builder, 'getTypes').mockImplementation(async () => {
+            return [
+                {
+                    name: 'type',
+                    schema: 'public',
+                    implicit: false,
+                    type: 'base',
+                    category: 'e'
+                },
+                {
+                    name: 'type',
+                    schema: 'search_path',
+                    implicit: false,
+                    type: 'base',
+                    category: 'e'
+                },
+                {
+                    name: 'type',
+                    schema: 'schema',
+                    implicit: false,
+                    type: 'base',
+                    category: 'e'
+                },
+                {
+                    name: 'type2',
+                    schema: 'schema2',
+                    implicit: false,
+                    type: 'base',
+                    category: 'e'
+                },
+                {
+                    name: 'type',
+                    schema: 'claudio',
+                    implicit: false,
+                    type: 'base',
+                    category: 'e'
+                }
+            ];
+        });
+
+        expect(await builder.hasType('type')).toBeTruthy();
+        jest.spyOn(session, 'getConfig').mockReturnValueOnce('search_path');
+        expect(await builder.hasType('type')).toBeTruthy();
+        jest.spyOn(session, 'getConfig').mockReturnValueOnce('').mockReturnValueOnce('schema');
+        expect(await builder.hasType('type')).toBeTruthy();
+        expect(await builder.hasType('schema2.type2')).toBeTruthy();
+        jest.spyOn(session, 'getConfig').mockReturnValueOnce('$user').mockReturnValueOnce('claudio');
+        expect(await builder.hasType('type')).toBeTruthy();
+        expect(await builder.hasType('type2')).toBeFalsy();
     });
 
     it('Works Drop Database If Exists', async () => {

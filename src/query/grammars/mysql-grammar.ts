@@ -1,6 +1,6 @@
-import { Binding, Stringable } from '../../types/generics';
-import QueryBuilderI, { RowValues } from '../../types/query/query-builder';
-import { BindingTypes, WhereNull, whereFulltext } from '../../types/query/registry';
+import { Stringable } from '../../types/generics';
+import GrammarBuilderI, { RowValues } from '../../types/query/grammar-builder';
+import { BindingTypes, Cte, WhereNull, whereFulltext } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -12,9 +12,23 @@ class MysqlGrammar extends Grammar {
     protected operators: string[] = ['sounds like'];
 
     /**
+     * Compile the cycle detection.
+
+     */
+    protected compileCycle(_query: GrammarBuilderI, expression: Cte): string {
+        if (!expression.cycle) {
+            return '';
+        }
+
+        const columns = this.columnize(expression.cycle.columns);
+
+        return ` cycle ${columns} restrict`;
+    }
+
+    /**
      * Add a "where null" clause to the query.
      */
-    protected compileWhereNull(query: QueryBuilderI, where: WhereNull): string {
+    protected compileWhereNull(query: GrammarBuilderI, where: WhereNull): string {
         if (this.isJsonSelector(where.column)) {
             const [field, path] = this.wrapJsonFieldAndPath(where.column);
             const isNullCondition = where.not ? 'is not null AND' : 'is null OR';
@@ -28,7 +42,7 @@ class MysqlGrammar extends Grammar {
     /**
      * Compile a "fulltext" statement into SQL.
      */
-    public compileFulltext(_query: QueryBuilderI, where: whereFulltext): string {
+    public compileFulltext(_query: GrammarBuilderI, where: whereFulltext): string {
         const columns = this.columnize(where.columns);
 
         const value = this.parameter(where.value);
@@ -43,7 +57,7 @@ class MysqlGrammar extends Grammar {
     /**
      * Compile the index hints for the query.
      */
-    protected compileIndexHint(_query: QueryBuilderI, indexHint: IndexHint): string {
+    protected compileIndexHint(_query: GrammarBuilderI, indexHint: IndexHint): string {
         switch (indexHint.type) {
             case 'hint':
                 return `use index (${indexHint.index})`;
@@ -55,9 +69,35 @@ class MysqlGrammar extends Grammar {
     }
 
     /**
+     * Compile an insert statement using a subquery into SQL.
+     */
+    public compileInsertUsing(query: GrammarBuilderI, columns: Stringable[], sql: string): string {
+        const expressions = query.getRegistry().expressions;
+
+        const expressionSql =
+            expressions.length > 0 ? this.compileExpressions(query, query.getRegistry().expressions) + ' ' : '';
+
+        const recursionLimit = query.getRegistry().recursionLimit;
+
+        const recursionLimitSql =
+            recursionLimit !== null ? ' ' + this.compileRecursionLimit(query, recursionLimit) : '';
+
+        const table = this.wrapTable(query.getRegistry().from);
+
+        if (
+            columns.length === 0 ||
+            columns.filter(column => !['*'].includes(this.getValue(column).toString())).length === 0
+        ) {
+            return `${expressionSql}insert into ${table}${recursionLimitSql} ${sql}`;
+        }
+
+        return `${expressionSql}insert into ${table} (${this.columnize(columns)})${recursionLimitSql} ${sql}`;
+    }
+
+    /**
      * Compile an insert ignore statement into SQL.
      */
-    public compileInsertOrIgnore(query: QueryBuilderI, values: RowValues[] | RowValues): string {
+    public compileInsertOrIgnore(query: GrammarBuilderI, values: RowValues[] | RowValues): string {
         return this.compileInsert(query, values).replace('insert', 'insert ignore');
     }
 
@@ -107,7 +147,7 @@ class MysqlGrammar extends Grammar {
     /**
      * Compile the lock into SQL.
      */
-    protected compileLock(_query: QueryBuilderI, value: boolean | string): string {
+    protected compileLock(_query: GrammarBuilderI, value: boolean | string): string {
         if (typeof value !== 'string') {
             return value ? 'for update' : 'lock in share mode';
         }
@@ -118,7 +158,7 @@ class MysqlGrammar extends Grammar {
     /**
      * Compile an insert statement into SQL.
      */
-    public compileInsert(query: QueryBuilderI, values: RowValues[] | RowValues): string {
+    public compileInsert(query: GrammarBuilderI, values: RowValues[] | RowValues): string {
         if ((Array.isArray(values) && values.length === 0) || Object.keys(values).length === 0) {
             values = [{}];
         }
@@ -129,7 +169,7 @@ class MysqlGrammar extends Grammar {
     /**
      * Compile the columns for an update statement.
      */
-    protected compileUpdateColumns(_query: QueryBuilderI, values: RowValues): string {
+    protected compileUpdateColumns(_query: GrammarBuilderI, values: RowValues): string {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
         return Object.keys(combinedValues)
@@ -148,7 +188,7 @@ class MysqlGrammar extends Grammar {
      * Compile an "upsert" statement into SQL.
      */
     public compileUpsert(
-        query: QueryBuilderI,
+        query: GrammarBuilderI,
         values: RowValues[],
         _uniqueBy: string[],
         update: Array<string | RowValues>
@@ -211,7 +251,7 @@ class MysqlGrammar extends Grammar {
     /**
      * Compile an update statement without joins into SQL.
      */
-    protected compileUpdateWithoutJoins(query: QueryBuilderI, table: string, columns: string, where: string): string {
+    protected compileUpdateWithoutJoins(query: GrammarBuilderI, table: string, columns: string, where: string): string {
         let sql = super.compileUpdateWithoutJoins(query, table, columns, where);
 
         if (query.getRegistry().orders.length) {
@@ -230,7 +270,7 @@ class MysqlGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
+    public prepareBindingsForUpdate(_query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
         const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
@@ -255,17 +295,13 @@ class MysqlGrammar extends Grammar {
             return acc;
         }, []);
 
-        const cleanBindings = Object.keys(bindings)
-            .filter(key => !['select', 'join'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return bindings.join.concat(valuesOfValues, cleanBindings.flat(Infinity) as Binding[]);
+        return this.prepareBindingsForUpdateWithoutExpression(bindings, valuesOfValues);
     }
 
     /**
      * Compile a delete query that does not use joins.
      */
-    protected compileDeleteWithoutJoins(query: QueryBuilderI, table: string, where: string): string {
+    protected compileDeleteWithoutJoins(query: GrammarBuilderI, table: string, where: string): string {
         let sql = super.compileDeleteWithoutJoins(query, table, where);
 
         // When using MySQL, delete statements may contain order by statements and limits

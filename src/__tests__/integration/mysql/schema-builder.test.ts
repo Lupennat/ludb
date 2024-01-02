@@ -3,7 +3,7 @@ import { DB, currentDB, isMysql } from '../fixtures/config';
 
 const maybe = isMysql() ? describe : describe.skip;
 
-maybe('Mysql Schema Builder', () => {
+maybe('Mysql Schema QueryBuilder', () => {
     const Schema = DB.connections[currentDB].getSchemaBuilder() as MysqlBuilder;
 
     beforeAll(async () => {

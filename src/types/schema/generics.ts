@@ -1,4 +1,5 @@
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
+import { Stringable } from '../generics';
 
 type BaseTableDictionary = {
     name: string;
@@ -156,3 +157,60 @@ export type ForeignKeyDictionary =
     | PostgresForeignKeyDictionary
     | SqliteForeignKeyDictionary
     | SqlserverForeignKeyDictionary;
+
+export interface SqlserverSimpleType {
+    from: Stringable;
+    nullable?: boolean;
+}
+
+export type SqlserverTypeMap = {
+    simple: SqlserverSimpleType;
+    external: string;
+};
+
+export interface PostgresRangeType {
+    subtype: string;
+    subtype_opclass?: string;
+    collation?: string;
+    canonical?: string;
+    subtype_diff?: string;
+    multirange_type_name?: string;
+}
+
+export interface PostgresArrayType {
+    name: string;
+    type: string;
+    collation?: string;
+}
+
+export interface PostgresFunctionType {
+    input: string;
+    output: string;
+    receive?: string;
+    send?: string;
+    typmod_in?: string;
+    typmod_out?: string;
+    analyze?: string;
+    subscript?: string;
+    internallength?: number | string;
+    passedbyvalue?: boolean;
+    precision?: string;
+    alignment?: 'char' | 'int2' | 'int4' | 'double';
+    storage?: 'plain' | 'external' | 'extended' | 'main';
+    like?: string;
+    category?: string;
+    preferred?: boolean;
+    default?: string;
+    element?: string;
+    delimiter?: string;
+    collatable?: boolean;
+}
+
+export interface PostgresDomainType {
+    type: string;
+    default?: string;
+    collate?: string;
+    constraint?: string;
+    nullable?: boolean;
+    check?: string;
+}

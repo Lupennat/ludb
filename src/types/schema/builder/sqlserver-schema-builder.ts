@@ -5,16 +5,12 @@ import {
     SqlserverColumnDictionary,
     SqlserverForeignKeyDictionary,
     SqlserverIndexDictionary,
+    SqlserverSimpleType,
     SqlserverTableDictionary,
     SqlserverTypeDictionary,
     SqlserverViewDictionary
 } from '../generics';
 import SchemaBuilder from './schema-builder';
-
-export interface SimpleType {
-    from: Stringable;
-    nullable?: boolean;
-}
 
 export default interface SqlserverSchemaBuilderI extends SchemaBuilder<ConnectionSessionI<SqlserverConnection>> {
     /**
@@ -45,7 +41,6 @@ export default interface SqlserverSchemaBuilderI extends SchemaBuilder<Connectio
     /**
      * create user-defined type.
      */
-    createType(name: Stringable, type: 'simple', definition: SimpleType): Promise<boolean>;
+    createType(name: Stringable, type: 'simple', definition: SqlserverSimpleType): Promise<boolean>;
     createType(name: Stringable, type: 'external', definition: string): Promise<boolean>;
-    createType(name: Stringable, type: 'simple' | 'external', definition: SimpleType | Stringable): Promise<boolean>;
 }

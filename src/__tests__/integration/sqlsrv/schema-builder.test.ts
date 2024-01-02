@@ -2,7 +2,7 @@ import { DB, currentDB, isSqlserver } from '../fixtures/config';
 
 const maybe = isSqlserver() ? describe : describe.skip;
 
-maybe('Postgres Schema Builder', () => {
+maybe('Postgres Schema QueryBuilder', () => {
     const Schema = DB.connections[currentDB].getSchemaBuilder();
 
     beforeAll(async () => {

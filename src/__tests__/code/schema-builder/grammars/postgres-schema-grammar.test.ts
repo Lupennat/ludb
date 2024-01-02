@@ -1,4 +1,4 @@
-import Builder from '../../../../schema/builders/builder';
+import QueryBuilder from '../../../../schema/builders/builder';
 import ForeignIdColumnDefinition from '../../../../schema/definitions/foreign-id-column-definition';
 import PostgresSchemaGrammar from '../../../../schema/grammars/postgres-grammar';
 import { getPostgresBlueprint, getPostgresConnection } from '../../fixtures/mocked';
@@ -595,7 +595,7 @@ describe('Posgtres Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "foo" varchar(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getPostgresBlueprint('users');
         blueprint.string('foo');
@@ -605,7 +605,7 @@ describe('Posgtres Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table "users" add column "foo" varchar not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 
@@ -618,7 +618,7 @@ describe('Posgtres Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "foo" char(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getPostgresBlueprint('users');
         blueprint.char('foo');
@@ -628,7 +628,7 @@ describe('Posgtres Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table "users" add column "foo" char not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 

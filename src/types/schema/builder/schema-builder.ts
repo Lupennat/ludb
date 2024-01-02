@@ -83,6 +83,10 @@ export default interface SchemaBuilderI<Session extends ConnectionSessionI<Drive
      */
     hasView(view: string): Promise<boolean>;
     /**
+     * Determine if the given type exists.
+     */
+    hasType(_type: string): Promise<boolean>;
+    /**
      * Determine if the given table has a given column.
      */
     hasColumn(table: string, column: string): Promise<boolean>;

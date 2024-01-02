@@ -1,18 +1,18 @@
 import Raw from '../../../query/expression';
-import BuilderI from '../../../types/query/builder';
+import QueryBuilderI from '../../../types/query/query-builder';
 import { WhereBasic } from '../../../types/query/registry';
 import {
     ObjectArrayable,
     getBuilder,
+    getGrammarBuilder,
     getMysqlBuilder,
     getPostgresBuilder,
-    getQueryBuilder,
     getSqliteBuilder,
     getSqlserverBuilder,
     pdo
 } from '../fixtures/mocked';
 
-describe('Builder Wheres', () => {
+describe('QueryBuilder Wheres', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -83,10 +83,10 @@ describe('Builder Wheres', () => {
                         query.from('two').select('baz').where('subkey', '=', 'subval');
                     }
                 );
-        }).toThrow('Value Cannot be a closure when column is instance of Query Builder or closure.');
+        }).toThrow('Value Cannot be a closure when column is instance of Query QueryBuilder or closure.');
     });
 
-    it('Works Where Value Sub Query Builder', () => {
+    it('Works Where Value Sub Query QueryBuilder', () => {
         const subQuery = getBuilder().from('posts').selectRaw("'Sub query value'").limit(1);
 
         expect(getBuilder().from('posts').where(subQuery, 'Sub query value').toRawSql()).toBe(
@@ -1155,7 +1155,7 @@ describe('Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereIn('id', (query: BuilderI): void => {
+            .whereIn('id', (query: QueryBuilderI): void => {
                 query.select('id').from('users').where('age', '>', 25).take(3);
             });
         expect('select * from "users" where "id" in (select "id" from "users" where "age" > ? limit 3)').toBe(
@@ -1167,7 +1167,7 @@ describe('Builder Wheres', () => {
         builder
             .select('*')
             .from('users')
-            .whereNotIn('id', (query: BuilderI): void => {
+            .whereNotIn('id', (query: QueryBuilderI): void => {
                 query.select('id').from('users').where('age', '>', 25).take(3);
             });
         expect('select * from "users" where "id" not in (select "id" from "users" where "age" > ? limit 3)').toBe(
@@ -1458,7 +1458,7 @@ describe('Builder Wheres', () => {
             'select * from "orders" where "id" = ? or not exists (select * from "products" where "products"."id" = "orders"."id")'
         ).toBe(builder.toSql());
 
-        const query = getQueryBuilder();
+        const query = getGrammarBuilder();
         query
             .select('*')
             .from('orders')

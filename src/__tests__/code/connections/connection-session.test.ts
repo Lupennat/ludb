@@ -7,8 +7,8 @@ import TransactionBeginning from '../../../events/transaction-beginning';
 import TransactionCommitted from '../../../events/transaction-committed';
 import TransactionCommitting from '../../../events/transaction-committing';
 import TransactionRolledBack from '../../../events/transaction-rolledback';
-import Builder from '../../../query/builder';
 import Grammar from '../../../query/grammars/grammar';
+import QueryBuilder from '../../../query/query-builder';
 
 import Expression from '../../../query/expression';
 import {
@@ -275,7 +275,7 @@ describe('Connection Session', () => {
     it('Works Query', () => {
         const connection = getConnection();
         const session = new MockedConnectionSession(connection);
-        expect(session.query()).toBeInstanceOf(Builder);
+        expect(session.query()).toBeInstanceOf(QueryBuilder);
     });
 
     it('Works Select Use Read Pdo', async () => {

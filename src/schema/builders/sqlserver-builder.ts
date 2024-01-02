@@ -2,16 +2,17 @@ import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import SqlserverConnection from '../../connections/sqlserver-connection';
 import { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
-import SqlserverSchemaBuilderI, { SimpleType } from '../../types/schema/builder/sqlserver-schema-builder';
+import SqlserverSchemaBuilderI from '../../types/schema/builder/sqlserver-schema-builder';
 import {
     SqlserverColumnDictionary,
     SqlserverForeignKeyDictionary,
     SqlserverIndexDictionary,
+    SqlserverSimpleType,
     SqlserverTableDictionary,
     SqlserverTypeDictionary,
     SqlserverViewDictionary
 } from '../../types/schema/generics';
-import Builder from './builder';
+import QueryBuilder from './builder';
 
 type SqlserverTypeDefinition = {
     name: string;
@@ -53,7 +54,10 @@ type SqlserverForeignKeyDefinition = {
     on_delete: string;
 };
 
-class SqlserverBuilder extends Builder<ConnectionSessionI<SqlserverConnection>> implements SqlserverSchemaBuilderI {
+class SqlserverBuilder
+    extends QueryBuilder<ConnectionSessionI<SqlserverConnection>>
+    implements SqlserverSchemaBuilderI
+{
     /**
      * Get the tables that belong to the database.
      */
@@ -159,6 +163,21 @@ class SqlserverBuilder extends Builder<ConnectionSessionI<SqlserverConnection>> 
     }
 
     /**
+     * Determine if the given view exists.
+     */
+    public async hasType(type: string): Promise<boolean> {
+        const types = await this.getTypes();
+
+        for (const value of types) {
+            if (type.toLowerCase() === value.name.toLowerCase()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Create a database in the schema.
      */
     public async createDatabase(name: string): Promise<boolean> {
@@ -168,17 +187,12 @@ class SqlserverBuilder extends Builder<ConnectionSessionI<SqlserverConnection>> 
     /**
      * create user-defined type.
      */
-    public async createType(name: Stringable, type: 'simple', definition: SimpleType): Promise<boolean>;
+    public async createType(name: Stringable, type: 'simple', definition: SqlserverSimpleType): Promise<boolean>;
     public async createType(name: Stringable, type: 'external', definition: string): Promise<boolean>;
     public async createType(
         name: Stringable,
         type: 'simple' | 'external',
-        definition: SimpleType | Stringable
-    ): Promise<boolean>;
-    public async createType(
-        name: Stringable,
-        type: 'simple' | 'external',
-        definition: SimpleType | Stringable
+        definition: SqlserverSimpleType | Stringable
     ): Promise<boolean> {
         return await this.getConnection().statement(this.getGrammar().compileCreateType(name, type, definition));
     }

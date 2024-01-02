@@ -1,15 +1,14 @@
 import ExpressionContract from '../../query/expression-contract';
 import { Stringable } from '../generics';
-import QueryBuilderI, { ConditionBoolean, QueryAbleCallback, WhereColumnTuple } from './query-builder';
+import GrammarBuilderI, { ConditionBoolean, QueryAbleCallback, WhereColumnTuple } from './grammar-builder';
 import RegistryI, { BindingTypes } from './registry';
 
-export type JoinClauseConstructor<T extends QueryBuilderI = QueryBuilderI, U extends JoinClauseI = JoinClauseI> = new (
-    parentQuery: T,
-    type: string,
-    table: Stringable
-) => U;
+export type JoinClauseConstructor<
+    T extends GrammarBuilderI = GrammarBuilderI,
+    U extends JoinClauseI = JoinClauseI
+> = new (parentQuery: T, type: string, table: Stringable) => U;
 
-export default interface JoinClauseI extends QueryBuilderI {
+export default interface JoinClauseI extends GrammarBuilderI {
     type: string;
     table: string | ExpressionContract;
 

@@ -27,7 +27,7 @@ describe('Mysql Schema Grammar', () => {
     it('Works Compile Create Type', () => {
         const grammar = new Grammar();
         expect(() => {
-            grammar.compileCreateType('type', 'domain', {});
+            grammar.compileCreateType('type', 'simple', {});
         }).toThrow('This database driver does not support creating types.');
     });
 

@@ -7,7 +7,7 @@ import {
     pdo
 } from '../fixtures/mocked';
 
-describe('Builder Unions', () => {
+describe('QueryBuilder Unions', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });

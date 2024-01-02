@@ -9,7 +9,7 @@ import {
     pdo
 } from '../fixtures/mocked';
 
-describe('Builder Select-From', () => {
+describe('QueryBuilder Select-From', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -220,7 +220,7 @@ describe('Builder Select-From', () => {
     it('Works Prepares Bindings For Update From', () => {
         const builder = getBuilder();
         expect(() => {
-            builder.getGrammar().prepareBindingsForUpdateFrom(builder.getRegistry().bindings, {});
+            builder.getGrammar().prepareBindingsForUpdateFrom(builder, builder.getRegistry().bindings, {});
         }).toThrow('This database engine does not support the updateFrom method.');
     });
 

@@ -3,9 +3,9 @@ import { EventEmitter } from 'stream';
 import { bindTo } from '../../../bindings';
 import ConnectionSession from '../../../connections/connection-session';
 import QueryExecuted from '../../../events/query-executed';
-import Builder from '../../../query/builder';
 import Raw from '../../../query/expression';
 import Grammar from '../../../query/grammars/grammar';
+import QueryBuilder from '../../../query/query-builder';
 
 import Expression from '../../../query/expression';
 import MysqlGrammar from '../../../query/grammars/mysql-grammar';
@@ -107,12 +107,12 @@ describe('Connection', () => {
         expect(connection.getSchemaGrammar()).not.toBeInstanceOf(TestGrammar);
     });
 
-    it('Works Schema Builder', () => {
+    it('Works Schema QueryBuilder', () => {
         const connection = getConnection();
         expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
     });
 
-    it('Works Schema Builder', () => {
+    it('Works Schema QueryBuilder', () => {
         let connection = getConnection();
         expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
         connection = getMysqlConnection();
@@ -287,7 +287,7 @@ describe('Connection', () => {
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'table');
-        expect(connection.table('test', 'name')).toBeInstanceOf(Builder);
+        expect(connection.table('test', 'name')).toBeInstanceOf(QueryBuilder);
         expect(spiedSession).toHaveBeenCalledWith('test', 'name');
     });
 
@@ -296,7 +296,7 @@ describe('Connection', () => {
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
         const spiedSession = jest.spyOn(session, 'query');
-        expect(connection.query()).toBeInstanceOf(Builder);
+        expect(connection.query()).toBeInstanceOf(QueryBuilder);
         expect(spiedSession).toHaveBeenCalledTimes(1);
     });
 

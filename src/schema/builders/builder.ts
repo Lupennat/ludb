@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { QueryBuilder } from '../../query';
+import { GrammarBuilder } from '../../query';
 import DriverConnectionI, { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
-import BuilderI, {
+import QueryBuilderI, {
     BlueprintCallback,
     BlueprintResolver,
     MorphKeyType,
@@ -22,8 +22,8 @@ import { ViewRegistryI } from '../../types/schema/registry';
 import Blueprint from '../blueprint';
 import CommandViewDefinition from '../definitions/commands/command-view-definition';
 
-class Builder<Session extends ConnectionSessionI<DriverConnectionI> = ConnectionSessionI<DriverConnectionI>>
-    implements BuilderI<Session>
+class QueryBuilder<Session extends ConnectionSessionI<DriverConnectionI> = ConnectionSessionI<DriverConnectionI>>
+    implements QueryBuilderI<Session>
 {
     /**
      * The schema grammar instance.
@@ -56,14 +56,14 @@ class Builder<Session extends ConnectionSessionI<DriverConnectionI> = Connection
      * Set the default string length for migrations.
      */
     public static withDefaultStringLength(length: number): void {
-        Builder.defaultStringLength = length;
+        QueryBuilder.defaultStringLength = length;
     }
 
     /**
      * UnSet the default string length for migrations.
      */
     public static withoutDefaultStringLength(): void {
-        Builder.defaultStringLength = undefined;
+        QueryBuilder.defaultStringLength = undefined;
     }
 
     /**
@@ -74,28 +74,28 @@ class Builder<Session extends ConnectionSessionI<DriverConnectionI> = Connection
             throw new TypeError("Morph key type must be 'int', 'uuid', or 'ulid'.");
         }
 
-        Builder.defaultMorphKeyType = type;
+        QueryBuilder.defaultMorphKeyType = type;
     }
 
     /**
      * Set the default morph key type for migrations to UUIDs.
      */
     public static morphUsingUuids(): void {
-        Builder.withDefaultMorphKeyType('uuid');
+        QueryBuilder.withDefaultMorphKeyType('uuid');
     }
 
     /**
      * Set the default morph key type for migrations to ULIDs.
      */
     public static morphUsingUlids(): void {
-        Builder.withDefaultMorphKeyType('ulid');
+        QueryBuilder.withDefaultMorphKeyType('ulid');
     }
 
     /**
      * Set the default morph key type for migrations to INTs.
      */
     public static morphUsingInts(): void {
-        Builder.withDefaultMorphKeyType('int');
+        QueryBuilder.withDefaultMorphKeyType('int');
     }
 
     /**
@@ -249,6 +249,13 @@ class Builder<Session extends ConnectionSessionI<DriverConnectionI> = Connection
     }
 
     /**
+     * Determine if the given type exists.
+     */
+    public async hasType(_type: string): Promise<boolean> {
+        throw new Error('This database driver does not support user-defined types.');
+    }
+
+    /**
      * Determine if the given table has a given column.
      */
     public async hasColumn(table: string, column: string): Promise<boolean> {
@@ -339,7 +346,7 @@ class Builder<Session extends ConnectionSessionI<DriverConnectionI> = Connection
                 view,
                 callback(
                     new CommandViewDefinition<ViewRegistryI>('create', {
-                        as: new QueryBuilder(this.connection)
+                        as: new GrammarBuilder(this.connection)
                     } as ViewRegistryI)
                 )
             )
@@ -533,4 +540,4 @@ class Builder<Session extends ConnectionSessionI<DriverConnectionI> = Connection
     }
 }
 
-export default Builder;
+export default QueryBuilder;

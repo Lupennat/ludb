@@ -11,7 +11,7 @@ import {
     SqliteTableDictionary,
     SqliteViewDictionary
 } from '../../types/schema/generics';
-import Builder from './builder';
+import QueryBuilder from './builder';
 
 type SqliteColumnDefinition = {
     name: string;
@@ -37,7 +37,7 @@ type SqliteForeignKeyDefinition = {
     on_delete: string;
 };
 
-class SqliteBuilder extends Builder<ConnectionSessionI<SqliteConnection>> {
+class SqliteBuilder extends QueryBuilder<ConnectionSessionI<SqliteConnection>> {
     /**
      * Get the tables that belong to the database.
      */

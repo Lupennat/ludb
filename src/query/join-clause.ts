@@ -1,25 +1,28 @@
 import { ConnectionSessionI } from '../types/connection';
 import { Stringable } from '../types/generics';
-import JoinClauseI, { JoinClauseConstructor } from '../types/query/join-clause';
-import QueryBuilderI, {
+import GrammarBuilderI, {
     ConditionBoolean,
+    GrammarBuilderConstructor,
     QueryAbleCallback,
-    QueryBuilderConstructor,
     WhereColumnTuple
-} from '../types/query/query-builder';
+} from '../types/query/grammar-builder';
+import JoinClauseI, { JoinClauseConstructor } from '../types/query/join-clause';
 import RegistryI, { BindingTypes } from '../types/query/registry';
-import AbstractQueryBuilder from './common-query-builder';
+import AbstractGrammarBuilder from './common-grammar-builder';
 import ExpressionContract from './expression-contract';
 
-class JoinClause<Parent extends QueryBuilderI = QueryBuilderI> extends AbstractQueryBuilder implements JoinClauseI {
+class JoinClause<Parent extends GrammarBuilderI = GrammarBuilderI>
+    extends AbstractGrammarBuilder
+    implements JoinClauseI
+{
     protected parentConnection: ConnectionSessionI;
-    protected parentClass: QueryBuilderConstructor<Parent>;
+    protected parentClass: GrammarBuilderConstructor<Parent>;
 
     constructor(parentQuery: Parent, public type: string, public table: string | ExpressionContract) {
         const connection = parentQuery.getConnection();
         super(connection);
         this.parentConnection = connection;
-        this.parentClass = parentQuery.constructor as QueryBuilderConstructor<Parent>;
+        this.parentClass = parentQuery.constructor as GrammarBuilderConstructor<Parent>;
     }
 
     /**
@@ -73,7 +76,7 @@ class JoinClause<Parent extends QueryBuilderI = QueryBuilderI> extends AbstractQ
     /**
      * Get a new join clause.
      */
-    protected newJoinClause<T extends QueryBuilderI>(parentQuery: T, type: string, table: Stringable): JoinClauseI {
+    protected newJoinClause<T extends GrammarBuilderI>(parentQuery: T, type: string, table: Stringable): JoinClauseI {
         return new (this.constructor as JoinClauseConstructor<T>)(parentQuery, type, table);
     }
 
@@ -87,7 +90,7 @@ class JoinClause<Parent extends QueryBuilderI = QueryBuilderI> extends AbstractQ
     /**
      * Create a new query instance for sub-query.
      */
-    protected forSubQuery(): QueryBuilderI {
+    protected forSubQuery(): GrammarBuilderI {
         return this.newParentQuery().newQuery();
     }
 

@@ -1,7 +1,7 @@
 import Raw from '../../../query/expression';
 import { getBuilder, pdo } from '../fixtures/mocked';
 
-describe('Builder Joins', () => {
+describe('QueryBuilder Joins', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });

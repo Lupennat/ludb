@@ -10,7 +10,7 @@ import {
     MysqlTableDictionary,
     MysqlViewDictionary
 } from '../../types/schema/generics';
-import Builder from './builder';
+import QueryBuilder from './builder';
 
 type MysqlColumnDefinition = {
     name: string;
@@ -40,7 +40,7 @@ type MysqlForeignKeyDefinition = {
     on_delete: string;
 };
 
-class MysqlBuilder extends Builder<ConnectionSessionI<MysqlConnection>> implements MysqlSchemaBuilderI {
+class MysqlBuilder extends QueryBuilder<ConnectionSessionI<MysqlConnection>> implements MysqlSchemaBuilderI {
     /**
      * Create a database in the schema.
      */

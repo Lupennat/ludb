@@ -9,8 +9,8 @@ import { SchemaGrammar } from '../schema';
 import BindToI from './bind-to';
 import { DatabaseConfig } from './config';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from './generics';
-import BuilderI from './query/builder';
-import { QueryAbleCallback } from './query/query-builder';
+import { QueryAbleCallback } from './query/grammar-builder';
+import QueryBuilderI from './query/query-builder';
 
 export type BeforeExecutingCallback = (
     query: string,
@@ -27,12 +27,12 @@ interface BaseConnection {
     /**
      * Begin a fluent query against a database table.
      */
-    table(table: QueryAbleCallback<BuilderI> | BuilderI | Stringable, as?: string): BuilderI;
+    table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI;
 
     /**
      * Get a new query builder instance.
      */
-    query(): BuilderI;
+    query(): QueryBuilderI;
 
     /**
      * Run a select statement and return a single result.
@@ -215,7 +215,7 @@ export default interface DriverConnectionI extends BaseConnection {
     getReadPdo(): Pdo;
 
     /**
-     * Start Connection session for Builder
+     * Start Connection session for QueryBuilder
      */
     session(): ConnectionSessionI<DriverConnectionI>;
 
@@ -326,7 +326,7 @@ export default interface DriverConnectionI extends BaseConnection {
 export interface ConnectionSessionI<DriverConnection extends DriverConnectionI = DriverConnectionI>
     extends BaseConnection {
     /**
-     * Detect if session is for Schema Builder
+     * Detect if session is for Schema QueryBuilder
      */
     isSchema(): boolean;
     /**

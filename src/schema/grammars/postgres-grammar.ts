@@ -3,7 +3,12 @@ import Expression from '../../query/expression';
 import { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
-import { ArrayType, DomainType, FunctionType, RangeType } from '../../types/schema/builder/postgres-schema-builder';
+import {
+    PostgresArrayType,
+    PostgresDomainType,
+    PostgresFunctionType,
+    PostgresRangeType
+} from '../../types/schema/generics';
 import {
     ColumnDefinitionRegistryI,
     ColumnType,
@@ -62,45 +67,45 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a create user-defined type.
      */
-    public compileCreateType(name: Stringable, type: 'enum', definition: string[]): string;
-    public compileCreateType(name: Stringable, type: 'range', definition: RangeType): string;
-    public compileCreateType(name: Stringable, type: 'array', definition: ArrayType[]): string;
-    public compileCreateType(name: Stringable, type: 'fn', definition: FunctionType): string;
-    public compileCreateType(name: Stringable, type: 'domain', definition: DomainType): string;
+    public compileCreateType(name: Stringable): string;
+    public compileCreateType(name: Stringable, type: 'range', definition: PostgresRangeType): string;
+    public compileCreateType(name: Stringable, type: 'array', definition: PostgresArrayType[]): string;
+    public compileCreateType(name: Stringable, type: 'fn', definition: PostgresFunctionType): string;
+    public compileCreateType(name: Stringable, type: 'domain', definition: PostgresDomainType): string;
     public compileCreateType(
         name: Stringable,
-        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
-        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
+        type?: 'enum' | 'range' | 'array' | 'fn' | 'domain',
+        definition?: string[] | PostgresRangeType | PostgresArrayType[] | PostgresFunctionType | PostgresDomainType
     ): string;
     public compileCreateType(
         name: Stringable,
-        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
-        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
+        type?: 'enum' | 'range' | 'array' | 'fn' | 'domain',
+        definition?: string[] | PostgresRangeType | PostgresArrayType[] | PostgresFunctionType | PostgresDomainType
     ): string {
-        if (this.isRangeType(type, definition)) {
-            return this.createTypeRange(name, definition);
+        if (!type) {
+            return `create type ${this.getValue(name).toString()}`;
         }
-
-        if (this.isArrayType(type, definition)) {
-            return this.createTypeArray(name, definition);
+        switch (type) {
+            case 'fn':
+                return this.createTypeFunction(name, definition as PostgresFunctionType);
+            case 'domain':
+                return this.createTypeDomain(name, definition as PostgresDomainType);
+            case 'range':
+                return this.createTypeRange(name, definition as PostgresRangeType);
+            case 'array':
+                return this.createTypeArray(name, definition as PostgresArrayType[]);
+            default:
+                return `create type ${this.getValue(name).toString()} as enum (${this.quoteString(
+                    definition as string[]
+                )})`;
         }
-
-        if (this.isFunctionType(type, definition)) {
-            return this.createTypeFunction(name, definition);
-        }
-
-        if (this.isDomainType(type, definition)) {
-            return this.createTypeDomain(name, definition);
-        }
-
-        return `create type ${this.getValue(name).toString()} as enum (${this.quoteString(definition)})`;
     }
 
-    protected createTypeDomain(name: Stringable, definition: DomainType): string {
+    protected createTypeDomain(name: Stringable, definition: PostgresDomainType): string {
         let sql = `create domain ${this.getValue(name).toString()} as ${definition.type}`;
 
         if (definition.collate) {
-            sql += ` collate ${definition.collate}`;
+            sql += ` collate ${this.wrap(definition.collate)}`;
         }
         if (definition.default) {
             sql += ` default ${definition.default}`;
@@ -121,55 +126,64 @@ class PostgresGrammar extends Grammar {
         return sql;
     }
 
-    protected createTypeRange(name: Stringable, definition: RangeType): string {
+    protected createTypeRange(name: Stringable, definition: PostgresRangeType): string {
         const rangeOptions = [];
         for (const [key, value] of Object.entries(definition)) {
             if (value) {
-                rangeOptions.push(`${key} = ${value}`);
+                if (key === 'collation') {
+                    rangeOptions.push(`${key} = ${this.wrap(value)}`);
+                } else {
+                    rangeOptions.push(`${key} = ${value}`);
+                }
             }
         }
 
         return `create type ${this.getValue(name).toString()} as range (${rangeOptions.join(', ')})`;
     }
 
-    protected createTypeArray(name: Stringable, definition: ArrayType[]): string {
+    protected createTypeArray(name: Stringable, definition: PostgresArrayType[]): string {
         const arrayOptions = [];
         for (const element of definition) {
             arrayOptions.push(
-                `${element.name} ${element.type}${element.collation ? ' collate' + element.collation : ''}`
+                `${element.name} ${element.type}${element.collation ? ' collate ' + this.wrap(element.collation) : ''}`
             );
         }
 
         return `create type ${this.getValue(name).toString()} as (${arrayOptions.join(', ')})`;
     }
 
-    protected createTypeFunction(name: Stringable, definition: FunctionType): string {
+    protected createTypeFunction(name: Stringable, definition: PostgresFunctionType): string {
         const fnOptions = [];
         for (const [key, value] of Object.entries(definition)) {
             if (typeof value === 'boolean') {
-                fnOptions.push(`${key.toUpperCase()} = ${value ? 'true' : 'false'}`);
+                if (key === 'passedbyvalue') {
+                    if (value) {
+                        fnOptions.push(key.toUpperCase());
+                    } else {
+                        continue;
+                    }
+                } else {
+                    fnOptions.push(`${key.toUpperCase()} = ${value ? 'true' : 'false'}`);
+                }
             } else if (value) {
-                fnOptions.push(`${key.toUpperCase()} = ${value}`);
+                switch (key) {
+                    case 'default':
+                        if (value) {
+                            fnOptions.push(`${key.toUpperCase()} = ${value}`);
+                        }
+                        break;
+                    case 'delimiter':
+                        if (value) {
+                            fnOptions.push(`${key.toUpperCase()} = ${this.quoteString(value)}`);
+                        }
+                        break;
+                    default:
+                        fnOptions.push(`${key.toUpperCase()} = ${value}`);
+                }
             }
         }
 
         return `create type ${this.getValue(name).toString()} (${fnOptions.join(', ')})`;
-    }
-
-    protected isDomainType(type: string, _definition: any): _definition is DomainType {
-        return type === 'domain';
-    }
-
-    protected isRangeType(type: string, _definition: any): _definition is RangeType {
-        return type === 'range';
-    }
-
-    protected isArrayType(type: string, _definition: any): _definition is ArrayType[] {
-        return type === 'array';
-    }
-
-    protected isFunctionType(type: string, _definition: any): _definition is FunctionType {
-        return type === 'fn';
     }
 
     /**

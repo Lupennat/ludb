@@ -4,7 +4,7 @@ import LengthAwarePaginator from '../../../paginations/length-aware-paginator';
 import Paginator from '../../../paginations/paginator';
 import { MockedBuilder, getBuilder, pdo } from '../fixtures/mocked';
 
-describe('Builder Paginate', () => {
+describe('QueryBuilder Paginate', () => {
     const path = 'http://foo.bar?page=3';
 
     beforeAll(() => {

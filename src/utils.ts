@@ -5,7 +5,7 @@ import { Grammar } from './query';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
 import { Stringable } from './types/generics';
-import { Arrayable, Objectable } from './types/query/query-builder';
+import { Arrayable, Objectable } from './types/query/grammar-builder';
 
 export function stringifyReplacer(grammar: Grammar): (key: string, value: any) => any {
     return (_key: string, value: any): any => {

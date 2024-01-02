@@ -1,33 +1,33 @@
 import Grammar from '../../../grammar';
-import Builder from '../../../query/builder';
 import Raw from '../../../query/expression';
-import BuilderI from '../../../types/query/builder';
+import QueryBuilder from '../../../query/query-builder';
+import QueryBuilderI from '../../../types/query/query-builder';
 import { WhereBasic } from '../../../types/query/registry';
 import {
     MockedBuilder,
     getBuilder,
     getConnection,
+    getGrammarBuilder,
     getJoin,
     getMysqlBuilder,
-    getQueryBuilder,
     pdo
 } from '../fixtures/mocked';
 
-describe('Builder Utilities', () => {
+describe('QueryBuilder Utilities', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
 
-    it('Works Builder Get Grammar From Connection Session', () => {
+    it('Works QueryBuilder Get Grammar From Connection Session', () => {
         const session = getConnection().session();
         const spiedGrammar = jest.spyOn(session, 'getQueryGrammar');
-        const builder = new Builder(session);
+        const builder = new QueryBuilder(session);
         expect(builder.getGrammar()).toBeInstanceOf(Grammar);
         expect(spiedGrammar).toHaveBeenCalledTimes(1);
     });
 
     it('Works When Callback', () => {
-        const callback = (query: BuilderI, condition: boolean): void => {
+        const callback = (query: QueryBuilderI, condition: boolean): void => {
             expect(condition).toBeTruthy();
             query.where('id', '=', 1);
         };
@@ -40,7 +40,7 @@ describe('Builder Utilities', () => {
     });
 
     it('Works When Callback Closure', () => {
-        const callback = (query: BuilderI, condition: boolean): void => {
+        const callback = (query: QueryBuilderI, condition: boolean): void => {
             expect(condition).toBeTruthy();
             query.where('id', '=', 1);
         };
@@ -93,7 +93,7 @@ describe('Builder Utilities', () => {
     });
 
     it('Works Unless Callback', () => {
-        const callback = (query: BuilderI, condition: boolean): void => {
+        const callback = (query: QueryBuilderI, condition: boolean): void => {
             expect(condition).toBeFalsy();
             query.where('id', '=', 1);
         };
@@ -106,7 +106,7 @@ describe('Builder Utilities', () => {
     });
 
     it('Works Unless Callback Closure', () => {
-        const callback = (query: BuilderI, condition: boolean): void => {
+        const callback = (query: QueryBuilderI, condition: boolean): void => {
             expect(condition).toBeFalsy();
             query.where('id', '=', 1);
         };
@@ -460,7 +460,7 @@ describe('Builder Utilities', () => {
         expect('select * from "users" order by "foo" desc').toBe(join.toSql());
         expect('select * from "users" on "email" = ? order by "foo" desc, "baz" desc').toBe(clonedJoin.toSql());
 
-        const query = getQueryBuilder();
+        const query = getGrammarBuilder();
         query
             .select('*')
             .from('users')
@@ -490,7 +490,7 @@ describe('Builder Utilities', () => {
         expect('select * from "users" on "email" = ? order by "email" asc').toBe(join.toSql());
         expect('select * from "users" on "email" = ?').toBe(clonedJoin.toSql());
 
-        const query = getQueryBuilder();
+        const query = getGrammarBuilder();
         query.select('*').from('users').where('email', 'foo').orderBy('email');
         const clonedQuery = query.cloneWithout(['orders']);
 
@@ -518,7 +518,7 @@ describe('Builder Utilities', () => {
         expect('select * from "users" order by "email" asc').toBe(clonedJoin.toSql());
         expect([]).toEqual(clonedJoin.getBindings());
 
-        const query = getQueryBuilder();
+        const query = getGrammarBuilder();
         query.select('*').from('users').where('email', 'foo').orderBy('email');
         const clonedQuery = query.cloneWithout(['wheres']).cloneWithoutBindings(['where']);
 

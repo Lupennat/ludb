@@ -1,14 +1,14 @@
 import ExpressionContract from '../../query/expression-contract';
 import IndexHint from '../../query/index-hint';
 import { Binding, Stringable } from '../generics';
-import JoinClauseI from './join-clause';
-import QueryBuilderI, {
+import GrammarBuilderI, {
     BetweenColumnsTuple,
     BetweenTuple,
     ConditionBoolean,
     FulltextOptions,
     OrderDirection
-} from './query-builder';
+} from './grammar-builder';
+import JoinClauseI from './join-clause';
 
 export interface WhereRaw {
     type: 'Raw';
@@ -28,19 +28,19 @@ export interface WhereExpression extends WhereBase {
 
 export interface WhereExists extends WhereBase {
     type: 'Exists';
-    query: QueryBuilderI;
+    query: GrammarBuilderI;
 }
 
 export interface WhereNested extends WhereBase {
     type: 'Nested';
-    query: QueryBuilderI;
+    query: GrammarBuilderI;
 }
 
 export interface WhereSub extends WhereBase {
     type: 'Sub';
     column: Stringable;
     operator: string;
-    query: QueryBuilderI;
+    query: GrammarBuilderI;
 }
 
 export interface WhereNull extends WhereBase {
@@ -151,7 +151,7 @@ export interface OrderRaw {
 }
 
 export interface Union {
-    query: QueryBuilderI;
+    query: GrammarBuilderI;
     all: boolean;
 }
 
@@ -161,6 +161,21 @@ export interface Aggregate {
 }
 
 export type Order = OrderColumn | OrderRaw;
+
+export interface CteCycle {
+    markColumn: Stringable;
+    pathColumn: Stringable;
+    columns: Stringable[];
+}
+
+export interface Cte {
+    name: Stringable;
+    query: string;
+    columns: Stringable[];
+    materialized: boolean | null;
+    recursive: boolean;
+    cycle: CteCycle | null;
+}
 
 export type Where =
     | WhereExpression
@@ -184,6 +199,7 @@ export type Where =
     | whereFulltext;
 
 export interface BindingTypes {
+    expressions: Binding[];
     select: Binding[];
     from: Binding[];
     join: Binding[];
@@ -221,6 +237,11 @@ export default interface RegistryI {
      * Occasionally contains the columns that should be distinct.
      */
     distinct: boolean | Array<Stringable>;
+
+    /**
+     * The common table expressions for queries.
+     */
+    expressions: Cte[];
 
     /**
      * The table which the query is targeting.
@@ -267,6 +288,11 @@ export default interface RegistryI {
      */
     offset: number | null;
 
+    /***
+     * The recursion limit.
+     */
+    recursionLimit: number | null;
+
     /**
      * The query union statements.
      */
@@ -286,6 +312,16 @@ export default interface RegistryI {
      * The orderings for the union query.
      */
     unionOrders: Order[];
+
+    /**
+     * The common table expressions for the union query.
+     */
+    unionExpressions: Cte[];
+
+    /**
+     * The recursion limit for the union query.
+     */
+    unionRecursionLimit: number | null;
 
     /**
      * Indicates whether row locking is being used.

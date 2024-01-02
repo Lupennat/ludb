@@ -1,8 +1,7 @@
 import { snakeCase } from 'snake-case';
 import DriverConnectionI, { ConnectionSessionI } from '../types/connection';
 import { Binding, BindingExclude, Stringable } from '../types/generics';
-import JoinClauseI from '../types/query/join-clause';
-import QueryBuilderI, {
+import GrammarBuilderI, {
     Arrayable,
     BetweenColumnsTuple,
     BetweenTuple,
@@ -10,15 +9,16 @@ import QueryBuilderI, {
     ConditionBoolean,
     ConditionalCallback,
     FulltextOptions,
+    GrammarBuilderConstructor,
     OrderDirection,
     QueryAbleCallback,
-    QueryBuilderConstructor,
     SelectColumn,
     WhereColumnTuple,
     WhereObject,
     WhereTuple
-} from '../types/query/query-builder';
-import RegistryI, { BindingTypes, Order, Where } from '../types/query/registry';
+} from '../types/query/grammar-builder';
+import JoinClauseI from '../types/query/join-clause';
+import RegistryI, { BindingTypes, CteCycle, Order, Where } from '../types/query/registry';
 import { isArrayable, isExpression, isStringable, isValidBinding, merge, raw, stringifyReplacer } from '../utils';
 import ExpressionContract from './expression-contract';
 import IndexHint from './index-hint';
@@ -28,12 +28,12 @@ import createRegistry, {
     cloneRegistryWithoutProperties
 } from './registry';
 
-abstract class CommonQueryBuilder<
+abstract class CommonGrammarBuilder<
     SessionConnection extends ConnectionSessionI<DriverConnectionI> = ConnectionSessionI<DriverConnectionI>
-> implements QueryBuilderI<SessionConnection>
+> implements GrammarBuilderI<SessionConnection>
 {
     /**
-     * The Builder registry.
+     * The QueryBuilder registry.
      */
     protected registry: RegistryI;
 
@@ -94,14 +94,14 @@ abstract class CommonQueryBuilder<
     }
 
     /**
-     * Get Query Builder Registry
+     * Get Query QueryBuilder Registry
      */
     public getRegistry(): RegistryI {
         return this.registry;
     }
 
     /**
-     * Set Query Builder Registry
+     * Set Query QueryBuilder Registry
      */
     public setRegistry(registry: RegistryI): this {
         this.registry = registry;
@@ -140,7 +140,7 @@ abstract class CommonQueryBuilder<
     /**
      * Add a subselect expression to the query.
      */
-    public selectSub(query: QueryAbleCallback<this> | QueryBuilderI | Stringable, as: Stringable): this {
+    public selectSub(query: QueryAbleCallback<this> | GrammarBuilderI | Stringable, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         return this.selectRaw(`(${queryString}) as ${this.getGrammar().wrap(as)}`, bindings);
@@ -162,7 +162,7 @@ abstract class CommonQueryBuilder<
     /**
      * Makes "from" fetch from a subquery.
      */
-    public fromSub(query: QueryAbleCallback<this> | QueryBuilderI | Stringable, as: Stringable): this {
+    public fromSub(query: QueryAbleCallback<this> | GrammarBuilderI | Stringable, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         return this.fromRaw(`(${queryString}) as ${this.getGrammar().wrapTable(as)}`, bindings);
@@ -182,7 +182,7 @@ abstract class CommonQueryBuilder<
     /**
      * Creates a subquery and parse it.
      */
-    protected createSub(query: QueryAbleCallback<this> | QueryBuilderI | Stringable): [string, Binding[]] {
+    protected createSub(query: QueryAbleCallback<this> | GrammarBuilderI | Stringable): [string, Binding[]] {
         let realQuery;
         // If the given query is a Closure, we will execute it while passing in a new
         // query instance to the Closure. This will give the developer a chance to
@@ -201,8 +201,8 @@ abstract class CommonQueryBuilder<
     /**
      * Parse the subquery into SQL and bindings.
      */
-    protected parseSub(query: QueryBuilderI | Stringable): [string, Binding[]] {
-        if (this.isQueryBuilder(query)) {
+    protected parseSub(query: GrammarBuilderI | Stringable): [string, Binding[]] {
+        if (this.isGrammarBuilder(query)) {
             query = this.prependDatabaseNameIfCrossDatabaseQuery(query);
             return [query.toSql(), query.getBindings()];
         }
@@ -217,7 +217,7 @@ abstract class CommonQueryBuilder<
     /**
      * Prepend the database name if the given query is on another database.
      */
-    protected prependDatabaseNameIfCrossDatabaseQuery(query: QueryBuilderI): QueryBuilderI {
+    protected prependDatabaseNameIfCrossDatabaseQuery(query: GrammarBuilderI): GrammarBuilderI {
         if (query.getConnection().getDatabaseName() !== this.getConnection().getDatabaseName()) {
             const databaseName = query.getConnection().getDatabaseName();
             const queryFrom = query.getGrammar().getValue(query.getRegistry().from).toString();
@@ -264,6 +264,84 @@ abstract class CommonQueryBuilder<
     }
 
     /**
+     * Add a common table expression to the query.
+     */
+    public withExpression(
+        name: Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
+        columns: Stringable[] = [],
+        recursive = false,
+        materialized: boolean | null = null,
+        cycle: CteCycle | null = null
+    ): this {
+        const [queryString, bindings] = this.createSub(query);
+        this.registry[this.registry.unions.length > 0 ? 'unionExpressions' : 'expressions'].push({
+            name,
+            query: queryString,
+            columns,
+            recursive,
+            materialized,
+            cycle
+        });
+
+        this.addBinding(bindings, 'expressions');
+
+        return this;
+    }
+
+    /**
+     * Add a recursive common table expression to the query.
+     */
+    public withRecursiveExpression(
+        name: Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
+        columns: Stringable[] = [],
+        cycle: CteCycle | null = null
+    ): this {
+        return this.withExpression(name, query, columns, true, null, cycle);
+    }
+
+    /**
+     * Add a recursive common table expression with cycle detection to the query.
+     */
+    public withRecursiveExpressionAndCycleDetection(
+        name: Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
+        cycleColumns: Stringable[],
+        markColumn: Stringable = 'is_cycle',
+        pathColumn: Stringable = 'path',
+        columns: Stringable[] = []
+    ): this {
+        return this.withRecursiveExpression(name, query, columns, {
+            columns: cycleColumns,
+            markColumn: markColumn,
+            pathColumn: pathColumn
+        });
+    }
+
+    /**
+     * Add a materialized common table expression to the query.
+     */
+    public withMaterializedExpression(
+        name: Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
+        columns?: Stringable[]
+    ): this {
+        return this.withExpression(name, query, columns, false, true);
+    }
+
+    /**
+     * Add a non-materialized common table expression to the query.
+     */
+    public withNonMaterializedExpression(
+        name: Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
+        columns?: Stringable[]
+    ): this {
+        return this.withExpression(name, query, columns, false, false);
+    }
+
+    /**
      * Force the query to only return distinct results.
      */
     public distinct(column?: boolean | Stringable, ...columns: Stringable[]): this {
@@ -279,7 +357,7 @@ abstract class CommonQueryBuilder<
     /**
      * Set the table which the query is targeting.
      */
-    public from(table: QueryAbleCallback<this> | QueryBuilderI | Stringable, as = ''): this {
+    public from(table: QueryAbleCallback<this> | GrammarBuilderI | Stringable, as = ''): this {
         if (this.isQueryable(table)) {
             return this.fromSub(table, as);
         }
@@ -373,7 +451,7 @@ abstract class CommonQueryBuilder<
     public joinWhere(table: Stringable, first: Stringable, second: Binding | QueryAbleCallback<JoinClauseI>): this;
     public joinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhere(
@@ -384,20 +462,20 @@ abstract class CommonQueryBuilder<
     ): this;
     public joinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>,
         type?: string
     ): this;
     public joinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
         second: Binding | QueryAbleCallback<JoinClauseI> = null,
         type = 'inner'
@@ -410,25 +488,25 @@ abstract class CommonQueryBuilder<
      * Add a subquery join clause to the query.
      */
     public joinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: Stringable
     ): this;
     public joinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: string,
         second: Stringable
     ): this;
     public joinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
@@ -436,7 +514,7 @@ abstract class CommonQueryBuilder<
         type?: string
     ): this;
     public joinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
@@ -452,7 +530,7 @@ abstract class CommonQueryBuilder<
      * Add a subquery join on or where clause to the query.
      */
     protected baseJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         callback: (expression: ExpressionContract) => this
     ): this {
@@ -469,48 +547,48 @@ abstract class CommonQueryBuilder<
      * Add a subquery join where clause to the query.
      */
     public joinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject
     ): this;
     public joinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: string,
         second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public joinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>,
         type?: string
     ): this;
     public joinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
         second: Binding | QueryAbleCallback<JoinClauseI> = null,
         type = 'inner'
@@ -547,7 +625,7 @@ abstract class CommonQueryBuilder<
     public leftJoinWhere(table: Stringable, first: Stringable, second: Binding | QueryAbleCallback<JoinClauseI>): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhere(
@@ -558,19 +636,19 @@ abstract class CommonQueryBuilder<
     ): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
         second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
@@ -581,32 +659,32 @@ abstract class CommonQueryBuilder<
      * Add a subquery left join to the query.
      */
     public leftJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: Stringable
     ): this;
     public leftJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: string,
         second: Stringable
     ): this;
     public leftJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;
     public leftJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
@@ -619,47 +697,47 @@ abstract class CommonQueryBuilder<
      * Add a subquery left join where clause to the query.
      */
     public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject
     ): this;
     public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: string,
         second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
         second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
@@ -694,7 +772,7 @@ abstract class CommonQueryBuilder<
     public rightJoinWhere(table: Stringable, first: Stringable, second: Binding | QueryAbleCallback<JoinClauseI>): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhere(
@@ -705,19 +783,19 @@ abstract class CommonQueryBuilder<
     ): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhere(
         table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
         second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
@@ -728,32 +806,32 @@ abstract class CommonQueryBuilder<
      * Add a subquery right join to the query.
      */
     public rightJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: Stringable
     ): this;
     public rightJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: string,
         second: Stringable
     ): this;
     public rightJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
     ): this;
     public rightJoinSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond: Stringable | null = null,
@@ -766,47 +844,47 @@ abstract class CommonQueryBuilder<
      * Add a subquery left join where clause to the query.
      */
     public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: QueryAbleCallback<JoinClauseI> | WhereTuple[] | WhereObject
     ): this;
     public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
         first: Stringable,
         operator: string,
         second: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI,
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
     ): this;
     public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | QueryBuilderI | WhereTuple[] | WhereObject | Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
         second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
@@ -843,7 +921,7 @@ abstract class CommonQueryBuilder<
     /**
      * Add a subquery cross join to the query.
      */
-    public crossJoinSub(query: QueryAbleCallback<this> | QueryBuilderI | Stringable, as: Stringable): this {
+    public crossJoinSub(query: QueryAbleCallback<this> | GrammarBuilderI | Stringable, as: Stringable): this {
         const [queryString, bindings] = this.createSub(query);
 
         const expression = `(${queryString}) as ${this.getGrammar().wrapTable(as)}`;
@@ -872,26 +950,26 @@ abstract class CommonQueryBuilder<
     public where(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     public where(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public where(
-        column: QueryAbleCallback<this> | QueryBuilderI,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        column: QueryAbleCallback<this> | GrammarBuilderI,
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public where(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public where(
-        column: QueryAbleCallback<this> | QueryBuilderI,
+        column: QueryAbleCallback<this> | GrammarBuilderI,
         operator: string,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public where(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | QueryBuilderI,
-        value?: Binding | QueryAbleCallback<this> | QueryBuilderI,
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
+        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI,
         boolean?: ConditionBoolean,
         not?: boolean
     ): this;
     public where(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding | QueryAbleCallback<this> | QueryBuilderI = null,
-        value: Binding | QueryAbleCallback<this> | QueryBuilderI = null,
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -946,7 +1024,9 @@ abstract class CommonQueryBuilder<
             const [sub, bindings] = this.createSub(column);
 
             if (this.isQueryableCallback(val)) {
-                throw new TypeError('Value Cannot be a closure when column is instance of Query Builder or closure.');
+                throw new TypeError(
+                    'Value Cannot be a closure when column is instance of Query QueryBuilder or closure.'
+                );
             }
 
             return this.addBinding(bindings, 'where').where(this.raw(`(${sub})`), operator, val, boolean);
@@ -1010,7 +1090,7 @@ abstract class CommonQueryBuilder<
         column: T[],
         boolean: ConditionBoolean,
         not: boolean,
-        callback: (query: QueryBuilderI, values: T) => void
+        callback: (query: GrammarBuilderI, values: T) => void
     ): this {
         return this.whereNested(
             (query): void => {
@@ -1098,24 +1178,24 @@ abstract class CommonQueryBuilder<
     public orWhere(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     public orWhere(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public orWhere(
-        column: QueryAbleCallback<this> | QueryBuilderI,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        column: QueryAbleCallback<this> | GrammarBuilderI,
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public orWhere(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public orWhere(
-        column: QueryAbleCallback<this> | QueryBuilderI,
+        column: QueryAbleCallback<this> | GrammarBuilderI,
         operator: string,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public orWhere(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | QueryBuilderI,
-        value?: Binding | QueryAbleCallback<this> | QueryBuilderI
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
+        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public orWhere(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding | QueryAbleCallback<this> | QueryBuilderI = null,
-        value: Binding | QueryAbleCallback<this> | QueryBuilderI = null
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
@@ -1128,29 +1208,29 @@ abstract class CommonQueryBuilder<
     public whereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     public whereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public whereNot(
-        column: QueryAbleCallback<this> | QueryBuilderI,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        column: QueryAbleCallback<this> | GrammarBuilderI,
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public whereNot(
         column: Stringable,
         operator: string,
-        value: Binding | QueryAbleCallback<this> | QueryBuilderI
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public whereNot(
-        column: QueryAbleCallback<this> | QueryBuilderI,
+        column: QueryAbleCallback<this> | GrammarBuilderI,
         operator: string,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public whereNot(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | QueryBuilderI,
-        value?: Binding | QueryAbleCallback<this> | QueryBuilderI,
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
+        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI,
         boolean?: ConditionBoolean
     ): this;
     public whereNot(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding | QueryAbleCallback<this> | QueryBuilderI = null,
-        value: Binding | QueryAbleCallback<this> | QueryBuilderI = null,
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
         boolean: ConditionBoolean = 'and'
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
@@ -1163,28 +1243,28 @@ abstract class CommonQueryBuilder<
     public orWhereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     public orWhereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public orWhereNot(
-        column: QueryAbleCallback<this> | QueryBuilderI,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        column: QueryAbleCallback<this> | GrammarBuilderI,
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public orWhereNot(
         column: Stringable,
         operator: string,
-        value: Binding | QueryAbleCallback<this> | QueryBuilderI
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public orWhereNot(
-        column: QueryAbleCallback<this> | QueryBuilderI,
+        column: QueryAbleCallback<this> | GrammarBuilderI,
         operator: string,
-        value: BindingExclude<null> | QueryAbleCallback<this> | QueryBuilderI
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public orWhereNot(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | QueryBuilderI,
-        value?: Binding | QueryAbleCallback<this> | QueryBuilderI
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
+        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public orWhereNot(
-        column: Stringable | QueryAbleCallback<this> | QueryBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding | QueryAbleCallback<this> | QueryBuilderI = null,
-        value: Binding | QueryAbleCallback<this> | QueryBuilderI = null
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
         return this.whereNot(column, operatorOrValue, value, 'or');
@@ -1332,7 +1412,7 @@ abstract class CommonQueryBuilder<
      */
     public whereIn(
         column: Stringable,
-        values: QueryBuilderI | QueryAbleCallback<this> | Arrayable<Binding> | Binding[],
+        values: GrammarBuilderI | QueryAbleCallback<this> | Arrayable<Binding> | Binding[],
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1374,7 +1454,7 @@ abstract class CommonQueryBuilder<
      */
     public orWhereIn(
         column: Stringable,
-        values: QueryBuilderI | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
+        values: GrammarBuilderI | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
     ): this {
         return this.whereIn(column, values, 'or');
     }
@@ -1384,7 +1464,7 @@ abstract class CommonQueryBuilder<
      */
     public whereNotIn(
         column: Stringable,
-        values: QueryBuilderI | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>,
+        values: GrammarBuilderI | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>,
         boolean: ConditionBoolean = 'and'
     ): this {
         return this.whereIn(column, values, boolean, true);
@@ -1395,7 +1475,7 @@ abstract class CommonQueryBuilder<
      */
     public orWhereNotIn(
         column: Stringable,
-        values: QueryBuilderI | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
+        values: GrammarBuilderI | QueryAbleCallback<this> | Binding[] | Arrayable<Binding>
     ): this {
         return this.whereNotIn(column, values, 'or');
     }
@@ -2157,7 +2237,7 @@ abstract class CommonQueryBuilder<
     /**
      * Add another query builder as a nested where to the query builder.
      */
-    public addNestedWhereQuery(query: QueryBuilderI, boolean: ConditionBoolean = 'and', not = false): this {
+    public addNestedWhereQuery(query: GrammarBuilderI, boolean: ConditionBoolean = 'and', not = false): this {
         if (query.getRegistry().wheres.length > 0) {
             const type = 'Nested';
 
@@ -2179,7 +2259,7 @@ abstract class CommonQueryBuilder<
     protected whereSub(
         column: Stringable,
         operator: string,
-        callback: QueryAbleCallback<this> | QueryBuilderI,
+        callback: QueryAbleCallback<this> | GrammarBuilderI,
         boolean: ConditionBoolean,
         not: boolean
     ): this {
@@ -2214,7 +2294,7 @@ abstract class CommonQueryBuilder<
      * Add an exists clause to the query.
      */
     public whereExists(
-        callback: QueryBuilderI | QueryAbleCallback<this>,
+        callback: GrammarBuilderI | QueryAbleCallback<this>,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -2236,28 +2316,31 @@ abstract class CommonQueryBuilder<
     /**
      * Add an or exists clause to the query.
      */
-    public orWhereExists(callback: QueryBuilderI | QueryAbleCallback<this>, not = false): this {
+    public orWhereExists(callback: GrammarBuilderI | QueryAbleCallback<this>, not = false): this {
         return this.whereExists(callback, 'or', not);
     }
 
     /**
      * Add a where not exists clause to the query.
      */
-    public whereNotExists(callback: QueryBuilderI | QueryAbleCallback<this>, boolean: ConditionBoolean = 'and'): this {
+    public whereNotExists(
+        callback: GrammarBuilderI | QueryAbleCallback<this>,
+        boolean: ConditionBoolean = 'and'
+    ): this {
         return this.whereExists(callback, boolean, true);
     }
 
     /**
      * Add a where not exists clause to the query.
      */
-    public orWhereNotExists(callback: QueryBuilderI | QueryAbleCallback<this>): this {
+    public orWhereNotExists(callback: GrammarBuilderI | QueryAbleCallback<this>): this {
         return this.orWhereExists(callback, true);
     }
 
     /**
      * Add an exists clause to the query.
      */
-    public addWhereExistsQuery(query: QueryBuilderI, boolean: ConditionBoolean = 'and', not = false): this {
+    public addWhereExistsQuery(query: GrammarBuilderI, boolean: ConditionBoolean = 'and', not = false): this {
         const type = 'Exists';
 
         this.registry.wheres.push({ type, query, boolean, not });
@@ -2726,7 +2809,7 @@ abstract class CommonQueryBuilder<
     /**
      * Add another query builder as a nested having to the query builder.
      */
-    public addNestedHavingQuery(query: QueryBuilderI, boolean: ConditionBoolean = 'and', not = false): this {
+    public addNestedHavingQuery(query: GrammarBuilderI, boolean: ConditionBoolean = 'and', not = false): this {
         if (query.getRegistry().havings.length > 0) {
             const type = 'Nested';
 
@@ -2850,7 +2933,7 @@ abstract class CommonQueryBuilder<
      * Add an "order by" clause to the query.
      */
     public orderBy(
-        column: QueryAbleCallback<this> | QueryBuilderI | Stringable,
+        column: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
         direction: OrderDirection = 'asc'
     ): this {
         if (this.isQueryable(column)) {
@@ -2878,21 +2961,21 @@ abstract class CommonQueryBuilder<
     /**
      * Add a descending "order by" clause to the query.
      */
-    public orderByDesc(column: QueryAbleCallback<this> | QueryBuilderI | Stringable): this {
+    public orderByDesc(column: QueryAbleCallback<this> | GrammarBuilderI | Stringable): this {
         return this.orderBy(column, 'desc');
     }
 
     /**
      * Add an "order by" clause for a timestamp to the query.
      */
-    public latest(column: QueryAbleCallback<this> | QueryBuilderI | Stringable = 'created_at'): this {
+    public latest(column: QueryAbleCallback<this> | GrammarBuilderI | Stringable = 'created_at'): this {
         return this.orderBy(column, 'desc');
     }
 
     /**
      * Add an "order by" clause for a timestamp to the query.
      */
-    public oldest(column: QueryAbleCallback<this> | QueryBuilderI | Stringable = 'created_at'): this {
+    public oldest(column: QueryAbleCallback<this> | GrammarBuilderI | Stringable = 'created_at'): this {
         return this.orderBy(column, 'asc');
     }
 
@@ -2951,6 +3034,16 @@ abstract class CommonQueryBuilder<
     }
 
     /**
+     * Set the "recursion limit" of the query.
+     */
+    public recursionLimit(value?: number | null): this {
+        this.registry[this.registry.unions.length > 0 ? 'unionRecursionLimit' : 'recursionLimit'] =
+            value == null || value < 0 ? null : value;
+
+        return this;
+    }
+
+    /**
      * Set the limit and offset for a given page.
      */
     public forPage(page: number, perPage = 15): this {
@@ -2987,7 +3080,7 @@ abstract class CommonQueryBuilder<
      * Remove all existing orders and optionally add a new order.
      */
     public reorder(
-        column: QueryAbleCallback<this> | QueryBuilderI | Stringable | null = null,
+        column: QueryAbleCallback<this> | GrammarBuilderI | Stringable | null = null,
         direction: OrderDirection = 'asc'
     ): this {
         this.registry.orders = [];
@@ -3017,7 +3110,7 @@ abstract class CommonQueryBuilder<
     /**
      * Add a union statement to the query.
      */
-    public union(query: QueryBuilderI | QueryAbleCallback<this>, all = false): this {
+    public union(query: GrammarBuilderI | QueryAbleCallback<this>, all = false): this {
         let realQuery;
         if (this.isQueryableCallback(query)) {
             const callback = query;
@@ -3037,7 +3130,7 @@ abstract class CommonQueryBuilder<
     /**
      * Add a union all statement to the query.
      */
-    public unionAll(query: QueryBuilderI | QueryAbleCallback<this>): this {
+    public unionAll(query: GrammarBuilderI | QueryAbleCallback<this>): this {
         return this.union(query, true);
     }
 
@@ -3240,7 +3333,7 @@ abstract class CommonQueryBuilder<
     /**
      * Merge an array of bindings into our bindings.
      */
-    public mergeBindings(query: QueryBuilderI): this {
+    public mergeBindings(query: GrammarBuilderI): this {
         this.registry.bindings = merge(this.registry.bindings, query.getRegistry().bindings);
 
         return this;
@@ -3313,30 +3406,30 @@ abstract class CommonQueryBuilder<
     /**
      * Determine if the value is a query builder instance or a Closure.
      */
-    protected isQueryable<T extends QueryBuilderI = this, U extends QueryBuilderI = QueryBuilderI>(
+    protected isQueryable<T extends GrammarBuilderI = this, U extends GrammarBuilderI = GrammarBuilderI>(
         value: any
     ): value is U | QueryAbleCallback<T> {
-        return this.isQueryableCallback<T>(value) || this.isQueryBuilder<U>(value);
+        return this.isQueryableCallback<T>(value) || this.isGrammarBuilder<U>(value);
     }
 
     /**
      * Determine if the value is a query builder instance.
      */
-    protected isQueryBuilder<T extends QueryBuilderI = QueryBuilderI>(value: any): value is T {
-        return typeof value === 'object' && value instanceof CommonQueryBuilder;
+    protected isGrammarBuilder<T extends GrammarBuilderI = GrammarBuilderI>(value: any): value is T {
+        return typeof value === 'object' && value instanceof CommonGrammarBuilder;
     }
 
     /**
      * Determine if the value is instance or a Closure.
      */
-    protected isQueryableCallback<T extends QueryBuilderI = this>(value: any): value is QueryAbleCallback<T> {
+    protected isQueryableCallback<T extends GrammarBuilderI = this>(value: any): value is QueryAbleCallback<T> {
         return typeof value === 'function';
     }
 
     /**
      * Determine if the value is instance or a Closure.
      */
-    protected isBooleanCallback<T, U extends QueryBuilderI = this>(value: any): value is BooleanCallback<T, U> {
+    protected isBooleanCallback<T, U extends GrammarBuilderI = this>(value: any): value is BooleanCallback<T, U> {
         return typeof value === 'function';
     }
 
@@ -3344,13 +3437,13 @@ abstract class CommonQueryBuilder<
      * Determine if the value is a Where Object
      */
     protected isWhereObject(parameter: any): parameter is WhereObject {
-        return typeof parameter === 'object' && !this.isQueryBuilder(parameter) && !isExpression(parameter);
+        return typeof parameter === 'object' && !this.isGrammarBuilder(parameter) && !isExpression(parameter);
     }
 
     /**
      * Get a new join clause.
      */
-    protected abstract newJoinClause<T extends QueryBuilderI>(
+    protected abstract newJoinClause<T extends GrammarBuilderI>(
         parentQuery: T,
         type: string,
         table: Stringable
@@ -3367,7 +3460,7 @@ abstract class CommonQueryBuilder<
      * Get a new instance of the query builder.
      */
     public newQuery(): any {
-        return new (this.constructor as QueryBuilderConstructor<this>)(this.getConnection());
+        return new (this.constructor as GrammarBuilderConstructor<this>)(this.getConnection());
     }
 
     /**
@@ -3405,4 +3498,4 @@ abstract class CommonQueryBuilder<
     }
 }
 
-export default CommonQueryBuilder;
+export default CommonGrammarBuilder;

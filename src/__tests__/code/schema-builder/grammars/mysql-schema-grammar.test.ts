@@ -1,6 +1,6 @@
 import Expression from '../../../../query/expression';
 import Blueprint from '../../../../schema/blueprint';
-import Builder from '../../../../schema/builders/builder';
+import QueryBuilder from '../../../../schema/builders/builder';
 import ForeignIdColumnDefinition from '../../../../schema/definitions/foreign-id-column-definition';
 import MysqlSchemaGrammar from '../../../../schema/grammars/mysql-grammar';
 import { getMysqlBlueprint, getMysqlConnection } from '../../fixtures/mocked';
@@ -745,7 +745,7 @@ describe('Mysql Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table `users` add `foo` char(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getMysqlBlueprint('users');
         blueprint.char('foo');
@@ -755,7 +755,7 @@ describe('Mysql Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table `users` add `foo` char not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 
@@ -799,7 +799,7 @@ describe('Mysql Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table `users` add `foo` varchar(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getMysqlBlueprint('users');
         blueprint.string('foo');
@@ -809,7 +809,7 @@ describe('Mysql Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table `users` add `foo` varchar not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 

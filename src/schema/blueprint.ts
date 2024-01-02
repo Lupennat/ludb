@@ -17,7 +17,7 @@ import RegistryI, {
     RenameFullRegistryI,
     RenameRegistryI
 } from '../types/schema/registry';
-import Builder from './builders/builder';
+import QueryBuilder from './builders/builder';
 import ColumnDefinition from './definitions/column-definition';
 import CommandDefinition from './definitions/commands/command-definition';
 import CommandForeignKeyDefinition from './definitions/commands/command-foreign-key-definition';
@@ -666,14 +666,14 @@ class Blueprint {
      * Create a new char column on the table.
      */
     public char(column: Stringable, length?: number): ColumnDefinition {
-        return this.addColumn('char', column, { length: length ?? Builder.defaultStringLength });
+        return this.addColumn('char', column, { length: length ?? QueryBuilder.defaultStringLength });
     }
 
     /**
      * Create a new string column on the table.
      */
     public string(column: Stringable, length?: number): ColumnDefinition {
-        return this.addColumn('string', column, { length: length ?? Builder.defaultStringLength });
+        return this.addColumn('string', column, { length: length ?? QueryBuilder.defaultStringLength });
     }
 
     /**
@@ -1103,9 +1103,9 @@ class Blueprint {
      * Add the proper columns for a polymorphic table.
      */
     public morphs(name: Stringable, indexName?: Stringable): void {
-        if (Builder.defaultMorphKeyType === 'uuid') {
+        if (QueryBuilder.defaultMorphKeyType === 'uuid') {
             this.uuidMorphs(name, indexName);
-        } else if (Builder.defaultMorphKeyType === 'ulid') {
+        } else if (QueryBuilder.defaultMorphKeyType === 'ulid') {
             this.ulidMorphs(name, indexName);
         } else {
             this.numericMorphs(name, indexName);
@@ -1116,9 +1116,9 @@ class Blueprint {
      * Add nullable columns for a polymorphic table.
      */
     public nullableMorphs(name: Stringable, indexName?: Stringable): void {
-        if (Builder.defaultMorphKeyType === 'uuid') {
+        if (QueryBuilder.defaultMorphKeyType === 'uuid') {
             this.nullableUuidMorphs(name, indexName);
-        } else if (Builder.defaultMorphKeyType === 'ulid') {
+        } else if (QueryBuilder.defaultMorphKeyType === 'ulid') {
             this.nullableUlidMorphs(name, indexName);
         } else {
             this.nullableNumericMorphs(name, indexName);

@@ -8,7 +8,7 @@ import {
     getSqlserverBuilder,
     pdo
 } from '../fixtures/mocked';
-describe('Builder Select-From', () => {
+describe('QueryBuilder Select-From', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });

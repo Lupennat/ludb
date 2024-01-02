@@ -1,5 +1,5 @@
 import Raw from '../../../query/expression';
-import BuilderI from '../../../types/query/builder';
+import QueryBuilderI from '../../../types/query/query-builder';
 
 import {
     getBuilder,
@@ -10,7 +10,7 @@ import {
     pdo
 } from '../fixtures/mocked';
 
-describe('Builder Order-Group', () => {
+describe('QueryBuilder Order-Group', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -195,7 +195,7 @@ describe('Builder Order-Group', () => {
     it('Works Order By Sub Queries', () => {
         const expected =
             'select * from "users" order by (select "created_at" from "logins" where "user_id" = "users"."id" limit 1)';
-        const subQuery = (query: BuilderI): void => {
+        const subQuery = (query: QueryBuilderI): void => {
             query.select('created_at').from('logins').whereColumn('user_id', 'users.id').limit(1);
         };
 
@@ -257,7 +257,7 @@ describe('Builder Order-Group', () => {
         );
 
         builder = getSqlserverBuilder();
-        const subQuery = (query: BuilderI): void => {
+        const subQuery = (query: QueryBuilderI): void => {
             query
                 .select('created_at')
                 .from('logins')

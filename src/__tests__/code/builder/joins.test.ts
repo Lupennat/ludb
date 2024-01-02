@@ -1,6 +1,6 @@
-import { getBuilder, getQueryBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getGrammarBuilder, pdo } from '../fixtures/mocked';
 
-describe('Builder Joins', () => {
+describe('QueryBuilder Joins', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -81,7 +81,7 @@ describe('Builder Joins', () => {
         expect('select * from "users" right join "photos" on "users"."id" = "bar"').toBe(builder.toSql());
         expect([]).toEqual(builder.getBindings());
 
-        const query = getQueryBuilder();
+        const query = getGrammarBuilder();
         query
             .select('*')
             .from('users')

@@ -3,7 +3,7 @@ import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import SqliteGrammar from '../../../query/grammars/sqlite-grammar';
 import { MockedSqliteSchemaBuilder, getSqliteConnection } from '../fixtures/mocked';
 
-describe('Sqlite Schema Builder Test', () => {
+describe('Sqlite Schema QueryBuilder Test', () => {
     it('Works Enable Foreign Key Constraints', async () => {
         const connection = getSqliteConnection();
         const session = connection.sessionSchema();

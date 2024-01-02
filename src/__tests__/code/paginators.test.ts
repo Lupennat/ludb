@@ -2,7 +2,7 @@ import Cursor from '../../paginations/cursor';
 import CursorPaginator from '../../paginations/cursor-paginator';
 import LengthAwarePaginator from '../../paginations/length-aware-paginator';
 import Paginator from '../../paginations/paginator';
-import { Objectable } from '../../types/query/query-builder';
+import { Objectable } from '../../types/query/grammar-builder';
 
 describe('Paginators', () => {
     it('Works Length Aware Paginator', async () => {

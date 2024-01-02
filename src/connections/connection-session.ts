@@ -17,14 +17,14 @@ import TransactionBeginning from '../events/transaction-beginning';
 import TransactionCommitted from '../events/transaction-committed';
 import TransactionCommitting from '../events/transaction-committing';
 import TransactionRolledBack from '../events/transaction-rolledback';
-import Builder from '../query/builder';
 import ExpressionContract from '../query/expression-contract';
+import QueryBuilder from '../query/query-builder';
 import BindToI from '../types/bind-to';
 import { DatabaseConfig } from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
-import BuilderI from '../types/query/builder';
-import { QueryAbleCallback } from '../types/query/query-builder';
+import { QueryAbleCallback } from '../types/query/grammar-builder';
+import QueryBuilderI from '../types/query/query-builder';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
 export type RunCallback<T> = (query: string, bindings: Binding[] | BindingObject) => Promise<T>;
@@ -83,15 +83,15 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     /**
      * Begin a fluent query against a database table.
      */
-    public table(table: QueryAbleCallback<BuilderI> | BuilderI | Stringable, as?: string): BuilderI {
+    public table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI {
         return this.query().from(table, as);
     }
 
     /**
      * Get a new query builder instance.
      */
-    public query(): BuilderI {
-        return new Builder(this);
+    public query(): QueryBuilderI {
+        return new QueryBuilder(this);
     }
 
     /**
@@ -1012,7 +1012,7 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     }
 
     /**
-     * Detect if session is for Schema Builder
+     * Detect if session is for Schema QueryBuilder
      */
     public isSchema(): boolean {
         return this.isSchemaConnection;

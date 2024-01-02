@@ -1,5 +1,5 @@
 import { Binding, Stringable } from '../../types/generics';
-import QueryBuilderI, { RowValues } from '../../types/query/query-builder';
+import GrammarBuilderI, { RowValues } from '../../types/query/grammar-builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime, whereFulltext } from '../../types/query/registry';
 import { beforeLast, escapeQuoteForSql, stringifyReplacer } from '../../utils';
 import Grammar from './grammar';
@@ -52,7 +52,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a basic where clause.
      */
-    protected compileWhereBasic(query: QueryBuilderI, where: WhereBasic): string {
+    protected compileWhereBasic(query: GrammarBuilderI, where: WhereBasic): string {
         if (where.operator.toLowerCase().includes('like')) {
             return `${this.wrap(where.column)}::text ${where.operator} ${this.parameter(where.value)}`;
         }
@@ -63,7 +63,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a bitwise operator where clause.
      */
-    protected compileWhereBitwise(_query: QueryBuilderI, where: WhereBasic): string {
+    protected compileWhereBitwise(_query: GrammarBuilderI, where: WhereBasic): string {
         const value = this.parameter(where.value);
         const operator = where.operator.replace(/\?/g, '??');
 
@@ -73,7 +73,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a "where date" clause.
      */
-    protected compileWhereDate(_query: QueryBuilderI, where: WhereDateTime): string {
+    protected compileWhereDate(_query: GrammarBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `${this.wrap(where.column)}::date ${where.operator} ${value}`;
@@ -82,7 +82,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a "where time" clause.
      */
-    protected compileWhereTime(_query: QueryBuilderI, where: WhereDateTime): string {
+    protected compileWhereTime(_query: GrammarBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `${this.wrap(where.column)}::time ${where.operator} ${value}`;
@@ -91,7 +91,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a date based where clause.
      */
-    protected dateBasedWhere(type: string, _query: QueryBuilderI, where: WhereDateTime): string {
+    protected dateBasedWhere(type: string, _query: GrammarBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `extract(${type} from ${this.wrap(where.column)}) ${where.operator} ${value}`;
@@ -100,7 +100,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a "fulltext" statement into SQL.
      */
-    public compileFulltext(_query: QueryBuilderI, where: whereFulltext): string {
+    public compileFulltext(_query: GrammarBuilderI, where: whereFulltext): string {
         let language = where.options.language ?? 'english';
 
         if (!this.validFulltextLanguages().includes(language)) {
@@ -159,7 +159,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile the "select *" portion of the query.
      */
-    protected compileColumns(query: QueryBuilderI, columns: Stringable[]): string {
+    protected compileColumns(query: GrammarBuilderI, columns: Stringable[]): string {
         // If the query is actually performing an aggregating select, we will let that
         // compiler handle the building of the select clauses, as it will need some
         // more syntax that is best handled by that function to keep things neat.
@@ -232,7 +232,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a having clause involving a bitwise operator.
      */
-    protected compileHavingBitwise(_query: QueryBuilderI, having: HavingBasic): string {
+    protected compileHavingBitwise(_query: GrammarBuilderI, having: HavingBasic): string {
         const column = this.wrap(having.column);
         const parameter = this.parameter(having.value);
 
@@ -242,7 +242,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile the lock into SQL.
      */
-    protected compileLock(_query: QueryBuilderI, value: boolean | string): string {
+    protected compileLock(_query: GrammarBuilderI, value: boolean | string): string {
         if (typeof value !== 'string') {
             return value ? 'for update' : 'for share';
         }
@@ -253,21 +253,21 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile an insert ignore statement into SQL.
      */
-    public compileInsertOrIgnore(query: QueryBuilderI, values: RowValues[] | RowValues): string {
+    public compileInsertOrIgnore(query: GrammarBuilderI, values: RowValues[] | RowValues): string {
         return `${this.compileInsert(query, values)} on conflict do nothing`;
     }
 
     /**
      * Compile an insert and get ID statement into SQL.
      */
-    public compileInsertGetId(query: QueryBuilderI, values: RowValues, sequence: string | null): string {
+    public compileInsertGetId(query: GrammarBuilderI, values: RowValues, sequence: string | null): string {
         return `${this.compileInsert(query, values)} returning ${this.wrap(sequence || 'id')}`;
     }
 
     /**
      * Compile an update statement into SQL.
      */
-    public compileUpdate(query: QueryBuilderI, values: RowValues): string {
+    public compileUpdate(query: GrammarBuilderI, values: RowValues): string {
         const joins = query.getRegistry().joins;
         const limit = query.getRegistry().limit;
         if (joins.length || limit) {
@@ -280,7 +280,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile the columns for an update statement.
      */
-    protected compileUpdateColumns(_query: QueryBuilderI, values: RowValues): string {
+    protected compileUpdateColumns(_query: GrammarBuilderI, values: RowValues): string {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
         return Object.keys(combinedValues)
             .map(key => {
@@ -298,7 +298,7 @@ class PostgresGrammar extends Grammar {
      * Compile an "upsert" statement into SQL.
      */
     public compileUpsert(
-        query: QueryBuilderI,
+        query: GrammarBuilderI,
         values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
@@ -343,7 +343,11 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile an update from statement into SQL.
      */
-    public compileUpdateFrom(query: QueryBuilderI, values: RowValues): string {
+    public compileUpdateFrom(query: GrammarBuilderI, values: RowValues): string {
+        const expressions = query.getRegistry().expressions;
+
+        const expressionsSql = expressions.length > 0 ? this.compileExpressions(query, expressions) + ' ' : '';
+
         const table = this.wrapTable(query.getRegistry().from);
 
         // Each one of the columns in the update statements needs to be wrapped in the
@@ -370,13 +374,13 @@ class PostgresGrammar extends Grammar {
 
         const where = this.compileUpdateWheres(query);
 
-        return `update ${table} set ${columns}${from} ${where}`.trim();
+        return `${expressionsSql}update ${table} set ${columns}${from} ${where}`.trim();
     }
 
     /**
      * Compile the additional where clauses for updates with joins.
      */
-    protected compileUpdateWheres(query: QueryBuilderI): string {
+    protected compileUpdateWheres(query: GrammarBuilderI): string {
         const baseWheres = this.compileWheres(query);
 
         if (query.getRegistry().joins.length === 0) {
@@ -398,7 +402,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile the "join" clause where clauses for an update.
      */
-    protected compileUpdateJoinWheres(query: QueryBuilderI): string {
+    protected compileUpdateJoinWheres(query: GrammarBuilderI): string {
         const joinWheres = [];
 
         // Here we will just loop through all of the join constraints and compile them
@@ -416,7 +420,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile an update statement with joins or limit into SQL.
      */
-    protected compileUpdateWithJoinsOrLimit(query: QueryBuilderI, values: RowValues): string {
+    protected compileUpdateWithJoinsOrLimit(query: GrammarBuilderI, values: RowValues): string {
         const table = this.wrapTable(query.getRegistry().from);
 
         const columns = this.compileUpdateColumns(query, values);
@@ -462,12 +466,13 @@ class PostgresGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdateFrom(bindings: BindingTypes, values: RowValues): any[] {
+    public prepareBindingsForUpdateFrom(_query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
         const bindingsWithoutWhere = Object.keys(bindings)
-            .filter(key => !['select', 'where'].includes(key))
+            .filter(key => !['select', 'where', 'expressions'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
 
-        return this.prepareValuesForUpdate(values).concat(
+        return bindings.expressions.concat(
+            this.prepareValuesForUpdate(values),
             bindings.where,
             bindingsWithoutWhere.flat(Infinity) as Binding[]
         );
@@ -476,18 +481,30 @@ class PostgresGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): any[] {
+    public prepareBindingsForUpdate(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+        const joins = query.getRegistry().joins;
+        const limit = query.getRegistry().limit;
+        if (joins.length || limit) {
+            const cleanBindings = Object.keys(bindings)
+                .filter(key => !['select'].includes(key))
+                .map(key => bindings[key as keyof BindingTypes]);
+            return this.prepareValuesForUpdate(values).concat(cleanBindings.flat(Infinity) as Binding[]);
+        }
+
         const cleanBindings = Object.keys(bindings)
-            .filter(key => !['select'].includes(key))
+            .filter(key => !['select', 'expressions'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
 
-        return this.prepareValuesForUpdate(values).concat(cleanBindings.flat(Infinity) as Binding[]);
+        return bindings.expressions.concat(
+            this.prepareValuesForUpdate(values),
+            cleanBindings.flat(Infinity) as Binding[]
+        );
     }
 
     /**
      * Compile a delete statement into SQL.
      */
-    public compileDelete(query: QueryBuilderI): string {
+    public compileDelete(query: GrammarBuilderI): string {
         const joins = query.getRegistry().joins;
         const limit = query.getRegistry().limit;
         if (joins.length || limit) {
@@ -500,7 +517,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a delete statement with joins or limit into SQL.
      */
-    protected compileDeleteWithJoinsOrLimit(query: QueryBuilderI): string {
+    protected compileDeleteWithJoinsOrLimit(query: GrammarBuilderI): string {
         const table = this.wrapTable(query.getRegistry().from);
         const alias = this.getValue(query.getRegistry().from)
             .toString()
@@ -514,7 +531,7 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a truncate table statement into SQL.
      */
-    public compileTruncate(query: QueryBuilderI): { [key: string]: Binding[] } {
+    public compileTruncate(query: GrammarBuilderI): { [key: string]: Binding[] } {
         return { [`truncate ${this.wrapTable(query.getRegistry().from)} restart identity cascade`]: [] };
     }
 

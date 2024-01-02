@@ -1,7 +1,7 @@
 import SqlserverBuilder from '../../../schema/builders/sqlserver-builder';
 import { pdo as fakePdo, getSqlserverConnection } from '../fixtures/mocked';
 
-describe('Sqlserver Schema Builder Test', () => {
+describe('Sqlserver Schema QueryBuilder Test', () => {
     afterAll(async () => {
         await fakePdo.disconnect();
     });
@@ -36,6 +36,28 @@ describe('Sqlserver Schema Builder Test', () => {
         expect(await builder.disableForeignKeyConstraints()).toBeTruthy();
     });
 
+    it('Works Has Type', async () => {
+        const connection = getSqlserverConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        const builder = new SqlserverBuilder(session);
+
+        jest.spyOn(builder, 'getTypes')
+            .mockImplementationOnce(async () => [])
+            .mockImplementation(async () => {
+                return [
+                    {
+                        name: 'type',
+                        schema: 'dbo',
+                        type: 'varchar(11)'
+                    }
+                ];
+            });
+
+        expect(await builder.hasType('type')).toBeFalsy();
+        expect(await builder.hasType('type')).toBeTruthy();
+    });
+
     it('Works Create Table', async () => {
         const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
@@ -47,6 +69,57 @@ describe('Sqlserver Schema Builder Test', () => {
         });
         const builder = new SqlserverBuilder(session);
         expect(await builder.createDatabase('database')).toBeTruthy();
+    });
+
+    it('Works Create Type', async () => {
+        const connection = getSqlserverConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement')
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create type SSN from VARCHAR(11) NULL');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create type SSN from VARCHAR(11) NOT NULL');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create type SSN from VARCHAR(11)');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    'create type Utf8String external name utf8string.[Microsoft.Samples.SqlServer.utf8string]'
+                );
+                expect(bindings).toBeUndefined();
+                return true;
+            });
+        const builder = new SqlserverBuilder(session);
+        expect(
+            await builder.createType('SSN', 'simple', {
+                from: 'VARCHAR(11)',
+                nullable: true
+            })
+        ).toBeTruthy();
+        expect(
+            await builder.createType('SSN', 'simple', {
+                from: 'VARCHAR(11)',
+                nullable: false
+            })
+        ).toBeTruthy();
+
+        expect(
+            await builder.createType('SSN', 'simple', {
+                from: 'VARCHAR(11)'
+            })
+        ).toBeTruthy();
+        expect(
+            await builder.createType('Utf8String', 'external', 'utf8string.[Microsoft.Samples.SqlServer.utf8string]')
+        ).toBeTruthy();
     });
 
     it('Works Create View', async () => {

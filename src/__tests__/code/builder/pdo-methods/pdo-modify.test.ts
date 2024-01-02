@@ -8,7 +8,7 @@ import {
     pdo
 } from '../../fixtures/mocked';
 
-describe('Builder Pdo Methods Modify', () => {
+describe('QueryBuilder Pdo Methods Modify', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });

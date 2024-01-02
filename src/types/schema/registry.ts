@@ -1,7 +1,7 @@
 import ColumnDefinition from '../../schema/definitions/column-definition';
 import CommandDefinition from '../../schema/definitions/commands/command-definition';
 import { Stringable } from '../generics';
-import QueryBuilderI from '../query/query-builder';
+import GrammarBuilderI from '../query/grammar-builder';
 
 export interface CommandRegistryI {
     [key: string]: any;
@@ -39,7 +39,7 @@ export interface IndexRegistryI extends ColumnsRegistryI {
 export interface ViewRegistryI extends CommandRegistryI {
     algorithm?: Stringable;
     temporary?: Boolean;
-    as: QueryBuilderI;
+    as: GrammarBuilderI;
     check?: boolean;
     checkType?: Stringable;
     definer?: Stringable;

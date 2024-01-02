@@ -1,5 +1,5 @@
 import Blueprint from '../../../schema/blueprint';
-import Builder from '../../../schema/builders/builder';
+import QueryBuilder from '../../../schema/builders/builder';
 import Grammar from '../../../schema/grammars/grammar';
 import { Relatable } from '../../../types/schema/blueprint';
 import {
@@ -405,7 +405,7 @@ describe('Blueprint', () => {
     });
 
     it('Works Default Using Nullable Id Morph', () => {
-        Builder.morphUsingInts();
+        QueryBuilder.morphUsingInts();
         const connection = getConnection().sessionSchema();
         let blueprint = getMysqlBlueprint('comments', table => {
             table.nullableMorphs('commentable');
@@ -440,7 +440,7 @@ describe('Blueprint', () => {
 
     it('Works Default Using Uuid Morph', () => {
         const connection = getConnection().sessionSchema();
-        Builder.morphUsingUuids();
+        QueryBuilder.morphUsingUuids();
         let blueprint = getMysqlBlueprint('comments', table => {
             table.morphs('commentable');
         });
@@ -474,7 +474,7 @@ describe('Blueprint', () => {
 
     it('Works Default Using Nullable Uuid Morph', () => {
         const connection = getConnection().sessionSchema();
-        Builder.morphUsingUuids();
+        QueryBuilder.morphUsingUuids();
         let blueprint = getMysqlBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
@@ -508,7 +508,7 @@ describe('Blueprint', () => {
 
     it('Works Default Using Ulid Morph', () => {
         const connection = getConnection().sessionSchema();
-        Builder.morphUsingUlids();
+        QueryBuilder.morphUsingUlids();
         let blueprint = getMysqlBlueprint('comments', table => {
             table.morphs('commentable');
         });
@@ -542,7 +542,7 @@ describe('Blueprint', () => {
 
     it('Works Default Using Nullable Ulid Morph', () => {
         const connection = getConnection().sessionSchema();
-        Builder.morphUsingUlids();
+        QueryBuilder.morphUsingUlids();
         let blueprint = getMysqlBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });

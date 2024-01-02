@@ -2,7 +2,7 @@ import { DB, currentDB, isSqlite } from '../fixtures/config';
 
 const maybe = isSqlite() ? describe : describe.skip;
 
-maybe('Postgres Schema Builder', () => {
+maybe('Postgres Schema QueryBuilder', () => {
     const Schema = DB.connections[currentDB].getSchemaBuilder();
 
     beforeAll(async () => {

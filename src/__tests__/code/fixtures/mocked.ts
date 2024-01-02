@@ -10,10 +10,10 @@ import SqlserverConnection from '../../../connections/sqlserver-connection';
 import ConnectionFactory from '../../../connectors/connection-factory';
 import Connector from '../../../connectors/connector';
 import DatabaseManager from '../../../database-manager';
-import { QueryBuilder } from '../../../query';
-import Builder from '../../../query/builder';
+import { GrammarBuilder } from '../../../query';
 import Grammar from '../../../query/grammars/grammar';
 import JoinClause from '../../../query/join-clause';
+import QueryBuilder from '../../../query/query-builder';
 import Blueprint from '../../../schema/blueprint';
 import SchemaBuilder from '../../../schema/builders/builder';
 import PostgresBuilder from '../../../schema/builders/postgres-builder';
@@ -27,8 +27,8 @@ import SqlserverSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
 import { DatabaseConfig } from '../../../types/config';
 import DriverConnectionI from '../../../types/connection';
 import { Binding } from '../../../types/generics';
+import GrammarBuilderI, { Arrayable } from '../../../types/query/grammar-builder';
 import JoinClauseI from '../../../types/query/join-clause';
-import QueryBuilderI, { Arrayable } from '../../../types/query/query-builder';
 import BlueprintI from '../../../types/schema/blueprint';
 import { BlueprintCallback } from '../../../types/schema/builder/schema-builder';
 import FakePdo from './fake-pdo';
@@ -92,7 +92,7 @@ Pdo.addDriver('fake', FakePdo);
 export const pdo = new Pdo('fake', {});
 export const schemaPdo = new Pdo('fake', {});
 
-export class MockedBuilder extends Builder {
+export class MockedBuilder extends QueryBuilder {
     public getBeforeQueryCallbacks(): any[] {
         return this.beforeQueryCallbacks;
     }
@@ -208,8 +208,8 @@ export function getConnection2(): Connection {
     );
 }
 
-export function getQueryBuilder(): QueryBuilderI {
-    return new QueryBuilder(getConnection('').session());
+export function getGrammarBuilder(): GrammarBuilderI {
+    return new GrammarBuilder(getConnection('').session());
 }
 
 export function getBuilder(): MockedBuilder {

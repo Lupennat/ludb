@@ -1,4 +1,4 @@
-import Builder from '../../../../schema/builders/builder';
+import QueryBuilder from '../../../../schema/builders/builder';
 import ForeignIdColumnDefinition from '../../../../schema/definitions/foreign-id-column-definition';
 import SqlserverSchemaGrammar from '../../../../schema/grammars/sqlserver-grammar';
 import { getSqlserverBlueprint, getSqlserverConnection } from '../../fixtures/mocked';
@@ -387,7 +387,7 @@ describe('Sqlserver Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table [users] add [foo] nchar(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getSqlserverBlueprint('users');
         blueprint.char('foo');
@@ -397,7 +397,7 @@ describe('Sqlserver Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table [users] add [foo] nchar not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 
@@ -434,7 +434,7 @@ describe('Sqlserver Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table [users] add [foo] nvarchar(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getSqlserverBlueprint('users');
         blueprint.string('foo');
@@ -444,7 +444,7 @@ describe('Sqlserver Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table [users] add [foo] nvarchar not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 

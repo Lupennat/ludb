@@ -1,7 +1,7 @@
-import BuilderI from '../../types/query/builder';
+import QueryBuilderI from '../../types/query/query-builder';
 import { DB, currentDB } from './fixtures/config';
 
-describe('Builder', () => {
+describe('QueryBuilder', () => {
     const Schema = DB.connections[currentDB].getSchemaBuilder();
 
     beforeAll(async () => {
@@ -294,7 +294,7 @@ describe('Builder', () => {
     });
 
     it('Works Where Value Sub Query', async () => {
-        const subQuery = (query: BuilderI): void => {
+        const subQuery = (query: QueryBuilderI): void => {
             query.selectRaw("'Sub query value'");
         };
         expect(
@@ -314,7 +314,7 @@ describe('Builder', () => {
         ).toBeTruthy();
     });
 
-    it('Works Where Value Sub Query Builder', async () => {
+    it('Works Where Value Sub Query QueryBuilder', async () => {
         const subQuery = await DB.connections[currentDB]
             .table('test_query_builder_posts')
             .selectRaw("'Sub query value'")

@@ -1,7 +1,7 @@
 import Raw from '../../../query/expression';
 import { ObjectArrayable, getBuilder, getMysqlBuilder, pdo } from '../fixtures/mocked';
 
-describe('Builder Havings', () => {
+describe('QueryBuilder Havings', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });

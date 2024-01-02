@@ -1,7 +1,7 @@
 import Expression from '../../query/expression';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
-import { SimpleType } from '../../types/schema/builder/sqlserver-schema-builder';
+import { SqlserverSimpleType } from '../../types/schema/generics';
 import {
     ColumnDefinitionRegistryI,
     ColumnType,
@@ -46,17 +46,17 @@ class SqlserverGrammar extends Grammar {
     /**
      * Compile a create user-defined type.
      */
-    public compileCreateType(name: Stringable, type: 'simple', definition: SimpleType): string;
+    public compileCreateType(name: Stringable, type: 'simple', definition: SqlserverSimpleType): string;
     public compileCreateType(name: Stringable, type: 'external', definition: string): string;
     public compileCreateType(
         name: Stringable,
-        type: 'simple' | 'external',
-        definition: SimpleType | Stringable
+        _type: 'simple' | 'external',
+        definition: SqlserverSimpleType | Stringable
     ): string;
     public compileCreateType(
         name: Stringable,
         _type: 'simple' | 'external',
-        definition: SimpleType | Stringable
+        definition: SqlserverSimpleType | Stringable
     ): string {
         if (isStringable(definition)) {
             return `create type ${this.getValue(name).toString()} external name ${this.getValue(
