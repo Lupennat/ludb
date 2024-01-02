@@ -1,5 +1,6 @@
+import MysqlConnection from '../../connections/mysql-connection';
 import Expression from '../../query/expression';
-import { ConnectionSessionI } from '../../types/connection/connection';
+import { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
 import {
@@ -21,7 +22,7 @@ import CommandIndexDefinition from '../definitions/commands/command-index-defini
 import CommandViewDefinition from '../definitions/commands/command-view-definition';
 import Grammar from './grammar';
 
-class MySqlGrammar extends Grammar {
+class MysqlGrammar extends Grammar {
     /**
      * The possible column modifiers.
      */
@@ -55,7 +56,7 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile a create database command.
      */
-    public compileCreateDatabase(name: string, connection: ConnectionSessionI): string {
+    public compileCreateDatabase(name: string, connection: ConnectionSessionI<MysqlConnection>): string {
         let sql = `create database ${this.wrapValue(name)}`;
         const charset = connection.getConfig<string>('charset');
         if (charset) {
@@ -83,7 +84,10 @@ class MySqlGrammar extends Grammar {
         const definer = registry.definer ? this.getValue(registry.definer).toString() : '';
 
         if (definer) {
-            sql += ` definer=${definer} sql security definer`;
+            sql += ` definer=${definer
+                .split('@')
+                .map(value => this.quoteString(value))
+                .join('@')} sql security definer`;
         }
 
         sql += ` view ${this.wrapTable(name)}`;
@@ -96,10 +100,9 @@ class MySqlGrammar extends Grammar {
 
         sql += ` as ${registry.as.toRawSql()}`;
 
-        const check = registry.check ? registry.check : '';
-
-        if (check) {
-            sql += ` with ${check} check option`;
+        if (registry.check) {
+            const checkType = registry.checkType ? registry.checkType : '';
+            sql += ` with${checkType ? ` ${checkType}` : ''} check option`;
         }
 
         return sql;
@@ -215,7 +218,11 @@ class MySqlGrammar extends Grammar {
     /**
      * Compile a create table command.
      */
-    public compileCreate(blueprint: BlueprintI, _command: CommandDefinition, connection: ConnectionSessionI): string {
+    public compileCreate(
+        blueprint: BlueprintI,
+        _command: CommandDefinition,
+        connection: ConnectionSessionI<MysqlConnection>
+    ): string {
         let sql = this.compileCreateTable(blueprint);
 
         // Once we have the primary SQL, we can add the encoding option to the SQL for
@@ -257,7 +264,11 @@ class MySqlGrammar extends Grammar {
     /**
      * Append the character set specifications to a command.
      */
-    protected compileCreateEncoding(sql: string, connection: ConnectionSessionI, blueprint: BlueprintI): string {
+    protected compileCreateEncoding(
+        sql: string,
+        connection: ConnectionSessionI<MysqlConnection>,
+        blueprint: BlueprintI
+    ): string {
         const charset = blueprint.getRegistry().charset ?? connection.getConfig('charset');
 
         // First we will set the character set if one has been set on either the create
@@ -282,7 +293,11 @@ class MySqlGrammar extends Grammar {
     /**
      * Append the engine specifications to a command.
      */
-    protected compileCreateEngine(sql: string, connection: ConnectionSessionI, blueprint: BlueprintI): string {
+    protected compileCreateEngine(
+        sql: string,
+        connection: ConnectionSessionI<MysqlConnection>,
+        blueprint: BlueprintI
+    ): string {
         const engine = blueprint.getRegistry().engine ?? connection.getConfig('engine');
         if (engine) {
             return `${sql} engine = ${this.getValue(engine).toString()}`;
@@ -476,9 +491,16 @@ class MySqlGrammar extends Grammar {
     }
 
     /**
+     * Compile a drop view command.
+     */
+    public compileDropView(name: Stringable): string {
+        return `drop view ${this.wrapTable(name)}`;
+    }
+
+    /**
      * Compile a drop view (if exists) command.
      */
-    public compileDropViewIfExists(name: string): string {
+    public compileDropViewIfExists(name: Stringable): string {
         return `drop view if exists ${this.wrapTable(name)}`;
     }
 
@@ -787,4 +809,4 @@ class MySqlGrammar extends Grammar {
     }
 }
 
-export default MySqlGrammar;
+export default MysqlGrammar;

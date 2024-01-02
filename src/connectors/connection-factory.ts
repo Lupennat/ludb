@@ -1,65 +1,47 @@
 import { Pdo } from 'lupdo';
-import Connection from '../connections/connection';
-import MySqlConnection from '../connections/mysql-connection';
+import MysqlConnection from '../connections/mysql-connection';
 import PostgresConnection from '../connections/postgres-connection';
-import SQLiteConnection from '../connections/sqlite-connection';
-import SqlServerConnection from '../connections/sqlserver-connection';
-import {
-    ConnectionConfig,
-    DriverConnectionOptions,
-    DriverFLattedConfig,
-    FlattedConnectionConfig,
-    MySqlConfig,
-    PostgresConfig,
-    PreparedConnectionConfig,
-    ReadWriteType,
-    SQLiteConfig,
-    SqlServerConfig
-} from '../types/config';
-import DriverConnectionI from '../types/connection/connection';
-import ConnectorI from '../types/connector';
+import SqliteConnection from '../connections/sqlite-connection';
+import SqlserverConnection from '../connections/sqlserver-connection';
+import { DatabaseConfig, DatabaseConnectionOptions, ReadWriteType } from '../types/config';
+import DriverConnectionI from '../types/connection';
 import { merge } from '../utils';
 import Connector from './connector';
-import MySqlConnector from './mysql-connectors';
+import MysqlConnector from './mysql-connectors';
 import PostgresConnector from './postgres-connector';
-import SQLiteConnector from './sqlite-connector';
-import SqlServerConnector from './sqlserver-connector';
+import SqliteConnector from './sqlite-connector';
+import SqlserverConnector from './sqlserver-connector';
 
 class ConnectionFactory {
     /**
      * Establish a PDO connection based on the configuration.
      */
-    public make<T = MySqlConfig>(config: T, name: string): MySqlConnection;
-    public make<T = SQLiteConfig>(config: T, name: string): SQLiteConnection;
-    public make<T = PostgresConfig>(config: T, name: string): PostgresConnection;
-    public make<T = SqlServerConfig>(config: T, name: string): SqlServerConnection;
-    public make<T extends ConnectionConfig>(config: T, name: string): DriverConnectionI {
+    public make(config: DatabaseConfig, name: string): DriverConnectionI {
         config.prefix = config.prefix || '';
         config.database = config.database || '';
-        config.name = config.name || name;
 
-        if ('read' in config) {
-            return this.createReadWriteConnection(config as PreparedConnectionConfig);
+        if ('read' in config || 'write' in config) {
+            return this.createReadWriteConnection(config, name);
         }
 
-        return this.createSingleConnection(config as FlattedConnectionConfig);
+        return this.createSingleConnection(config, name);
     }
 
     /**
      * Create a single database connection instance.
      */
-    protected createSingleConnection(config: DriverFLattedConfig): DriverConnectionI {
+    protected createSingleConnection(config: DatabaseConfig, name: string): DriverConnectionI {
         const pdo = this.createPdoResolver(config);
         const schemaPdo = this.createPdoSchemaResolver(config);
 
-        return this.createConnection(config.driver, pdo, schemaPdo, config, config.database, config.prefix);
+        return this.createConnection(name, config.driver, pdo, schemaPdo, config, config.database!, config.prefix!);
     }
 
     /**xx
      * Create a read / write database connection instance.
      */
-    protected createReadWriteConnection(config: PreparedConnectionConfig): DriverConnectionI {
-        const connection = this.createSingleConnection(this.getWriteConfig(config));
+    protected createReadWriteConnection(config: DatabaseConfig, name: string): DriverConnectionI {
+        const connection = this.createSingleConnection(this.getWriteConfig(config), name);
 
         return connection.setReadPdo(this.createReadPdo(config));
     }
@@ -67,31 +49,28 @@ class ConnectionFactory {
     /**
      * Create a new PDO instance for reading.
      */
-    protected createReadPdo(config: PreparedConnectionConfig): Pdo {
+    protected createReadPdo(config: DatabaseConfig): Pdo {
         return this.createPdoResolver(this.getReadConfig(config));
     }
 
     /**
      * Get the read configuration for a read / write connection.
      */
-    protected getReadConfig(config: PreparedConnectionConfig): DriverFLattedConfig {
+    protected getReadConfig(config: DatabaseConfig): DatabaseConfig {
         return this.mergeReadWriteConfig(config, this.getReadWriteConfig(config, 'read'));
     }
 
     /**
      * Get the write configuration for a read / write connection.
      */
-    protected getWriteConfig(config: PreparedConnectionConfig): DriverFLattedConfig {
+    protected getWriteConfig(config: DatabaseConfig): DatabaseConfig {
         return this.mergeReadWriteConfig(config, this.getReadWriteConfig(config, 'write'));
     }
 
     /**
      * Get a read / write level configuration.
      */
-    protected getReadWriteConfig(
-        config: PreparedConnectionConfig,
-        type: ReadWriteType
-    ): DriverConnectionOptions | undefined {
+    protected getReadWriteConfig(config: DatabaseConfig, type: ReadWriteType): DatabaseConnectionOptions | undefined {
         if (type in config) {
             const options = config[type]!;
             if (Array.isArray(options)) {
@@ -106,11 +85,8 @@ class ConnectionFactory {
     /**
      * Merge a configuration for a read / write connection.
      */
-    protected mergeReadWriteConfig(
-        config: PreparedConnectionConfig,
-        toMerge?: DriverConnectionOptions
-    ): DriverFLattedConfig {
-        const merged = merge<PreparedConnectionConfig>(config, toMerge ?? {});
+    protected mergeReadWriteConfig(config: DatabaseConfig, toMerge?: DatabaseConnectionOptions): DatabaseConfig {
+        const merged = merge<DatabaseConfig>(config, toMerge ?? {});
         delete merged.read;
         delete merged.write;
 
@@ -120,7 +96,7 @@ class ConnectionFactory {
     /**
      * Create a new PDO instance for Schema.
      */
-    protected createPdoSchemaResolver(config: DriverFLattedConfig): Pdo {
+    protected createPdoSchemaResolver(config: DatabaseConfig): Pdo {
         return this.createConnector(config).connect(
             Object.assign({}, config, {
                 pool: { min: 0, max: 1 }
@@ -131,37 +107,27 @@ class ConnectionFactory {
     /**
      * Create a new PDO instance.
      */
-    protected createPdoResolver(config: DriverFLattedConfig): Pdo {
+    protected createPdoResolver(config: DatabaseConfig): Pdo {
         return this.createConnector(config).connect(config);
     }
 
     /**
      * Create a connector instance based on the configuration.
      */
-    protected createConnector(config: DriverFLattedConfig): ConnectorI {
+    protected createConnector(config: DatabaseConfig): Connector {
         const driver = config.driver;
 
-        if (!driver) {
-            throw new TypeError('A driver must be specified.');
-        }
-
-        const resolver = Connector.getResolver(driver);
-
-        if (resolver !== null) {
-            return resolver();
-        }
-
-        switch (config.driver) {
+        switch (driver) {
             case 'mysql':
-                return new MySqlConnector();
+                return new MysqlConnector();
             case 'pgsql':
                 return new PostgresConnector();
             case 'sqlite':
-                return new SQLiteConnector();
+                return new SqliteConnector();
             case 'sqlsrv':
-                return new SqlServerConnector();
+                return new SqlserverConnector();
             default:
-                throw new Error(`Unsupported driver [${config.driver}].`);
+                throw new Error(`Unsupported driver [${driver}].`);
         }
     }
 
@@ -169,28 +135,23 @@ class ConnectionFactory {
      * Create a new connection instance.
      */
     protected createConnection(
+        name: string,
         driver: string,
         connection: Pdo,
         schemaConnection: Pdo,
-        config: DriverFLattedConfig,
+        config: DatabaseConfig,
         database: string,
         prefix: string
     ): DriverConnectionI {
-        const resolver = Connection.getResolver(driver);
-
-        if (resolver !== null) {
-            return resolver(connection, schemaConnection, config, database, prefix);
-        }
-
         switch (driver) {
             case 'mysql':
-                return new MySqlConnection(connection, schemaConnection, config, database, prefix);
+                return new MysqlConnection(name, connection, schemaConnection, config, database, prefix);
             case 'pgsql':
-                return new PostgresConnection(connection, schemaConnection, config, database, prefix);
+                return new PostgresConnection(name, connection, schemaConnection, config, database, prefix);
             case 'sqlite':
-                return new SQLiteConnection(connection, schemaConnection, config, database, prefix);
+                return new SqliteConnection(name, connection, schemaConnection, config, database, prefix);
             case 'sqlsrv':
-                return new SqlServerConnection(connection, schemaConnection, config, database, prefix);
+                return new SqlserverConnection(name, connection, schemaConnection, config, database, prefix);
             default:
                 throw new Error(`Unsupported driver [${config.driver}].`);
         }

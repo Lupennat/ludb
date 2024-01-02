@@ -3,7 +3,6 @@
 import set from 'set-value';
 import BaseGrammar from '../../grammar';
 import { Binding, BindingExclude, BindingExcludeObject, Stringable } from '../../types/generics';
-import GrammarI from '../../types/query/grammar';
 import JoinClauseI from '../../types/query/join-clause';
 import QueryBuilderI, { RowValues } from '../../types/query/query-builder';
 import {
@@ -52,7 +51,7 @@ import ExpressionContract from '../expression-contract';
 import IndexHint from '../index-hint';
 import JoinClause from '../join-clause';
 
-class Grammar extends BaseGrammar implements GrammarI {
+class Grammar extends BaseGrammar {
     /**
      * The grammar specific operators.
      */

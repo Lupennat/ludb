@@ -21,14 +21,14 @@ describe('Grammar', () => {
         expect(spiedWrap).toHaveBeenNthCalledWith(2, 'text');
     });
 
-    it('Works Grammar Wrap Table', () => {
-        const grammar = new ExtendedGrammar();
-        const spiedWrap = jest.spyOn(grammar, 'wrap');
-        expect(grammar.wrapTable('table')).toBe('"test_table"');
-        expect(grammar.wrapTable(new Raw('table'))).toBe('table');
-        expect(spiedWrap).toHaveBeenCalledTimes(1);
-        expect(spiedWrap).toHaveBeenNthCalledWith(1, 'test_table', true);
-    });
+    // it('Works Grammar Wrap Table', () => {
+    //     const grammar = new ExtendedGrammar();
+    //     const spiedWrap = jest.spyOn(grammar, 'wrap');
+    //     expect(grammar.wrapTable('table')).toBe('"test_table"');
+    //     expect(grammar.wrapTable(new Raw('table'))).toBe('table');
+    //     expect(spiedWrap).toHaveBeenCalledTimes(1);
+    //     expect(spiedWrap).toHaveBeenNthCalledWith(1, 'test_table', true);
+    // });
 
     it('Works Grammar Wrap Expression', () => {
         const grammar = new ExtendedGrammar();
@@ -41,8 +41,6 @@ describe('Grammar', () => {
         expect(grammar.wrap('table AS   ')).toBe('"table" as ""');
         expect(grammar.wrap('table AS   *')).toBe('"table" as *');
         expect(grammar.wrap('tableAStable1')).toBe('"tableAStable1"');
-        expect(grammar.wrap('table AS   table1', true)).toBe('"table" as "test_table1"');
-        expect(grammar.wrap('tableAStable1', true)).toBe('"tableAStable1"');
     });
 
     it('Works Grammar Wrap Alias Value', () => {
@@ -54,7 +52,7 @@ describe('Grammar', () => {
     it('Works Grammar Wrap Json Selector Throw Error', () => {
         const grammar = new ExtendedGrammar();
         expect(() => {
-            grammar.wrap('options->language', true);
+            grammar.wrap('options->language');
         }).toThrow('This database engine does not support JSON operations.');
     });
 

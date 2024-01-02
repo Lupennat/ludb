@@ -1,14 +1,13 @@
 import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 
-import SQLiteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
-import { MockedSQLiteSchemaBuilder, getConnection } from '../fixtures/mocked';
+import SqliteGrammar from '../../../query/grammars/sqlite-grammar';
+import { MockedSqliteSchemaBuilder, getSqliteConnection } from '../fixtures/mocked';
 
-describe('SQLite Schema Builder Test', () => {
+describe('Sqlite Schema Builder Test', () => {
     it('Works Enable Foreign Key Constraints', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe('PRAGMA foreign_keys = ON;');
@@ -16,15 +15,14 @@ describe('SQLite Schema Builder Test', () => {
             return true;
         });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.enableForeignKeyConstraints()).toBeTruthy();
     });
 
     it('Works Disable Foreign Key Constraints', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe('PRAGMA foreign_keys = OFF;');
@@ -32,17 +30,16 @@ describe('SQLite Schema Builder Test', () => {
             return true;
         });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.disableForeignKeyConstraints()).toBeTruthy();
     });
 
     it('Works Create Database', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        const path = __dirname + '/db.sql';
+
+        const builder = new MockedSqliteSchemaBuilder(session);
+        const path = __dirname + '/database.sql';
         expect(await builder.createDatabase(path)).toBeTruthy();
         expect(existsSync(path)).toBeTruthy();
         unlinkSync(path);
@@ -54,11 +51,11 @@ describe('SQLite Schema Builder Test', () => {
     });
 
     it('Works Create View', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(grammar, 'getTablePrefix').mockReturnValue('prefix_');
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'getQueryGrammar').mockReturnValue(new SqliteGrammar());
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
@@ -75,7 +72,7 @@ describe('SQLite Schema Builder Test', () => {
                 return true;
             });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(
             await builder.createView('foo', view =>
                 view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
@@ -92,10 +89,10 @@ describe('SQLite Schema Builder Test', () => {
     });
 
     it('Works Drop Database If Exists', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        const path = __dirname + '/db-drop.sql';
+        const builder = new MockedSqliteSchemaBuilder(session);
+        const path = __dirname + '/database-drop.sql';
         expect(await builder.dropDatabaseIfExists(path)).toBeTruthy();
         writeFileSync(path, '');
         expect(existsSync(path)).toBeTruthy();
@@ -105,27 +102,40 @@ describe('SQLite Schema Builder Test', () => {
         expect(await builder.dropDatabaseIfExists(path)).toBeFalsy();
     });
 
-    it('Works Drop View If Exists', async () => {
-        const connection = getConnection();
+    it('Works Drop View', async () => {
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(grammar, 'getTablePrefix').mockReturnValue('prefix_');
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop view "prefix_view"');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new MockedSqliteSchemaBuilder(session);
+        expect(await builder.dropView('view')).toBeTruthy();
+    });
+
+    it('Works Drop View If Exists', async () => {
+        const connection = getSqliteConnection();
+        const session = connection.sessionSchema();
+
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe('drop view if exists "prefix_view"');
             expect(bindings).toBeUndefined();
             return true;
         });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.dropViewIfExists('view')).toBeTruthy();
     });
 
     it('Works Get Columns', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -134,8 +144,7 @@ describe('SQLite Schema Builder Test', () => {
             expect(bindings).toBeUndefined();
             return [{ name: 'column', type: 'int', nullable: 0, default: null, primary: 1 }];
         });
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.getColumns('table')).toEqual([
             {
                 auto_increment: false,
@@ -149,10 +158,9 @@ describe('SQLite Schema Builder Test', () => {
     });
 
     it('Works Get Indexes', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -189,8 +197,7 @@ describe('SQLite Schema Builder Test', () => {
                     }
                 ];
             });
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.getIndexes('table')).toEqual([
             {
                 columns: ['column1', 'column2'],
@@ -210,10 +217,9 @@ describe('SQLite Schema Builder Test', () => {
     });
 
     it('Works Get Foreign Keys', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -223,7 +229,7 @@ describe('SQLite Schema Builder Test', () => {
             return [
                 {
                     columns: 'column1,column2',
-                    foreign_schema: 'db',
+                    foreign_schema: 'database',
                     foreign_table: 'prefix_table2',
                     foreign_columns: 'column3,column4',
                     on_update: 'NO ACTION',
@@ -232,13 +238,12 @@ describe('SQLite Schema Builder Test', () => {
             ];
         });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.getForeignKeys('table')).toEqual([
             {
                 columns: ['column1', 'column2'],
                 foreign_columns: ['column3', 'column4'],
-                foreign_schema: 'db',
+                foreign_schema: 'database',
                 foreign_table: 'prefix_table2',
                 name: '',
                 on_delete: 'no action',
@@ -248,10 +253,9 @@ describe('SQLite Schema Builder Test', () => {
     });
 
     it('Works Drop Tables', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -275,10 +279,10 @@ describe('SQLite Schema Builder Test', () => {
                 return true;
             });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
+
         jest.spyOn(builder, 'createDatabase').mockImplementationOnce(async name => {
-            expect(name).toBe('db');
+            expect(name).toBe('database');
             return true;
         });
 
@@ -288,10 +292,9 @@ describe('SQLite Schema Builder Test', () => {
     });
 
     it('Works Drop Views', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -315,16 +318,15 @@ describe('SQLite Schema Builder Test', () => {
                 return true;
             });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
+
         await builder.dropViews();
     });
 
     it('Works Get Tables With Size', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'select')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -342,16 +344,14 @@ describe('SQLite Schema Builder Test', () => {
                 return [{ name: 'prefix_users', size: 100 }];
             });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.getTables()).toEqual([{ name: 'prefix_users', size: 100 }]);
     });
 
     it('Works Get Tables Without Size', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'select')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -369,16 +369,14 @@ describe('SQLite Schema Builder Test', () => {
                 return [{ name: 'prefix_users' }];
             });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.getTables()).toEqual([{ name: 'prefix_users' }]);
     });
 
     it('Works Get Tables Without Size Error', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'select')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -396,16 +394,14 @@ describe('SQLite Schema Builder Test', () => {
                 return [{ name: 'prefix_users' }];
             });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.getTables()).toEqual([{ name: 'prefix_users' }]);
     });
 
     it('Works Get Views', async () => {
-        const connection = getConnection();
+        const connection = getSqliteConnection();
         const session = connection.sessionSchema();
-        const grammar = new SQLiteSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'select').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe("select name, sql as definition from sqlite_master where type = 'view' order by name");
@@ -413,8 +409,7 @@ describe('SQLite Schema Builder Test', () => {
             return [{ name: 'view_users', definition: 'definition' }];
         });
 
-        const builder = new MockedSQLiteSchemaBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new MockedSqliteSchemaBuilder(session);
         expect(await builder.getViews()).toEqual([
             {
                 definition: 'definition',

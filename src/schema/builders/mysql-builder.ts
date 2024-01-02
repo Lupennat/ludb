@@ -1,4 +1,7 @@
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
+import MysqlConnection from '../../connections/mysql-connection';
+import { ConnectionSessionI } from '../../types/connection';
+import { Stringable } from '../../types/generics';
 import MysqlSchemaBuilderI from '../../types/schema/builder/mysql-schema-builder';
 import {
     MysqlColumnDictionary,
@@ -37,19 +40,19 @@ type MysqlForeignKeyDefinition = {
     on_delete: string;
 };
 
-class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
+class MysqlBuilder extends Builder<ConnectionSessionI<MysqlConnection>> implements MysqlSchemaBuilderI {
     /**
      * Create a database in the schema.
      */
     public async createDatabase(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileCreateDatabase(name, this.connection));
+        return await this.getConnection().statement(this.getGrammar().compileCreateDatabase(name, this.connection));
     }
 
     /**
      * Drop a database from the schema if the database exists.
      */
     public async dropDatabaseIfExists(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileDropDatabaseIfExists(name));
+        return await this.getConnection().statement(this.getGrammar().compileDropDatabaseIfExists(name));
     }
 
     /**
@@ -59,16 +62,23 @@ class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
         const tables = (await this.getTables()).map(table => table.name);
         if (tables.length > 0) {
             await this.disableForeignKeyConstraints();
-            await this.connection.statement(this.grammar.compileDropTables(tables));
+            await this.getConnection().statement(this.getGrammar().compileDropTables(tables));
             await this.enableForeignKeyConstraints();
         }
     }
 
     /**
+     * Drop a view from the schema.
+     */
+    public async dropView(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropView(name));
+    }
+
+    /**
      * Drop a view from the schema if it exists.
      */
-    public async dropViewIfExists(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileDropViewIfExists(name));
+    public async dropViewIfExists(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropViewIfExists(name));
     }
 
     /**
@@ -78,7 +88,7 @@ class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
         const views = (await this.getViews()).map(view => view.name);
 
         if (views.length > 0) {
-            await this.connection.statement(this.grammar.compileDropViews(views));
+            await this.getConnection().statement(this.getGrammar().compileDropViews(views));
         }
     }
 
@@ -86,14 +96,14 @@ class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
      * Get the tables that belong to the database.
      */
     public async getTables(): Promise<MysqlTableDictionary[]> {
-        return await this.getTablesFromDatabase<MysqlTableDictionary>(this.connection.getDatabaseName());
+        return await this.getTablesFromDatabase<MysqlTableDictionary>(this.getConnection().getDatabaseName());
     }
 
     /**
      * Get the views that belong to the database.
      */
     public async getViews(): Promise<MysqlViewDictionary[]> {
-        return await this.getViewsFromDatabase<MysqlViewDictionary>(this.connection.getDatabaseName());
+        return await this.getViewsFromDatabase<MysqlViewDictionary>(this.getConnection().getDatabaseName());
     }
 
     /**
@@ -102,7 +112,7 @@ class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
     public async getColumns(table: string): Promise<MysqlColumnDictionary[]> {
         const columns = await this.getColumnsFromDatabase<MysqlColumnDefinition>(
             table,
-            this.connection.getDatabaseName()
+            this.getConnection().getDatabaseName()
         );
 
         return columns.map<MysqlColumnDictionary>((column: MysqlColumnDefinition) => {
@@ -117,7 +127,7 @@ class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
     public async getIndexes(table: string): Promise<MysqlIndexDictionary[]> {
         const indexes = await this.getIndexesFromDatabase<MysqlIndexDefinition>(
             table,
-            this.connection.getDatabaseName()
+            this.getConnection().getDatabaseName()
         );
 
         return indexes.map<MysqlIndexDictionary>((index: MysqlIndexDefinition) => {
@@ -137,7 +147,7 @@ class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
     public async getForeignKeys(table: string): Promise<MysqlForeignKeyDictionary[]> {
         const foreignKeys = await this.getForeignKeysFromDatabase<MysqlForeignKeyDefinition>(
             table,
-            this.connection.getDatabaseName()
+            this.getConnection().getDatabaseName()
         );
 
         return foreignKeys.map<MysqlForeignKeyDictionary>((foreignKey: MysqlForeignKeyDefinition) => {
@@ -153,4 +163,4 @@ class MySqlBuilder extends Builder implements MysqlSchemaBuilderI {
     }
 }
 
-export default MySqlBuilder;
+export default MysqlBuilder;

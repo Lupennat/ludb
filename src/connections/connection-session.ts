@@ -20,20 +20,11 @@ import TransactionRolledBack from '../events/transaction-rolledback';
 import Builder from '../query/builder';
 import ExpressionContract from '../query/expression-contract';
 import BindToI from '../types/bind-to';
-import { FlattedConnectionConfig } from '../types/config';
-import DriverConnectionI, {
-    BeforeExecutingCallback,
-    ConnectionSessionI,
-    LoggedQuery,
-    PretendingCallback,
-    TransactionCallback,
-    WithoutPretendingCallback
-} from '../types/connection/connection';
+import { DatabaseConfig } from '../types/config';
+import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
 import BuilderI from '../types/query/builder';
-import GrammarI from '../types/query/grammar';
 import { QueryAbleCallback } from '../types/query/query-builder';
-import SchemaGrammarI from '../types/schema/grammar';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
 export type RunCallback<T> = (query: string, bindings: Binding[] | BindingObject) => Promise<T>;
@@ -41,7 +32,9 @@ export type AfterCommitEvent = {
     level: number;
     query: QueryExecuted;
 };
-class ConnectionSession implements ConnectionSessionI {
+class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConnectionI>
+    implements ConnectionSessionI<DriverConnection>
+{
     /**
      * Indicates if the connection is in a "dry run".
      */
@@ -85,7 +78,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Create a new connection session instance.
      */
-    constructor(protected driverConnection: DriverConnectionI, protected isSchemaConnection = false) {}
+    constructor(protected driverConnection: DriverConnection, protected isSchemaConnection = false) {}
 
     /**
      * Begin a fluent query against a database table.
@@ -98,7 +91,7 @@ class ConnectionSession implements ConnectionSessionI {
      * Get a new query builder instance.
      */
     public query(): BuilderI {
-        return new Builder(this, this.getQueryGrammar());
+        return new Builder(this);
     }
 
     /**
@@ -419,7 +412,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Execute the given callback in "dry run" mode.
      */
-    public async pretend(callback: PretendingCallback): Promise<LoggedQuery[]> {
+    public async pretend(callback: (session: this) => void | Promise<void>): Promise<LoggedQuery[]> {
         return await this.withFreshQueryLog<LoggedQuery[]>(async () => {
             this.isPretending = true;
 
@@ -437,7 +430,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Execute the given callback without "pretending".
      */
-    public async withoutPretending<T>(callback: WithoutPretendingCallback<T>): Promise<T> {
+    public async withoutPretending<T>(callback: () => T | Promise<T>): Promise<T> {
         if (!this.pretending()) {
             return callback();
         }
@@ -574,7 +567,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Execute a Closure within a transaction.
      */
-    public async transaction(callback: TransactionCallback, attempts = 1): Promise<void> {
+    public async transaction(callback: (session: this) => void | Promise<void>, attempts = 1): Promise<void> {
         for (let currentAttempt = 1; currentAttempt <= attempts; currentAttempt++) {
             await this.beginTransaction();
 
@@ -996,13 +989,6 @@ class ConnectionSession implements ConnectionSessionI {
     }
 
     /**
-     * Get the database connection full name.
-     */
-    public getNameWithReadWriteType(): string {
-        return this.driverConnection.getNameWithReadWriteType();
-    }
-
-    /**
      * Return all hook to be run just before a database query is executed.
      */
     public getBeforeExecuting(): BeforeExecutingCallback[] {
@@ -1012,17 +998,10 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Get an option from the configuration options.
      */
-    getConfig<T extends FlattedConnectionConfig>(): T;
+    getConfig<T extends DatabaseConfig>(): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
     getConfig<T>(option?: string, defaultValue?: T): T {
         return this.driverConnection.getConfig<T>(option, defaultValue);
-    }
-
-    /**
-     * Detect if session is for Schema Builder
-     */
-    public isSchema(): boolean {
-        return this.isSchemaConnection;
     }
 
     /**
@@ -1033,17 +1012,24 @@ class ConnectionSession implements ConnectionSessionI {
     }
 
     /**
+     * Detect if session is for Schema Builder
+     */
+    public isSchema(): boolean {
+        return this.isSchemaConnection;
+    }
+
+    /**
      * Get the schema grammar used by the connection.
      */
-    public getSchemaGrammar(): SchemaGrammarI {
-        return this.driverConnection.getSchemaGrammar();
+    public getSchemaGrammar(): ReturnType<DriverConnection['getSchemaGrammar']> {
+        return this.driverConnection.getSchemaGrammar() as ReturnType<DriverConnection['getSchemaGrammar']>;
     }
 
     /**
      * Get the query grammar used by the connection.
      */
-    public getQueryGrammar(): GrammarI {
-        return this.driverConnection.getQueryGrammar();
+    public getQueryGrammar(): ReturnType<DriverConnection['getQueryGrammar']> {
+        return this.driverConnection.getQueryGrammar() as ReturnType<DriverConnection['getQueryGrammar']>;
     }
 
     /**
@@ -1070,7 +1056,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Get the Driver Connection of current session
      */
-    public getDriverConnection(): DriverConnectionI {
+    public getDriverConnection(): DriverConnection {
         return this.driverConnection;
     }
 

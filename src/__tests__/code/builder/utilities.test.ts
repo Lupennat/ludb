@@ -1,7 +1,6 @@
 import Grammar from '../../../grammar';
 import Builder from '../../../query/builder';
 import Raw from '../../../query/expression';
-import MySqlGrammar from '../../../query/grammars/mysql-grammar';
 import BuilderI from '../../../types/query/builder';
 import { WhereBasic } from '../../../types/query/registry';
 import {
@@ -9,7 +8,7 @@ import {
     getBuilder,
     getConnection,
     getJoin,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getQueryBuilder,
     pdo
 } from '../fixtures/mocked';
@@ -22,10 +21,7 @@ describe('Builder Utilities', () => {
     it('Works Builder Get Grammar From Connection Session', () => {
         const session = getConnection().session();
         const spiedGrammar = jest.spyOn(session, 'getQueryGrammar');
-        let builder = new Builder(session);
-        expect(builder.getGrammar()).toBeInstanceOf(Grammar);
-        expect(spiedGrammar).toHaveBeenCalledTimes(1);
-        builder = new Builder(session, new MySqlGrammar());
+        const builder = new Builder(session);
         expect(builder.getGrammar()).toBeInstanceOf(Grammar);
         expect(spiedGrammar).toHaveBeenCalledTimes(1);
     });
@@ -258,7 +254,7 @@ describe('Builder Utilities', () => {
     });
 
     it('Works Preserved Are Applied By Upsert', async () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         let spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(() => false);
         builder.beforeQuery(function (builder) {
@@ -271,7 +267,7 @@ describe('Builder Utilities', () => {
             ['foo']
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(() => true);
         builder.beforeQuery(function (builder) {

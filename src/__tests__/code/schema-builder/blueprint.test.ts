@@ -4,10 +4,10 @@ import Grammar from '../../../schema/grammars/grammar';
 import { Relatable } from '../../../types/schema/blueprint';
 import {
     getConnection,
-    getMySqlBlueprint,
+    getMysqlBlueprint,
     getPostgresBlueprint,
-    getSQLiteBlueprint,
-    getSqlServerBlueprint
+    getSqliteBlueprint,
+    getSqlserverBlueprint
 } from '../fixtures/mocked';
 
 describe('Blueprint', () => {
@@ -240,7 +240,7 @@ describe('Blueprint', () => {
 
     it('Works Default Current Date Time', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('users', table => {
+        let blueprint = getMysqlBlueprint('users', table => {
             table.dateTime('created').useCurrent();
         });
         expect(['alter table `users` add `created` datetime(0) not null default CURRENT_TIMESTAMP']).toEqual(
@@ -252,23 +252,23 @@ describe('Blueprint', () => {
         expect([
             'alter table "users" add column "created" timestamp(0) without time zone not null default CURRENT_TIMESTAMP'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('users', table => {
+        blueprint = getSqliteBlueprint('users', table => {
             table.dateTime('created').useCurrent();
         });
         expect(['alter table "users" add column "created" datetime not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
-        blueprint = getSqlServerBlueprint('users', table => {
+        blueprint = getSqlserverBlueprint('users', table => {
             table.dateTime('created').useCurrent();
         });
-        expect(['alter table "users" add "created" datetime2(0) not null default CURRENT_TIMESTAMP']).toEqual(
+        expect(['alter table [users] add [created] datetime2(0) not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
     });
 
     it('Works Default Current Timestamp', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('users', table => {
+        let blueprint = getMysqlBlueprint('users', table => {
             table.timestamp('created').useCurrent();
         });
         expect(['alter table `users` add `created` timestamp(0) not null default CURRENT_TIMESTAMP']).toEqual(
@@ -280,23 +280,23 @@ describe('Blueprint', () => {
         expect([
             'alter table "users" add column "created" timestamp(0) without time zone not null default CURRENT_TIMESTAMP'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('users', table => {
+        blueprint = getSqliteBlueprint('users', table => {
             table.timestamp('created').useCurrent();
         });
         expect(['alter table "users" add column "created" datetime not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
-        blueprint = getSqlServerBlueprint('users', table => {
+        blueprint = getSqlserverBlueprint('users', table => {
             table.timestamp('created').useCurrent();
         });
-        expect(['alter table "users" add "created" datetime2(0) not null default CURRENT_TIMESTAMP']).toEqual(
+        expect(['alter table [users] add [created] datetime2(0) not null default CURRENT_TIMESTAMP']).toEqual(
             blueprint.toSql(connection)
         );
     });
 
     it('Works Unsigned Decimal Table', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('users', table => {
+        let blueprint = getMysqlBlueprint('users', table => {
             table.unsignedDecimal('money', 10, 2);
         });
         expect(['alter table `users` add `money` decimal(10, 2) unsigned not null']).toEqual(
@@ -306,19 +306,19 @@ describe('Blueprint', () => {
             table.unsignedDecimal('money', 10, 2);
         });
         expect(['alter table "users" add column "money" decimal(10, 2) not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('users', table => {
+        blueprint = getSqliteBlueprint('users', table => {
             table.unsignedDecimal('money', 10, 2);
         });
         expect(['alter table "users" add column "money" numeric not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('users', table => {
+        blueprint = getSqlserverBlueprint('users', table => {
             table.unsignedDecimal('money', 10, 2);
         });
-        expect(['alter table "users" add "money" decimal(10, 2) not null']).toEqual(blueprint.toSql(connection));
+        expect(['alter table [users] add [money] decimal(10, 2) not null']).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Remove Column', () => {
         const connection = getConnection().sessionSchema();
-        const blueprint = getMySqlBlueprint('users', table => {
+        const blueprint = getMysqlBlueprint('users', table => {
             table.string('foo');
             table.string('remove_this');
             table.removeColumn('remove_this');
@@ -329,7 +329,7 @@ describe('Blueprint', () => {
 
     it('Works Rename Column', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('users', table => {
+        let blueprint = getMysqlBlueprint('users', table => {
             table.renameColumn('foo', 'bar');
         });
         expect(['alter table `users` rename column `foo` to `bar`']).toEqual(blueprint.toSql(connection));
@@ -337,19 +337,19 @@ describe('Blueprint', () => {
             table.renameColumn('foo', 'bar');
         });
         expect(['alter table "users" rename column "foo" to "bar"']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('users', table => {
+        blueprint = getSqliteBlueprint('users', table => {
             table.renameColumn('foo', 'bar');
         });
         expect(['alter table "users" rename column "foo" to "bar"']).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('users', table => {
+        blueprint = getSqlserverBlueprint('users', table => {
             table.renameColumn('foo', 'bar');
         });
-        expect(['sp_rename \'"users"."foo"\', "bar", \'COLUMN\'']).toEqual(blueprint.toSql(connection));
+        expect(["sp_rename '[users].[foo]', [bar], 'COLUMN'"]).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Drop Column', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('users', table => {
+        let blueprint = getMysqlBlueprint('users', table => {
             table.dropColumn('foo');
         });
         expect(['alter table `users` drop `foo`']).toEqual(blueprint.toSql(connection));
@@ -357,23 +357,23 @@ describe('Blueprint', () => {
             table.dropColumn('foo');
         });
         expect(['alter table "users" drop column "foo"']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('users', table => {
+        blueprint = getSqliteBlueprint('users', table => {
             table.dropColumn('foo');
         });
         expect(['alter table "users" drop column "foo"']).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('users', table => {
+        blueprint = getSqlserverBlueprint('users', table => {
             table.dropColumn('foo');
         });
         const sqls = blueprint.toSql(connection);
         expect(sqls.length).toBe(1);
         expect(
-            `DECLARE @sql NVARCHAR(MAX) = '';SELECT @sql += 'ALTER TABLE [dbo].[users] DROP CONSTRAINT ' + OBJECT_NAME([default_object_id]) + ';' FROM sys.columns WHERE [object_id] = OBJECT_ID('[dbo].[users]') AND [name] in ('foo') AND [default_object_id] <> 0;EXEC(@sql);alter table "users" drop column "foo"`
+            "DECLARE @sql NVARCHAR(MAX) = '';SELECT @sql += 'ALTER TABLE [dbo].[users] DROP CONSTRAINT ' + OBJECT_NAME([default_object_id]) + ';' FROM sys.columns WHERE [object_id] = OBJECT_ID('[dbo].[users]') AND [name] in ('foo') AND [default_object_id] <> 0;EXEC(@sql);alter table [users] drop column [foo]"
         ).toBe(sqls[0]);
     });
 
     it('Works Default Using Id Morph', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('comments', table => {
+        let blueprint = getMysqlBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
@@ -387,7 +387,7 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_type" varchar(255) not null, add column "commentable_id" bigint not null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('comments', table => {
+        blueprint = getSqliteBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
@@ -395,19 +395,19 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_id" integer not null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('comments', table => {
+        blueprint = getSqlserverBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
-            'alter table "comments" add "commentable_type" nvarchar(255) not null, "commentable_id" bigint not null',
-            'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
+            'alter table [comments] add [commentable_type] nvarchar(255) not null, [commentable_id] bigint not null',
+            'create index [comments_commentable_type_commentable_id_index] on [comments] ([commentable_type], [commentable_id])'
         ]).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Default Using Nullable Id Morph', () => {
         Builder.morphUsingInts();
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('comments', table => {
+        let blueprint = getMysqlBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
@@ -421,7 +421,7 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_type" varchar(255) null, add column "commentable_id" bigint null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('comments', table => {
+        blueprint = getSqliteBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
@@ -429,19 +429,19 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_id" integer',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('comments', table => {
+        blueprint = getSqlserverBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
-            'alter table "comments" add "commentable_type" nvarchar(255) null, "commentable_id" bigint null',
-            'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
+            'alter table [comments] add [commentable_type] nvarchar(255) null, [commentable_id] bigint null',
+            'create index [comments_commentable_type_commentable_id_index] on [comments] ([commentable_type], [commentable_id])'
         ]).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Default Using Uuid Morph', () => {
         const connection = getConnection().sessionSchema();
         Builder.morphUsingUuids();
-        let blueprint = getMySqlBlueprint('comments', table => {
+        let blueprint = getMysqlBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
@@ -455,7 +455,7 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_type" varchar(255) not null, add column "commentable_id" uuid not null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('comments', table => {
+        blueprint = getSqliteBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
@@ -463,19 +463,19 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_id" varchar not null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('comments', table => {
+        blueprint = getSqlserverBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
-            'alter table "comments" add "commentable_type" nvarchar(255) not null, "commentable_id" uniqueidentifier not null',
-            'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
+            'alter table [comments] add [commentable_type] nvarchar(255) not null, [commentable_id] uniqueidentifier not null',
+            'create index [comments_commentable_type_commentable_id_index] on [comments] ([commentable_type], [commentable_id])'
         ]).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Default Using Nullable Uuid Morph', () => {
         const connection = getConnection().sessionSchema();
         Builder.morphUsingUuids();
-        let blueprint = getMySqlBlueprint('comments', table => {
+        let blueprint = getMysqlBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
@@ -489,7 +489,7 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_type" varchar(255) null, add column "commentable_id" uuid null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('comments', table => {
+        blueprint = getSqliteBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
@@ -497,19 +497,19 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_id" varchar',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('comments', table => {
+        blueprint = getSqlserverBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
-            'alter table "comments" add "commentable_type" nvarchar(255) null, "commentable_id" uniqueidentifier null',
-            'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
+            'alter table [comments] add [commentable_type] nvarchar(255) null, [commentable_id] uniqueidentifier null',
+            'create index [comments_commentable_type_commentable_id_index] on [comments] ([commentable_type], [commentable_id])'
         ]).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Default Using Ulid Morph', () => {
         const connection = getConnection().sessionSchema();
         Builder.morphUsingUlids();
-        let blueprint = getMySqlBlueprint('comments', table => {
+        let blueprint = getMysqlBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
@@ -523,7 +523,7 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_type" varchar(255) not null, add column "commentable_id" char(26) not null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('comments', table => {
+        blueprint = getSqliteBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
@@ -531,19 +531,19 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_id" varchar not null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('comments', table => {
+        blueprint = getSqlserverBlueprint('comments', table => {
             table.morphs('commentable');
         });
         expect([
-            'alter table "comments" add "commentable_type" nvarchar(255) not null, "commentable_id" nchar(26) not null',
-            'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
+            'alter table [comments] add [commentable_type] nvarchar(255) not null, [commentable_id] nchar(26) not null',
+            'create index [comments_commentable_type_commentable_id_index] on [comments] ([commentable_type], [commentable_id])'
         ]).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Default Using Nullable Ulid Morph', () => {
         const connection = getConnection().sessionSchema();
         Builder.morphUsingUlids();
-        let blueprint = getMySqlBlueprint('comments', table => {
+        let blueprint = getMysqlBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
@@ -557,7 +557,7 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_type" varchar(255) null, add column "commentable_id" char(26) null',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('comments', table => {
+        blueprint = getSqliteBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
@@ -565,12 +565,12 @@ describe('Blueprint', () => {
             'alter table "comments" add column "commentable_id" varchar',
             'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('comments', table => {
+        blueprint = getSqlserverBlueprint('comments', table => {
             table.nullableMorphs('commentable');
         });
         expect([
-            'alter table "comments" add "commentable_type" nvarchar(255) null, "commentable_id" nchar(26) null',
-            'create index "comments_commentable_type_commentable_id_index" on "comments" ("commentable_type", "commentable_id")'
+            'alter table [comments] add [commentable_type] nvarchar(255) null, [commentable_id] nchar(26) null',
+            'create index [comments_commentable_type_commentable_id_index] on [comments] ([commentable_type], [commentable_id])'
         ]).toEqual(blueprint.toSql(connection));
     });
 
@@ -587,7 +587,7 @@ describe('Blueprint', () => {
             }
         }
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.foreignIdFor(User);
         });
         expect(['alter table `posts` add `user_id` bigint unsigned not null']).toEqual(blueprint.toSql(connection));
@@ -595,14 +595,14 @@ describe('Blueprint', () => {
             table.foreignIdFor(User);
         });
         expect(['alter table "posts" add column "user_id" bigint not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.foreignIdFor(User);
         });
         expect(['alter table "posts" add column "user_id" integer not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.foreignIdFor(new User());
         });
-        expect(['alter table "posts" add "user_id" bigint not null']).toEqual(blueprint.toSql(connection));
+        expect(['alter table [posts] add [user_id] bigint not null']).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Generate Relationship Column With Uuid Model', () => {
@@ -618,7 +618,7 @@ describe('Blueprint', () => {
             }
         }
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.foreignIdFor(User);
         });
         expect(['alter table `posts` add `user_uuid` char(36) not null']).toEqual(blueprint.toSql(connection));
@@ -626,14 +626,14 @@ describe('Blueprint', () => {
             table.foreignIdFor(User);
         });
         expect(['alter table "posts" add column "user_uuid" uuid not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.foreignIdFor(User);
         });
         expect(['alter table "posts" add column "user_uuid" varchar not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.foreignIdFor(new User());
         });
-        expect(['alter table "posts" add "user_uuid" uniqueidentifier not null']).toEqual(blueprint.toSql(connection));
+        expect(['alter table [posts] add [user_uuid] uniqueidentifier not null']).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Drop Relationship Column With Incremental Model', () => {
@@ -649,7 +649,7 @@ describe('Blueprint', () => {
             }
         }
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.dropForeignIdFor(User);
         });
         expect(['alter table `posts` drop foreign key `posts_user_id_foreign`']).toEqual(blueprint.toSql(connection));
@@ -657,28 +657,28 @@ describe('Blueprint', () => {
             table.dropForeignIdFor(User);
         });
         expect(['alter table "posts" drop constraint "posts_user_id_foreign"']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.dropForeignIdFor(User);
         });
         expect(() => {
             blueprint.toSql(connection);
         }).toThrow('This database driver does not support foreign index removal.');
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.dropForeignIdFor(new User());
         });
-        expect(['alter table "posts" drop constraint "posts_user_id_foreign"']).toEqual(blueprint.toSql(connection));
+        expect(['alter table [posts] drop constraint [posts_user_id_foreign]']).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Drop Foreign not valid on sqlite', () => {
         const connection = getConnection().sessionSchema();
         jest.spyOn(connection, 'getDriverName').mockReturnValueOnce('sqlite');
-        const blueprint = getSQLiteBlueprint('users', table => {
+        const blueprint = getSqliteBlueprint('users', table => {
             table.dropForeign('test');
         });
 
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrow("SQLite doesn't support dropping foreign keys (you would need to re-create the table).");
+        }).toThrow("Sqlite doesn't support dropping foreign keys (you would need to re-create the table).");
     });
 
     it('Works Drop Relationship Column With Uuid Model', () => {
@@ -694,7 +694,7 @@ describe('Blueprint', () => {
             }
         }
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.dropForeignIdFor(User);
         });
         expect(['alter table `posts` drop foreign key `posts_user_uuid_foreign`']).toEqual(blueprint.toSql(connection));
@@ -702,16 +702,16 @@ describe('Blueprint', () => {
             table.dropForeignIdFor(User);
         });
         expect(['alter table "posts" drop constraint "posts_user_uuid_foreign"']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.dropForeignIdFor(User);
         });
         expect(() => {
             blueprint.toSql(connection);
         }).toThrow('This database driver does not support foreign index removal.');
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.dropForeignIdFor(new User());
         });
-        expect(['alter table "posts" drop constraint "posts_user_uuid_foreign"']).toEqual(blueprint.toSql(connection));
+        expect(['alter table [posts] drop constraint [posts_user_uuid_foreign]']).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Drop Constrained Relationship Column With Incremental Model', () => {
@@ -727,7 +727,7 @@ describe('Blueprint', () => {
             }
         }
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(User);
         });
         expect([
@@ -741,18 +741,18 @@ describe('Blueprint', () => {
             'alter table "posts" drop constraint "posts_user_id_foreign"',
             'alter table "posts" drop column "user_id"'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(User);
         });
         expect(() => {
             blueprint.toSql(connection);
         }).toThrow('This database driver does not support foreign index removal.');
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(new User());
         });
         expect([
-            'alter table "posts" drop constraint "posts_user_id_foreign"',
-            `DECLARE @sql NVARCHAR(MAX) = '';SELECT @sql += 'ALTER TABLE [dbo].[posts] DROP CONSTRAINT ' + OBJECT_NAME([default_object_id]) + ';' FROM sys.columns WHERE [object_id] = OBJECT_ID('[dbo].[posts]') AND [name] in ('user_id') AND [default_object_id] <> 0;EXEC(@sql);alter table "posts" drop column "user_id"`
+            'alter table [posts] drop constraint [posts_user_id_foreign]',
+            "DECLARE @sql NVARCHAR(MAX) = '';SELECT @sql += 'ALTER TABLE [dbo].[posts] DROP CONSTRAINT ' + OBJECT_NAME([default_object_id]) + ';' FROM sys.columns WHERE [object_id] = OBJECT_ID('[dbo].[posts]') AND [name] in ('user_id') AND [default_object_id] <> 0;EXEC(@sql);alter table [posts] drop column [user_id]"
         ]).toEqual(blueprint.toSql(connection));
     });
 
@@ -769,7 +769,7 @@ describe('Blueprint', () => {
             }
         }
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(User);
         });
         expect([
@@ -783,24 +783,24 @@ describe('Blueprint', () => {
             'alter table "posts" drop constraint "posts_user_uuid_foreign"',
             'alter table "posts" drop column "user_uuid"'
         ]).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(User);
         });
         expect(() => {
             blueprint.toSql(connection);
         }).toThrow('This database driver does not support foreign index removal.');
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(new User());
         });
         expect([
-            'alter table "posts" drop constraint "posts_user_uuid_foreign"',
-            `DECLARE @sql NVARCHAR(MAX) = '';SELECT @sql += 'ALTER TABLE [dbo].[posts] DROP CONSTRAINT ' + OBJECT_NAME([default_object_id]) + ';' FROM sys.columns WHERE [object_id] = OBJECT_ID('[dbo].[posts]') AND [name] in ('user_uuid') AND [default_object_id] <> 0;EXEC(@sql);alter table "posts" drop column "user_uuid"`
+            'alter table [posts] drop constraint [posts_user_uuid_foreign]',
+            "DECLARE @sql NVARCHAR(MAX) = '';SELECT @sql += 'ALTER TABLE [dbo].[posts] DROP CONSTRAINT ' + OBJECT_NAME([default_object_id]) + ';' FROM sys.columns WHERE [object_id] = OBJECT_ID('[dbo].[posts]') AND [name] in ('user_uuid') AND [default_object_id] <> 0;EXEC(@sql);alter table [posts] drop column [user_uuid]"
         ]).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Tiny Text Column', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.tinyText('note');
         });
         expect(['alter table `posts` add `note` tinytext not null']).toEqual(blueprint.toSql(connection));
@@ -808,19 +808,19 @@ describe('Blueprint', () => {
             table.tinyText('note');
         });
         expect(['alter table "posts" add column "note" varchar(255) not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.tinyText('note');
         });
         expect(['alter table "posts" add column "note" text not null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.tinyText('note');
         });
-        expect(['alter table "posts" add "note" nvarchar(255) not null']).toEqual(blueprint.toSql(connection));
+        expect(['alter table [posts] add [note] nvarchar(255) not null']).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Tiny Text Nullable Column', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.tinyText('note').nullable();
         });
         expect(['alter table `posts` add `note` tinytext null']).toEqual(blueprint.toSql(connection));
@@ -828,19 +828,19 @@ describe('Blueprint', () => {
             table.tinyText('note').nullable();
         });
         expect(['alter table "posts" add column "note" varchar(255) null']).toEqual(blueprint.toSql(connection));
-        blueprint = getSQLiteBlueprint('posts', table => {
+        blueprint = getSqliteBlueprint('posts', table => {
             table.tinyText('note').nullable();
         });
         expect(['alter table "posts" add column "note" text']).toEqual(blueprint.toSql(connection));
-        blueprint = getSqlServerBlueprint('posts', table => {
+        blueprint = getSqlserverBlueprint('posts', table => {
             table.tinyText('note').nullable();
         });
-        expect(['alter table "posts" add "note" nvarchar(255) null']).toEqual(blueprint.toSql(connection));
+        expect(['alter table [posts] add [note] nvarchar(255) null']).toEqual(blueprint.toSql(connection));
     });
 
     it('Works Table Comment', () => {
         const connection = getConnection().sessionSchema();
-        let blueprint = getMySqlBlueprint('posts', table => {
+        let blueprint = getMysqlBlueprint('posts', table => {
             table.comment('Look at my comment, it is amazing');
         });
         expect(["alter table `posts` comment = 'Look at my comment, it is amazing'"]).toEqual(

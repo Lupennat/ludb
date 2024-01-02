@@ -1,4 +1,8 @@
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
+import PostgresConnection from '../../connections/postgres-connection';
+import { ConnectionSessionI } from '../../types/connection';
+import { Stringable } from '../../types/generics';
+import { ArrayType, DomainType, FunctionType, RangeType } from '../../types/schema/builder/postgres-schema-builder';
 import {
     PostgresColumnDictionary,
     PostgresForeignKeyDictionary,
@@ -46,33 +50,54 @@ type PostgresForeignKeyDefinition = {
     on_delete: string;
 };
 
-class PostgresBuilder extends Builder {
+class PostgresBuilder extends Builder<ConnectionSessionI<PostgresConnection>> {
     /**
      * Create a database in the schema.
      */
     public async createDatabase(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileCreateDatabase(name, this.connection));
+        return await this.getConnection().statement(this.getGrammar().compileCreateDatabase(name, this.connection));
+    }
+
+    /**
+     * create user-defined type.
+     */
+    public async createType(name: Stringable, type: 'enum', definition: string[]): Promise<boolean>;
+    public async createType(name: Stringable, type: 'range', definition: RangeType): Promise<boolean>;
+    public async createType(name: Stringable, type: 'array', definition: ArrayType[]): Promise<boolean>;
+    public async createType(name: Stringable, type: 'fn', definition: FunctionType): Promise<boolean>;
+    public async createType(name: Stringable, type: 'domain', definition: DomainType): Promise<boolean>;
+    public async createType(
+        name: Stringable,
+        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
+        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
+    ): Promise<boolean>;
+    public async createType(
+        name: Stringable,
+        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
+        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
+    ): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileCreateType(name, type, definition));
     }
 
     /**
      * Get the tables that belong to the database.
      */
     public async getTables(): Promise<PostgresTableDictionary[]> {
-        return await this.getTablesFromDatabase<PostgresTableDictionary>(this.connection.getDatabaseName());
+        return await this.getTablesFromDatabase<PostgresTableDictionary>(this.getConnection().getDatabaseName());
     }
 
     /**
      * Get the views that belong to the database.
      */
     public async getViews(): Promise<PostgresViewDictionary[]> {
-        return await this.getViewsFromDatabase<PostgresViewDictionary>(this.connection.getDatabaseName());
+        return await this.getViewsFromDatabase<PostgresViewDictionary>(this.getConnection().getDatabaseName());
     }
 
     /**
      * Get the user-defined types that belong to the database.
      */
     public async getTypes(): Promise<PostgresTypeDictionary[]> {
-        const types = await this.getTypesFromDatabase<PostgresTypeDefinition>(this.connection.getDatabaseName());
+        const types = await this.getTypesFromDatabase<PostgresTypeDefinition>(this.getConnection().getDatabaseName());
 
         return types.map<PostgresTypeDictionary>((typeObj: PostgresTypeDefinition) => {
             const { implicit, type, category, ...keys } = typeObj;
@@ -117,7 +142,7 @@ class PostgresBuilder extends Builder {
     public async hasTable(table: string): Promise<boolean> {
         const [schema, realTable] = this.parseSchemaAndTable(table);
 
-        table = `${this.connection.getTablePrefix()}${realTable}`;
+        table = `${this.getConnection().getTablePrefix()}${realTable}`;
         const tables = await this.getTables();
 
         for (const value of tables) {
@@ -136,7 +161,7 @@ class PostgresBuilder extends Builder {
      */
     public async hasView(view: string): Promise<boolean> {
         const [schema, realView] = this.parseSchemaAndTable(view);
-        view = `${this.connection.getTablePrefix()}${realView}`;
+        view = `${this.getConnection().getTablePrefix()}${realView}`;
         const views = await this.getViews();
 
         for (const value of views) {
@@ -155,14 +180,49 @@ class PostgresBuilder extends Builder {
      * Drop a database from the schema if the database exists.
      */
     public async dropDatabaseIfExists(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileDropDatabaseIfExists(name));
+        return await this.getConnection().statement(this.getGrammar().compileDropDatabaseIfExists(name));
+    }
+
+    /**
+     * Drop a view from the schema.
+     */
+    public async dropView(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropView(name));
     }
 
     /**
      * Drop a view from the schema if it exists.
      */
-    public async dropViewIfExists(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileDropViewIfExists(name));
+    public async dropViewIfExists(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropViewIfExists(name));
+    }
+
+    /**
+     * Drop a type from the schema if it exists.
+     */
+    public async dropType(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropType(name));
+    }
+
+    /**
+     * Drop a type from the schema if it exists.
+     */
+    public async dropTypeIfExists(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropTypeIfExists(name));
+    }
+
+    /**
+     * Drop a domain from the schema if it exists.
+     */
+    public async dropDomain(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropDomain(name));
+    }
+
+    /**
+     * Drop a domain from the schema if it exists.
+     */
+    public async dropDomainIfExists(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropDomainIfExists(name));
     }
 
     /**
@@ -171,22 +231,24 @@ class PostgresBuilder extends Builder {
     public async dropTables(): Promise<void> {
         const tables: string[] = [];
         const dbTables = await this.getTables();
-        const excludedTables = this.grammar.escapeNames(this.connection.getConfig('dont_drop', ['spatial_ref_sys']));
-        const schemas = this.grammar.escapeNames(this.getSchemas());
+        const excludedTables = this.getGrammar().escapeNames(
+            this.getConnection().getConfig('dont_drop', ['spatial_ref_sys'])
+        );
+        const schemas = this.getGrammar().escapeNames(this.getSchemas());
         for (const dbTable of dbTables) {
             const qualifiedname = `${dbTable.schema}.${dbTable.name}`;
-            const tablesToMatch = this.grammar.escapeNames([dbTable.name, qualifiedname]);
+            const tablesToMatch = this.getGrammar().escapeNames([dbTable.name, qualifiedname]);
 
             if (
                 tablesToMatch.filter(value => excludedTables.includes(value)).length === 0 &&
-                schemas.includes(this.grammar.escapeNames([dbTable.schema])[0])
+                schemas.includes(this.getGrammar().escapeNames([dbTable.schema])[0])
             ) {
                 tables.push(qualifiedname);
             }
         }
 
         if (tables.length > 0) {
-            this.connection.statement(this.grammar.compileDropTables(tables));
+            this.getConnection().statement(this.getGrammar().compileDropTables(tables));
         }
     }
 
@@ -196,25 +258,25 @@ class PostgresBuilder extends Builder {
     public async dropViews(): Promise<void> {
         const views: string[] = [];
         const dbViews = await this.getViews();
-        const excludedViews = this.grammar.escapeNames(
-            this.connection.getConfig('dont_drop', ['geography_columns', 'geometry_columns'])
+        const excludedViews = this.getGrammar().escapeNames(
+            this.getConnection().getConfig('dont_drop', ['geography_columns', 'geometry_columns'])
         );
-        const schemas = this.grammar.escapeNames(this.getSchemas());
+        const schemas = this.getGrammar().escapeNames(this.getSchemas());
 
         for (const dbView of dbViews) {
             const qualifiedname = `${dbView.schema}.${dbView.name}`;
-            const viewsToMatch = this.grammar.escapeNames([dbView.name, qualifiedname]);
+            const viewsToMatch = this.getGrammar().escapeNames([dbView.name, qualifiedname]);
 
             if (
                 viewsToMatch.filter(value => excludedViews.includes(value)).length === 0 &&
-                schemas.includes(this.grammar.escapeNames([dbView.schema])[0])
+                schemas.includes(this.getGrammar().escapeNames([dbView.schema])[0])
             ) {
                 views.push(qualifiedname);
             }
         }
 
         if (views.length > 0) {
-            this.connection.statement(this.grammar.compileDropViews(views));
+            this.getConnection().statement(this.getGrammar().compileDropViews(views));
         }
     }
 
@@ -226,10 +288,10 @@ class PostgresBuilder extends Builder {
         const domains: string[] = [];
 
         const dbTypes = await this.getTypes();
-        const schemas = this.grammar.escapeNames(this.getSchemas());
+        const schemas = this.getGrammar().escapeNames(this.getSchemas());
 
         for (const dbType of dbTypes) {
-            if (!dbType.implicit && schemas.includes(this.grammar.escapeNames([dbType.schema])[0])) {
+            if (!dbType.implicit && schemas.includes(this.getGrammar().escapeNames([dbType.schema])[0])) {
                 if (dbType.type === 'domain') {
                     domains.push(`${dbType.schema}.${dbType.name}`);
                 } else {
@@ -239,11 +301,11 @@ class PostgresBuilder extends Builder {
         }
 
         if (types.length > 0) {
-            await this.connection.statement(this.grammar.compileDropTypes(types));
+            await this.getConnection().statement(this.getGrammar().compileDropTypes(types));
         }
 
         if (domains.length > 0) {
-            await this.connection.statement(this.grammar.compileDropDomains(domains));
+            await this.getConnection().statement(this.getGrammar().compileDropDomains(domains));
         }
     }
 
@@ -252,8 +314,8 @@ class PostgresBuilder extends Builder {
      */
     protected getSchemas(): string[] {
         return this.parseSearchPath(
-            this.connection.getConfig<string | string[]>('search_path') ||
-                this.connection.getConfig<string>('schema') ||
+            this.getConnection().getConfig<string | string[]>('search_path') ||
+                this.getConnection().getConfig<string>('schema') ||
                 'public'
         );
     }
@@ -362,7 +424,7 @@ class PostgresBuilder extends Builder {
         searchPath = parseSearchPath(searchPath);
 
         return searchPath.map(schema => {
-            return schema === '$user' ? this.connection.getConfig('username', '') : schema;
+            return schema === '$user' ? this.getConnection().getConfig('username', '') : schema;
         });
     }
 }

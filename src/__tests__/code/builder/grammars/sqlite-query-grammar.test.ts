@@ -1,8 +1,8 @@
-import SQLiteGrammar from '../../../../query/grammars/sqlite-grammar';
+import SqliteGrammar from '../../../../query/grammars/sqlite-grammar';
 
 describe('SQlite Query Grammar', () => {
     it('Works To Raw Sql', () => {
-        const grammar = new SQLiteGrammar();
+        const grammar = new SqliteGrammar();
         const query = grammar.substituteBindingsIntoRawSql(
             `select * from "users" where 'Hello?''World??' IS NOT NULL AND "email" = ? and "buffer" = ? and "not" = ?`,
             ['foo', Buffer.from('text')]

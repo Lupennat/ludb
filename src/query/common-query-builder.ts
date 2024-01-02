@@ -1,7 +1,6 @@
 import { snakeCase } from 'snake-case';
-import { ConnectionSessionI } from '../types/connection/connection';
+import DriverConnectionI, { ConnectionSessionI } from '../types/connection';
 import { Binding, BindingExclude, Stringable } from '../types/generics';
-import GrammarI from '../types/query/grammar';
 import JoinClauseI from '../types/query/join-clause';
 import QueryBuilderI, {
     Arrayable,
@@ -29,7 +28,10 @@ import createRegistry, {
     cloneRegistryWithoutProperties
 } from './registry';
 
-abstract class CommonQueryBuilder implements QueryBuilderI {
+abstract class CommonQueryBuilder<
+    SessionConnection extends ConnectionSessionI<DriverConnectionI> = ConnectionSessionI<DriverConnectionI>
+> implements QueryBuilderI<SessionConnection>
+{
     /**
      * The Builder registry.
      */
@@ -87,7 +89,7 @@ abstract class CommonQueryBuilder implements QueryBuilderI {
     /**
      * Create a new query builder instance.
      */
-    constructor(protected connection: ConnectionSessionI, protected grammar?: GrammarI) {
+    constructor(protected connection: SessionConnection) {
         this.registry = createRegistry();
     }
 
@@ -3279,15 +3281,15 @@ abstract class CommonQueryBuilder implements QueryBuilderI {
     /**
      * Get the database connection instance.
      */
-    public getConnection(): ConnectionSessionI {
+    public getConnection(): SessionConnection {
         return this.connection;
     }
 
     /**
      * Get the query grammar instance.
      */
-    public getGrammar(): GrammarI {
-        return this.grammar ?? this.connection.getQueryGrammar();
+    public getGrammar(): ReturnType<ReturnType<this['getConnection']>['getQueryGrammar']> {
+        return this.connection.getQueryGrammar() as ReturnType<ReturnType<this['getConnection']>['getQueryGrammar']>;
     }
 
     /**
@@ -3365,7 +3367,7 @@ abstract class CommonQueryBuilder implements QueryBuilderI {
      * Get a new instance of the query builder.
      */
     public newQuery(): any {
-        return new (this.constructor as QueryBuilderConstructor<this>)(this.getConnection(), this.getGrammar());
+        return new (this.constructor as QueryBuilderConstructor<this>)(this.getConnection());
     }
 
     /**

@@ -1,15 +1,31 @@
-import MySqlGrammar from '../query/grammars/mysql-grammar';
+import MysqlGrammar from '../query/grammars/mysql-grammar';
 import SchemaBuilder from '../schema/builders/mysql-builder';
 import SchemaGrammar from '../schema/grammars/mysql-grammar';
-import MysqlConnectionI from '../types/connection/mysql-connection';
 import Connection from './connection';
 
-class MySqlConnection extends Connection implements MysqlConnectionI {
+class MysqlConnection extends Connection {
     /**
-     * Get the default query grammar instance.
+     * The query grammar implementation.
      */
-    protected getDefaultQueryGrammar(): MySqlGrammar {
-        return this.withTablePrefix(new MySqlGrammar());
+    protected queryGrammar!: MysqlGrammar;
+
+    /**
+     * The schema grammar implementation.
+     */
+    protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * set Default Query Grammar
+     */
+    protected setDefaultQueryGrammar(): void {
+        this.queryGrammar = new MysqlGrammar().setTablePrefix(this.tablePrefix);
+    }
+
+    /**
+     * set Default Schema Grammar
+     */
+    protected setDefaultSchemaGrammar(): void {
+        this.schemaGrammar = new SchemaGrammar().setTablePrefix(this.tablePrefix);
     }
 
     /**
@@ -20,11 +36,18 @@ class MySqlConnection extends Connection implements MysqlConnectionI {
     }
 
     /**
-     * Get the default schema grammar instance.
+     * Get the schema grammar used by the connection.
      */
-    protected getDefaultSchemaGrammar(): SchemaGrammar {
-        return new SchemaGrammar();
+    public getSchemaGrammar(): SchemaGrammar {
+        return this.schemaGrammar;
+    }
+
+    /**
+     * Get the query grammar used by the connection.
+     */
+    public getQueryGrammar(): MysqlGrammar {
+        return this.queryGrammar;
     }
 }
 
-export default MySqlConnection;
+export default MysqlConnection;

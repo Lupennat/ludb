@@ -1,127 +1,31 @@
-import { Pdo } from 'lupdo';
-import { Connection } from '../../../connections';
-import MySqlConnection from '../../../connections/mysql-connection';
+import MysqlConnection from '../../../connections/mysql-connection';
 import PostgresConnection from '../../../connections/postgres-connection';
-import SQLiteConnection from '../../../connections/sqlite-connection';
-import SqlServerConnection from '../../../connections/sqlserver-connection';
-import ConnectionFactory from '../../../connectors/connection-factory';
-import Connector from '../../../connectors/connector';
-import DatabaseManager from '../../../database-manager';
+import SqliteConnection from '../../../connections/sqlite-connection';
+import SqlserverConnection from '../../../connections/sqlserver-connection';
 import { mysqlConfig, postgresConfig, sqliteConfig, sqlserverConfig } from '../fixtures/config';
 import { MockedFactory, pdo, schemaPdo } from '../fixtures/mocked';
 
 describe('Connection Factory', () => {
-    const db = new DatabaseManager();
-
-    db.addConnection({
-        driver: 'sqlite',
-        database: ':memory:'
-    });
-    db.addConnection(
-        {
-            driver: 'sqlite',
-            read: {
-                database: ':memory:'
-            },
-            write: {
-                database: ':memory:'
-            }
-        },
-        'read_write'
-    );
-    db.addConnection(
-        {
-            driver: 'sqlite',
-            read: {
-                database: ':memory:'
-            },
-            database: ':memory:'
-        },
-        'read_only'
-    );
-    db.addConnection(
-        {
-            driver: 'sqlite',
-            write: {
-                database: ':memory:'
-            },
-            database: ':memory:'
-        },
-        'write_only'
-    );
-    db.addConnection(
-        {
-            driver: 'sqlite',
-            read: [
-                {
-                    database: ':memory:'
-                },
-                {
-                    database: ':memory:'
-                }
-            ],
-            database: ':memory:'
-        },
-        'read_multi'
-    );
-
     afterAll(async () => {
         await pdo.disconnect();
         await schemaPdo.disconnect();
     });
 
-    it('Works Connection Can Be Created', () => {
-        expect(db.connection().getReadPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection().getPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('read_write').getReadPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('read_write').getPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('read_only').getReadPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('read_only').getPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('write_only').getReadPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('write_only').getPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('read_multi').getReadPdo()).toBeInstanceOf(Pdo);
-        expect(db.connection('read_multi').getPdo()).toBeInstanceOf(Pdo);
-    });
-
-    it('Works If Driver Isnt Set Error Is Thrown', () => {
-        expect(() => {
-            new ConnectionFactory().make({}, 'unset');
-        }).toThrow('A driver must be specified.');
-    });
-
     it('Works Error Is Thrown On Unsupported Driver', () => {
         expect(() => {
-            new ConnectionFactory().make({ driver: 'foo' }, 'foo');
+            // @ts-expect-error not existing driver
+            new MockedFactory().make({ driver: 'foo' }, 'foo');
         }).toThrow('Unsupported driver [foo]');
-    });
-
-    it('Works Custom Connectors Can Be Resolved', () => {
-        const callback = jest.fn();
-        Connector.resolverFor('foo', callback);
-        new MockedFactory().createConnector({ driver: 'foo', name: 'foo', database: '', prefix: '' });
-        expect(callback).toHaveBeenCalledTimes(1);
-    });
-
-    it('Works Custom Connection Can Be Resolved', () => {
-        const callback = jest.fn();
-        Connection.resolverFor('foo', callback);
-        new MockedFactory().createConnection(
-            'foo',
-            pdo,
-            schemaPdo,
-            { driver: 'foo', name: 'foo', database: '', prefix: '' },
-            '',
-            ''
-        );
-        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('Works Error Is Thrown On Unsupported Connection', () => {
         expect(() => {
             new MockedFactory().createConnection(
                 'baz',
+                'baz',
                 pdo,
                 schemaPdo,
+                // @ts-expect-error not existing driver
                 { driver: 'baz', name: 'baz', database: '', prefix: '' },
                 '',
                 ''
@@ -129,19 +33,131 @@ describe('Connection Factory', () => {
         }).toThrow('Unsupported driver [baz]');
     });
 
-    it('Works MySql Driver', () => {
-        expect(new ConnectionFactory().make(mysqlConfig, 'mysql')).toBeInstanceOf(MySqlConnection);
+    it('Works Merge Read And Write Config', () => {
+        const factory = new MockedFactory();
+
+        jest.spyOn(factory, 'createPdoSchemaResolver').mockImplementation(() => {
+            return pdo;
+        });
+
+        const spiedPdoResolved = jest
+            .spyOn(factory, 'createPdoResolver')
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('database');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('databasewrite');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('databaseread');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('databasewrite');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('databaseread');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('databasewrite');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('databaseread');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(config.database).toBe('databasewrite');
+                return pdo;
+            })
+            .mockImplementationOnce(config => {
+                expect(['databaseread1', 'databaseread2', 'databaseread3'].includes(config.database!)).toBeTruthy();
+                return pdo;
+            });
+
+        factory.make(
+            {
+                driver: 'sqlite',
+                database: 'database'
+            },
+            'mysql'
+        );
+
+        factory.make(
+            {
+                driver: 'sqlite',
+                database: 'databasewrite',
+                read: {
+                    database: 'databaseread'
+                }
+            },
+            'mysql'
+        );
+
+        factory.make(
+            {
+                driver: 'sqlite',
+                database: 'databaseread',
+                write: {
+                    database: 'databasewrite'
+                }
+            },
+            'mysql'
+        );
+
+        factory.make(
+            {
+                driver: 'sqlite',
+                database: ':memory:',
+                read: {
+                    database: 'databaseread'
+                },
+                write: {
+                    database: 'databasewrite'
+                }
+            },
+            'mysql'
+        );
+
+        factory.make(
+            {
+                driver: 'sqlite',
+                database: 'databasewrite',
+                read: [
+                    {
+                        database: 'databaseread1'
+                    },
+                    {
+                        database: 'databaseread2'
+                    },
+                    {
+                        database: 'databaseread3'
+                    }
+                ]
+            },
+            'sqlite'
+        );
+
+        expect(spiedPdoResolved).toHaveBeenCalledTimes(9);
     });
 
-    it('Works SQLite Driver', () => {
-        expect(new ConnectionFactory().make(sqliteConfig, 'sqlite')).toBeInstanceOf(SQLiteConnection);
+    it('Works Mysql Driver', () => {
+        expect(new MockedFactory().make(mysqlConfig, 'mysql')).toBeInstanceOf(MysqlConnection);
+    });
+
+    it('Works Sqlite Driver', () => {
+        expect(new MockedFactory().make(sqliteConfig, 'sqlite')).toBeInstanceOf(SqliteConnection);
     });
 
     it('Works Postgres Driver', () => {
-        expect(new ConnectionFactory().make(postgresConfig, 'postgres')).toBeInstanceOf(PostgresConnection);
+        expect(new MockedFactory().make(postgresConfig, 'postgres')).toBeInstanceOf(PostgresConnection);
     });
 
-    it('Works SqlServer Driver', () => {
-        expect(new ConnectionFactory().make(sqlserverConfig, 'sqlServer')).toBeInstanceOf(SqlServerConnection);
+    it('Works Sqlserver Driver', () => {
+        expect(new MockedFactory().make(sqlserverConfig, 'sqlServer')).toBeInstanceOf(SqlserverConnection);
     });
 });

@@ -6,7 +6,7 @@ import Expression from '../expression';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
-class SqlServerGrammar extends Grammar {
+class SqlserverGrammar extends Grammar {
     /**
      * All of the available clause operators.
      */
@@ -532,4 +532,4 @@ class SqlServerGrammar extends Grammar {
     }
 }
 
-export default SqlServerGrammar;
+export default SqlserverGrammar;

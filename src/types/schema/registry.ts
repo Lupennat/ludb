@@ -40,7 +40,8 @@ export interface ViewRegistryI extends CommandRegistryI {
     algorithm?: Stringable;
     temporary?: Boolean;
     as: QueryBuilderI;
-    check?: Stringable;
+    check?: boolean;
+    checkType?: Stringable;
     definer?: Stringable;
     columnNames?: Stringable[];
     recursive?: boolean;
@@ -263,7 +264,7 @@ export interface ColumnRegistryI {
      */
     startingValue?: number | bigint;
     /**
-     * Create a stored generated column (MySQL/PostgreSQL/SQLite)
+     * Create a stored generated column (MySQL/PostgreSQL/Sqlite)
      */
     storedAs?: Stringable | null;
     /**
@@ -291,7 +292,7 @@ export interface ColumnRegistryI {
      */
     useCurrentOnUpdate?: boolean;
     /**
-     * Create a virtual generated column (MySQL/PostgreSQL/SQLite)
+     * Create a virtual generated column (MySQL/PostgreSQL/Sqlite)
      */
     virtualAs?: Stringable | null;
 }

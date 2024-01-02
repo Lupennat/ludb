@@ -16,17 +16,17 @@ export type PostgresTableDictionary = BaseTableDictionary & {
     comment: string;
 };
 
-export type SQLiteTableDictionary = BaseTableDictionary;
+export type SqliteTableDictionary = BaseTableDictionary;
 
-export type SqlServerTableDictionary = BaseTableDictionary & {
+export type SqlserverTableDictionary = BaseTableDictionary & {
     schema: string;
 };
 
 export type TableDictionary =
     | MysqlTableDictionary
     | PostgresTableDictionary
-    | SQLiteTableDictionary
-    | SqlServerTableDictionary;
+    | SqliteTableDictionary
+    | SqlserverTableDictionary;
 
 type BaseViewDictionary = {
     name: string;
@@ -39,17 +39,17 @@ export type PostgresViewDictionary = BaseViewDictionary & {
     schema: string;
 };
 
-export type SQLiteViewDictionary = BaseViewDictionary;
+export type SqliteViewDictionary = BaseViewDictionary;
 
-export type SqlServerViewDictionary = BaseViewDictionary & {
+export type SqlserverViewDictionary = BaseViewDictionary & {
     schema: string;
 };
 
 export type ViewDictionary =
     | MysqlViewDictionary
     | PostgresViewDictionary
-    | SQLiteViewDictionary
-    | SqlServerViewDictionary;
+    | SqliteViewDictionary
+    | SqlserverViewDictionary;
 
 type BaseTypeDictionary = {
     name: string;
@@ -62,7 +62,12 @@ export type PostgresTypeDictionary = BaseTypeDictionary & {
     category: string | null;
 };
 
-export type TypeDictionary = PostgresTypeDictionary;
+export type SqlserverTypeDictionary = BaseTypeDictionary & {
+    schema: string;
+    type: string;
+};
+
+export type TypeDictionary = PostgresTypeDictionary | SqlserverTypeDictionary;
 
 type BaseColumnDictionary = {
     name: string;
@@ -83,9 +88,9 @@ export type PostgresColumnDictionary = BaseColumnDictionary & {
     comment: string;
 };
 
-export type SQLiteColumnDictionary = BaseColumnDictionary;
+export type SqliteColumnDictionary = BaseColumnDictionary;
 
-export type SqlServerColumnDictionary = BaseColumnDictionary & {
+export type SqlserverColumnDictionary = BaseColumnDictionary & {
     collation: string;
     comment: string;
 };
@@ -93,8 +98,8 @@ export type SqlServerColumnDictionary = BaseColumnDictionary & {
 export type ColumnDictionary =
     | MysqlColumnDictionary
     | PostgresColumnDictionary
-    | SQLiteColumnDictionary
-    | SqlServerColumnDictionary;
+    | SqliteColumnDictionary
+    | SqlserverColumnDictionary;
 
 type BaseIndexDictionary = {
     name: string;
@@ -111,17 +116,17 @@ export type PostgresIndexDictionary = BaseIndexDictionary & {
     type: string;
 };
 
-export type SQLiteIndexDictionary = BaseIndexDictionary;
+export type SqliteIndexDictionary = BaseIndexDictionary;
 
-export type SqlServerIndexDictionary = BaseIndexDictionary & {
+export type SqlserverIndexDictionary = BaseIndexDictionary & {
     type: string;
 };
 
 export type IndexDictionary =
     | MysqlIndexDictionary
     | PostgresIndexDictionary
-    | SQLiteIndexDictionary
-    | SqlServerIndexDictionary;
+    | SqliteIndexDictionary
+    | SqlserverIndexDictionary;
 
 type BaseForeignKeyDictionary = {
     name: string;
@@ -140,14 +145,14 @@ export type PostgresForeignKeyDictionary = BaseForeignKeyDictionary & {
     foreign_schema: string;
 };
 
-export type SQLiteForeignKeyDictionary = BaseForeignKeyDictionary;
+export type SqliteForeignKeyDictionary = BaseForeignKeyDictionary;
 
-export type SqlServerForeignKeyDictionary = BaseForeignKeyDictionary & {
+export type SqlserverForeignKeyDictionary = BaseForeignKeyDictionary & {
     foreign_schema: string;
 };
 
 export type ForeignKeyDictionary =
     | MysqlForeignKeyDictionary
     | PostgresForeignKeyDictionary
-    | SQLiteForeignKeyDictionary
-    | SqlServerForeignKeyDictionary;
+    | SqliteForeignKeyDictionary
+    | SqlserverForeignKeyDictionary;

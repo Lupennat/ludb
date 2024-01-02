@@ -1,14 +1,10 @@
-import { ConnectionSessionI } from '..';
 import ExpressionContract from '../../query/expression-contract';
+import DriverConnectionI, { ConnectionSessionI } from '../connection';
 import { Binding, BindingExclude, Stringable } from '../generics';
-import GrammarI from './grammar';
 import JoinClauseI from './join-clause';
 import RegistryI, { BindingTypes, Where } from './registry';
 
-export type QueryBuilderConstructor<T extends QueryBuilderI> = new (
-    connection: ConnectionSessionI,
-    grammar?: GrammarI
-) => T;
+export type QueryBuilderConstructor<T extends QueryBuilderI> = new (connection: ConnectionSessionI) => T;
 
 export type BooleanCallback<T, U extends QueryBuilderI> = (query: U) => T;
 
@@ -63,7 +59,9 @@ export interface Objectable<Item> {
     toObject(): Item;
 }
 
-export default interface QueryBuilderI {
+export default interface QueryBuilderI<
+    SessionConnection extends ConnectionSessionI<DriverConnectionI> = ConnectionSessionI<DriverConnectionI>
+> {
     /**
      * Get Query Builder Registry
      */
@@ -1550,12 +1548,12 @@ export default interface QueryBuilderI {
     /**
      * Get the query grammar instance.
      */
-    getGrammar(): GrammarI;
+    getGrammar(): ReturnType<ReturnType<this['getConnection']>['getQueryGrammar']>;
 
     /**
      * Get the database connection instance.
      */
-    getConnection(): ConnectionSessionI;
+    getConnection(): SessionConnection;
 
     /**
      * Register a closure to be invoked before the query is executed.

@@ -385,7 +385,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -425,7 +425,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -465,7 +465,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').orderBy('test').orderBy('another');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -509,7 +509,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -552,7 +552,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -594,7 +594,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').orderBy('id');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -642,7 +642,7 @@ describe('Builder Paginate', () => {
             .orderBy('baz');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -686,7 +686,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').select('*').selectRaw("(CONCAT(firstname, ' ', lastname)) as test").orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -735,7 +735,7 @@ describe('Builder Paginate', () => {
             .orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -780,7 +780,7 @@ describe('Builder Paginate', () => {
         builder.from('foobar').select('*').selectSub("CONCAT(firstname, ' ', lastname)", 'test').orderBy('test');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -828,7 +828,7 @@ describe('Builder Paginate', () => {
         builder.union(getBuilder().select('id', 'created_at').selectRaw("'news' as type").from('news'));
         builder.orderBy('created_at');
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -886,7 +886,7 @@ describe('Builder Paginate', () => {
         );
         builder.orderByRaw('case when (id = 3 and type="news" then 0 else 1 end)').orderBy('created_at');
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -934,7 +934,7 @@ describe('Builder Paginate', () => {
         builder.union(getBuilder().select('id', 'created_at').selectRaw("'news' as type").from('news'));
         builder.orderBy('created_at').orderByDesc('id');
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;
@@ -982,7 +982,7 @@ describe('Builder Paginate', () => {
         builder.orderByDesc('created_at').orderBy('id');
 
         const spiedNewQuery = jest.spyOn(builder, 'newQuery').mockImplementation(() => {
-            return new MockedBuilder(builder.getConnection(), builder.getGrammar());
+            return new MockedBuilder(builder.getConnection());
         });
 
         const path = `http://foo.bar?cursor=${cursor.encode()}`;

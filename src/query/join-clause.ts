@@ -1,6 +1,5 @@
-import { ConnectionSessionI } from '../types/connection/connection';
+import { ConnectionSessionI } from '../types/connection';
 import { Stringable } from '../types/generics';
-import GrammarI from '../types/query/grammar';
 import JoinClauseI, { JoinClauseConstructor } from '../types/query/join-clause';
 import QueryBuilderI, {
     ConditionBoolean,
@@ -13,15 +12,12 @@ import AbstractQueryBuilder from './common-query-builder';
 import ExpressionContract from './expression-contract';
 
 class JoinClause<Parent extends QueryBuilderI = QueryBuilderI> extends AbstractQueryBuilder implements JoinClauseI {
-    protected parentGrammar: GrammarI;
     protected parentConnection: ConnectionSessionI;
     protected parentClass: QueryBuilderConstructor<Parent>;
 
     constructor(parentQuery: Parent, public type: string, public table: string | ExpressionContract) {
         const connection = parentQuery.getConnection();
-        const grammar = parentQuery.getGrammar();
-        super(connection, grammar);
-        this.parentGrammar = grammar;
+        super(connection);
         this.parentConnection = connection;
         this.parentClass = parentQuery.constructor as QueryBuilderConstructor<Parent>;
     }
@@ -99,7 +95,7 @@ class JoinClause<Parent extends QueryBuilderI = QueryBuilderI> extends AbstractQ
      * Create a new parent query instance.
      */
     protected newParentQuery(): Parent {
-        return new this.parentClass(this.parentConnection, this.parentGrammar);
+        return new this.parentClass(this.parentConnection);
     }
 
     /**

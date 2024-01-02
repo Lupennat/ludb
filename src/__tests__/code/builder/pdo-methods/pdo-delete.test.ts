@@ -1,9 +1,9 @@
 import {
     getBuilder,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getPostgresBuilder,
-    getSQLiteBuilder,
-    getSqlServerBuilder,
+    getSqliteBuilder,
+    getSqlserverBuilder,
     pdo
 } from '../../fixtures/mocked';
 
@@ -28,12 +28,12 @@ describe('Builder Pdo Methods', () => {
         expect(await builder.from('users').selectRaw('?', ['ignore']).delete(1)).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith('delete from "users" where "users"."id" = ?', [1]);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith(
@@ -41,7 +41,7 @@ describe('Builder Pdo Methods', () => {
             ['foo']
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith('delete from `users` where `email` = ? order by `id` asc limit 1', [
@@ -61,19 +61,19 @@ describe('Builder Pdo Methods', () => {
             ['foo']
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').delete()).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith('delete from [users] where [email] = ?', ['foo']);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').where('email', '=', 'foo').orderBy('id').take(1).delete()).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith('delete top (1) from [users] where [email] = ?', ['foo']);
     });
 
     it('Works Delete With Join Method', async () => {
-        let builder = getSQLiteBuilder();
+        let builder = getSqliteBuilder();
         let spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(
             await builder
@@ -89,7 +89,7 @@ describe('Builder Pdo Methods', () => {
             ['foo']
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users as u').join('contacts as c', 'u.id', '=', 'c.id').delete()).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith(
@@ -97,7 +97,7 @@ describe('Builder Pdo Methods', () => {
             []
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(
             await builder
@@ -113,7 +113,7 @@ describe('Builder Pdo Methods', () => {
             ['foo']
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(
             await builder
@@ -129,7 +129,7 @@ describe('Builder Pdo Methods', () => {
             ['foo']
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(
             await builder.from('users').join('contacts', 'users.id', '=', 'contacts.id').orderBy('id').take(1).delete(1)
@@ -139,7 +139,7 @@ describe('Builder Pdo Methods', () => {
             [1]
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(
             await builder
@@ -153,7 +153,7 @@ describe('Builder Pdo Methods', () => {
             ['foo']
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(
             await builder
@@ -169,7 +169,7 @@ describe('Builder Pdo Methods', () => {
             ['foo']
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
         expect(await builder.from('users').join('contacts', 'users.id', '=', 'contacts.id').delete(1)).toBe(1);
         expect(spiedDelete).toHaveBeenCalledWith(
@@ -248,7 +248,7 @@ describe('Builder Pdo Methods', () => {
         await builder.from('users').truncate();
         expect(spiedTruncate).toHaveBeenCalledWith('truncate table "users"', []);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
         await builder.from('users').truncate();
         expect(spiedTruncate).toHaveBeenNthCalledWith(1, 'delete from sqlite_sequence where name = ?', ['users']);

@@ -1,9 +1,9 @@
-import { DB, isSqlServer } from '../fixtures/config';
+import { DB, currentDB, isSqlserver } from '../fixtures/config';
 
-const maybe = isSqlServer() ? describe : describe.skip;
+const maybe = isSqlserver() ? describe : describe.skip;
 
 maybe('Postgres Schema Builder', () => {
-    const Schema = DB.connection().getSchemaBuilder();
+    const Schema = DB.connections[currentDB].getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_schema_users', table => {
@@ -16,7 +16,7 @@ maybe('Postgres Schema Builder', () => {
 
     afterAll(async () => {
         await Schema.drop('test_schema_users');
-        await DB.disconnect();
+        await DB.connections[currentDB].disconnect();
     });
 
     it('Works Get Tables And Column Listing', async () => {
@@ -31,9 +31,11 @@ maybe('Postgres Schema Builder', () => {
     });
 
     it('Works Get Views', async () => {
-        await DB.connection().statement('create view test_schema_users_view AS select name,age FROM test_schema_users');
+        await DB.connections[currentDB].statement(
+            'create view test_schema_users_view AS select name,age FROM test_schema_users'
+        );
         expect(await Schema.getViews()).toEqual(['test_schema_users_view']);
-        await DB.connection().statement('drop view if exists test_schema_users_view;');
+        await DB.connections[currentDB].statement('drop view if exists test_schema_users_view;');
         expect(await Schema.getViews()).toEqual([]);
     });
 });

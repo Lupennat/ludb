@@ -1,9 +1,9 @@
-import { DB, isPostgres } from '../fixtures/config';
+import { DB, currentDB, isPostgres } from '../fixtures/config';
 
 const maybe = isPostgres() ? describe : describe.skip;
 
 maybe('Postgres FullText', () => {
-    const Schema = DB.connection().getSchemaBuilder();
+    const Schema = DB.connections[currentDB].getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_fulltext_articles', table => {
@@ -13,25 +13,23 @@ maybe('Postgres FullText', () => {
             table.fulltext(['title', 'body']);
         });
 
-        await DB.connection()
-            .table('test_fulltext_articles')
-            .insert([
-                { title: 'PostgreSQL Tutorial', body: 'DBMS stands for DataBase ...' },
-                { title: 'How To Use PostgreSQL Well', body: 'After you went through a ...' },
-                { title: 'Optimizing PostgreSQL', body: 'In this tutorial, we show ...' },
-                { title: '1001 PostgreSQL Tricks', body: '1. Never run mysqld as root. 2. ...' },
-                { title: 'PostgreSQL vs. YourSQL', body: 'In the following database comparison ...' },
-                { title: 'PostgreSQL Security', body: 'When configured properly, PostgreSQL ...' }
-            ]);
+        await DB.connections[currentDB].table('test_fulltext_articles').insert([
+            { title: 'PostgreSQL Tutorial', body: 'DBMS stands for DataBase ...' },
+            { title: 'How To Use PostgreSQL Well', body: 'After you went through a ...' },
+            { title: 'Optimizing PostgreSQL', body: 'In this tutorial, we show ...' },
+            { title: '1001 PostgreSQL Tricks', body: '1. Never run mysqld as root. 2. ...' },
+            { title: 'PostgreSQL vs. YourSQL', body: 'In the following database comparison ...' },
+            { title: 'PostgreSQL Security', body: 'When configured properly, PostgreSQL ...' }
+        ]);
     });
 
     afterAll(async () => {
         await Schema.drop('test_fulltext_articles');
-        await DB.disconnect();
+        await DB.connections[currentDB].disconnect();
     });
 
     it('Works Where Fulltext', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connections[currentDB]
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'database')
             .orderBy('id')
@@ -43,7 +41,7 @@ maybe('Postgres FullText', () => {
     });
 
     it('Works Where Fulltext With Web Search', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connections[currentDB]
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], '+PostgreSQL -YourSQL', { mode: 'websearch' })
             .get();
@@ -52,7 +50,7 @@ maybe('Postgres FullText', () => {
     });
 
     it('Works Where Fulltext With Plain', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connections[currentDB]
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'PostgreSQL tutorial', { mode: 'plain' })
             .get();
@@ -61,7 +59,7 @@ maybe('Postgres FullText', () => {
     });
 
     it('Works Where Fulltext With Plain', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connections[currentDB]
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'PostgreSQL tutorial', { mode: 'phrase' })
             .get();

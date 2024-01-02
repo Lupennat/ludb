@@ -1,40 +1,79 @@
 import { Pdo, TypedBinding } from 'lupdo';
 import { EventEmitter } from 'stream';
 import { bindTo } from '../../../bindings';
-import Connection from '../../../connections/connection';
 import ConnectionSession from '../../../connections/connection-session';
-import MySqlConnection from '../../../connections/mysql-connection';
-import PostgresConnection from '../../../connections/postgres-connection';
-import SQLiteConnection from '../../../connections/sqlite-connection';
-import SqlServerConnection from '../../../connections/sqlserver-connection';
 import QueryExecuted from '../../../events/query-executed';
 import Builder from '../../../query/builder';
 import Raw from '../../../query/expression';
 import Grammar from '../../../query/grammars/grammar';
 
 import Expression from '../../../query/expression';
+import MysqlGrammar from '../../../query/grammars/mysql-grammar';
+import PostgresGrammar from '../../../query/grammars/postgres-grammar';
+import SqliteGrammar from '../../../query/grammars/sqlite-grammar';
+import SqlserverGrammar from '../../../query/grammars/sqlserver-grammar';
 import SchemaBuilder from '../../../schema/builders/builder';
+import MysqlBuilder from '../../../schema/builders/mysql-builder';
+import PostgresBuilder from '../../../schema/builders/postgres-builder';
+import SqliteBuilder from '../../../schema/builders/sqlite-builder';
+import SqlserverBuilder from '../../../schema/builders/sqlserver-builder';
 import SchemaGrammar from '../../../schema/grammars/grammar';
-import { FlattedConnectionConfig } from '../../../types/config';
-import { getConnection, pdo, schemaPdo } from '../fixtures/mocked';
+import {
+    getConnection,
+    getMysqlConnection,
+    getPostgresConnection,
+    getSqliteConnection,
+    getSqlserverConnection,
+    pdo
+} from '../fixtures/mocked';
 
 describe('Connection', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
 
-    it('Works Resolver', () => {
-        const resolver = (
-            pdo: Pdo,
-            schemaPdo: Pdo,
-            config: FlattedConnectionConfig,
-            database: string,
-            tablePrefix: string
-        ): Connection => {
-            return new Connection(pdo, schemaPdo, config, database, tablePrefix);
-        };
-        Connection.resolverFor('driver', resolver);
-        expect(Connection.getResolver('driver')).toEqual(resolver);
+    it('Works Disconnect Should Disconnect pdos', async () => {
+        const connection = getConnection();
+
+        let spiedPdo = jest.spyOn(connection, 'getPdo');
+        let spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
+        let spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
+        await connection.disconnect();
+        expect(spiedPdo).toHaveBeenCalled();
+        expect(spiedReadPdo).not.toHaveBeenCalled();
+        expect(spiedSchemaPdo).toHaveBeenCalled();
+
+        connection.setReadPdo(pdo);
+
+        spiedPdo = jest.spyOn(connection, 'getPdo');
+        spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
+        spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
+        await connection.disconnect();
+        expect(spiedPdo).toHaveBeenCalled();
+        expect(spiedReadPdo).toHaveBeenCalled();
+        expect(spiedSchemaPdo).toHaveBeenCalled();
+    });
+
+    it('Works Reconnect Should Reconnect pdos', async () => {
+        const connection = getConnection();
+
+        let spiedPdo = jest.spyOn(connection, 'getPdo');
+        let spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
+        let spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
+        expect(await connection.reconnect()).toEqual(connection);
+        expect(spiedPdo).toHaveBeenCalled();
+        expect(spiedReadPdo).not.toHaveBeenCalled();
+        expect(spiedSchemaPdo).toHaveBeenCalled();
+
+        connection.setReadPdo(pdo);
+
+        spiedPdo = jest.spyOn(connection, 'getPdo');
+        spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
+        spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
+        expect(await connection.reconnect()).toEqual(connection);
+        expect(spiedPdo).toHaveBeenCalled();
+        expect(spiedReadPdo).toHaveBeenCalled();
+        expect(spiedSchemaPdo).toHaveBeenCalled();
     });
 
     it('Works Session', () => {
@@ -54,21 +93,16 @@ describe('Connection', () => {
         class TestGrammar extends Grammar {}
         expect(connection.getQueryGrammar()).toBeInstanceOf(Grammar);
         expect(connection.getQueryGrammar()).not.toBeInstanceOf(TestGrammar);
-        connection.setQueryGrammar(new TestGrammar());
-        expect(connection.getQueryGrammar()).toBeInstanceOf(TestGrammar);
-        connection.useDefaultQueryGrammar();
-        expect(connection.getQueryGrammar()).toBeInstanceOf(Grammar);
-        expect(connection.getQueryGrammar()).not.toBeInstanceOf(TestGrammar);
+
+        expect(getMysqlConnection().getQueryGrammar()).toBeInstanceOf(MysqlGrammar);
+        expect(getPostgresConnection().getQueryGrammar()).toBeInstanceOf(PostgresGrammar);
+        expect(getSqliteConnection().getQueryGrammar()).toBeInstanceOf(SqliteGrammar);
+        expect(getSqlserverConnection().getQueryGrammar()).toBeInstanceOf(SqlserverGrammar);
     });
 
     it('Works Schema Grammar', () => {
         const connection = getConnection();
         class TestGrammar extends SchemaGrammar {}
-        expect(connection.getSchemaGrammar()).toBeInstanceOf(SchemaGrammar);
-        expect(connection.getSchemaGrammar()).not.toBeInstanceOf(TestGrammar);
-        connection.setSchemaGrammar(new TestGrammar());
-        expect(connection.getSchemaGrammar()).toBeInstanceOf(TestGrammar);
-        connection.useDefaultSchemaGrammar();
         expect(connection.getSchemaGrammar()).toBeInstanceOf(SchemaGrammar);
         expect(connection.getSchemaGrammar()).not.toBeInstanceOf(TestGrammar);
     });
@@ -81,38 +115,14 @@ describe('Connection', () => {
     it('Works Schema Builder', () => {
         let connection = getConnection();
         expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
-        connection = new MySqlConnection(
-            pdo,
-            schemaPdo,
-            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
-            '',
-            ''
-        );
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
-        connection = new PostgresConnection(
-            pdo,
-            schemaPdo,
-            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
-            '',
-            ''
-        );
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
-        connection = new SQLiteConnection(
-            pdo,
-            schemaPdo,
-            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
-            '',
-            ''
-        );
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
-        connection = new SqlServerConnection(
-            pdo,
-            schemaPdo,
-            { driver: 'fake', name: 'fake', database: 'database', prefix: 'prefix' },
-            '',
-            ''
-        );
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
+        connection = getMysqlConnection();
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(MysqlBuilder);
+        connection = getPostgresConnection();
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(PostgresBuilder);
+        connection = getSqliteConnection();
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SqliteBuilder);
+        connection = getSqlserverConnection();
+        expect(connection.getSchemaBuilder()).toBeInstanceOf(SqlserverBuilder);
     });
 
     it('Works Event Dispatcher', () => {
@@ -239,52 +249,19 @@ describe('Connection', () => {
 
     it('Works Get Name', () => {
         const connection = getConnection();
-        jest.spyOn(connection, 'getConfig').mockImplementationOnce(option => {
-            expect(option).toBe('name');
-            return 'test-name';
-        });
-        expect(connection.getName()).toBe('test-name');
-    });
-
-    it('Works Get Name With Read Write Type', () => {
-        const connection = getConnection();
-        const spiedName = jest.spyOn(connection, 'getConfig').mockImplementation(option => {
-            expect(option).toBe('name');
-            return 'test-name';
-        });
-        expect(connection.getNameWithReadWriteType()).toBe('test-name');
-        expect(spiedName).toHaveBeenCalled();
-        connection.setReadWriteType('write');
-        expect(connection.getNameWithReadWriteType()).toBe('test-name::write');
-        expect(spiedName).toHaveBeenCalledTimes(2);
-        connection.setReadWriteType('read');
-        expect(connection.getNameWithReadWriteType()).toBe('test-name::read');
-        expect(spiedName).toHaveBeenCalledTimes(3);
-        connection.setReadWriteType(null);
-        expect(connection.getNameWithReadWriteType()).toBe('test-name');
-        expect(spiedName).toHaveBeenCalledTimes(4);
+        expect(connection.getName()).toBe('fake');
     });
 
     it('Works Get Config', () => {
-        const connection = getConnection();
+        const connection = getConnection('prefix_');
         expect(connection.getConfig()).toEqual({
             database: 'database',
             driver: 'fake',
-            name: 'fake',
             pool: { killResource: false },
             prefix: 'prefix_'
         });
         expect(connection.getConfig<boolean>('pool.killResource', true)).toBeFalsy();
         expect(connection.getConfig<boolean>('pool.notExists', true)).toBeTruthy();
-    });
-
-    it('Works Get Driver Name', () => {
-        const connection = getConnection();
-        jest.spyOn(connection, 'getConfig').mockImplementationOnce(option => {
-            expect(option).toBe('driver');
-            return 'test-driver';
-        });
-        expect(connection.getDriverName()).toBe('test-driver');
     });
 
     it('Works Database Name', () => {
@@ -303,8 +280,6 @@ describe('Connection', () => {
         connection.setTablePrefix('test-prefix');
         expect(connection.getTablePrefix()).toBe('test-prefix');
         expect(spiedTablePrefix).not.toHaveBeenCalled();
-        expect(connection.withTablePrefix(grammar)).toEqual(grammar);
-        expect(spiedTablePrefix).toHaveBeenCalledWith('test-prefix');
     });
 
     it('Works Table', () => {

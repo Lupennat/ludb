@@ -2,10 +2,10 @@ import Raw from '../../../query/expression';
 import {
     getBuilder,
     getBuilderAlternative,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getPostgresBuilder,
-    getSQLiteBuilder,
-    getSqlServerBuilder,
+    getSqliteBuilder,
+    getSqlserverBuilder,
     pdo
 } from '../fixtures/mocked';
 describe('Builder Select-From', () => {
@@ -62,13 +62,13 @@ describe('Builder Select-From', () => {
     });
 
     it('Works Basic Select User Write Pdo', async () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         let spyConnection = jest.spyOn(builder.getConnection(), 'select');
 
         await builder.useWritePdo().select('*').from('users').get();
         expect(spyConnection).toHaveBeenCalledWith('select * from `users`', [], false);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
 
         await builder.select('*').from('users').get();
@@ -172,7 +172,7 @@ describe('Builder Select-From', () => {
         expect('select substr(foo, 6) from "users"').toBe(builder.toSql());
     });
 
-    it('Works MySql Lock', () => {
+    it('Works Mysql Lock', () => {
         let builder = getBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
@@ -183,44 +183,44 @@ describe('Builder Select-From', () => {
         expect('select * from "foo" where "bar" = ? lock in share mode').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from `foo` where `bar` = ? for update').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lockForUpdate();
         expect('select * from `foo` where `bar` = ? for update').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock(false);
         expect('select * from `foo` where `bar` = ? lock in share mode').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').sharedLock();
         expect('select * from `foo` where `bar` = ? lock in share mode').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock('lock in share mode');
         expect('select * from `foo` where `bar` = ? lock in share mode').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
     });
 
-    it('Works SQLite Lock', () => {
-        let builder = getSQLiteBuilder();
+    it('Works Sqlite Lock', () => {
+        let builder = getSqliteBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock(false);
         expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock('for key share');
         expect('select * from "foo" where "bar" = ?').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
@@ -243,32 +243,32 @@ describe('Builder Select-From', () => {
         expect(['baz']).toEqual(builder.getBindings());
     });
 
-    it('Works SqlServer Lock', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Sqlserver Lock', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock();
         expect('select * from [foo] with(rowlock,updlock,holdlock) where [bar] = ?').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock(false);
         expect('select * from [foo] with(rowlock,holdlock) where [bar] = ?').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('foo').where('bar', '=', 'baz').lock('with(holdlock)');
         expect('select * from [foo] with(holdlock) where [bar] = ?').toBe(builder.toSql());
         expect(['baz']).toEqual(builder.getBindings());
     });
 
     it('Works SelectWithLockUsesWritePdo', async () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async (_a, _b, useReadPdo) => {
             expect(useReadPdo).toBeFalsy();
             return [];
         });
         await builder.select('*').from('foo').where('bar', '=', 'baz').lock().get();
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async (_a, _b, useReadPdo) => {
             expect(useReadPdo).toBeFalsy();
             return [];
@@ -306,7 +306,7 @@ describe('Builder Select-From', () => {
 
     it('Works Sub Select Cross Database', () => {
         const expectedSql =
-            'select "foo", "bar", (select "baz" from "alternative"."two" where "subkey" = ?) as "sub" from "one" where "key" = ?';
+            'select "foo", "bar", (select "baz" from "alternative"."prefix2_two" where "subkey" = ?) as "sub" from "one" where "key" = ?';
         const expectedBindings = ['subval', 'val'];
         let builder = getBuilder();
         builder.from('one').select(['foo', 'bar']).where('key', '=', 'val');
@@ -340,12 +340,12 @@ describe('Builder Select-From', () => {
         expect([]).toEqual(builder.getBindings());
     });
 
-    it('Works Table Valued Function As Table In SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Table Valued Function As Table In Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users()');
         expect('select * from [users]()').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users(1,2)');
         expect('select * from [users](1,2)').toBe(builder.toSql());
     });
@@ -419,7 +419,7 @@ describe('Builder Select-From', () => {
     });
 
     it('Works From Raw On Sql Server', () => {
-        const builder = getSqlServerBuilder();
+        const builder = getSqlserverBuilder();
         builder.fromRaw('dbo.[SomeNameWithRoundBrackets (test)]');
         expect('select * from dbo.[SomeNameWithRoundBrackets (test)]').toBe(builder.toSql());
     });
@@ -456,56 +456,56 @@ describe('Builder Select-From', () => {
         }).toThrow('This database engine does not support index hints.');
     });
 
-    it('Works Use Index MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Use Index Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('foo').from('users').useIndex('test_index');
         expect('select `foo` from `users` use index (test_index)').toBe(builder.toSql());
     });
 
-    it('Works Force Index MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Force Index Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('foo').from('users').forceIndex('test_index');
         expect('select `foo` from `users` force index (test_index)').toBe(builder.toSql());
     });
 
-    it('Works Ignore Index MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Ignore Index Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('foo').from('users').ignoreIndex('test_index');
         expect('select `foo` from `users` ignore index (test_index)').toBe(builder.toSql());
     });
 
     it('Works Use Index Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('foo').from('users').useIndex('test_index');
         expect('select "foo" from "users"').toBe(builder.toSql());
     });
 
     it('Works Force Index Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('foo').from('users').forceIndex('test_index');
         expect('select "foo" from "users" indexed by test_index').toBe(builder.toSql());
     });
 
     it('Works Ignore Index Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('foo').from('users').ignoreIndex('test_index');
         expect('select "foo" from "users"').toBe(builder.toSql());
     });
 
-    it('Works Use Index SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Use Index Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('foo').from('users').useIndex('test_index');
         expect('select [foo] from [users]').toBe(builder.toSql());
     });
 
-    it('Works Force Index SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Force Index Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('foo').from('users').forceIndex('test_index');
         expect('select [foo] from [users] with (index(test_index))').toBe(builder.toSql());
     });
 
-    it('Works Ignore Index SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Ignore Index Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('foo').from('users').ignoreIndex('test_index');
         expect('select [foo] from [users]').toBe(builder.toSql());
     });

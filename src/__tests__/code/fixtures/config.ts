@@ -1,11 +1,11 @@
-import { MySqlConfig, PostgresConfig, SQLiteConfig, SqlServerConfig } from '../../../types/config';
+import { MysqlConfig, PostgresConfig, SqliteConfig, SqlserverConfig } from '../../../types/config';
 
-export const sqliteConfig: SQLiteConfig = {
+export const sqliteConfig: SqliteConfig = {
     driver: 'sqlite',
     database: ':memory:'
 };
 
-export const mysqlConfig: MySqlConfig = {
+export const mysqlConfig: MysqlConfig = {
     driver: 'mysql'
 };
 
@@ -13,7 +13,7 @@ export const postgresConfig: PostgresConfig = {
     driver: 'pgsql'
 };
 
-export const sqlserverConfig: SqlServerConfig = {
+export const sqlserverConfig: SqlserverConfig = {
     driver: 'sqlsrv',
     username: 'sa',
     password: 'lupdo@s3cRet'

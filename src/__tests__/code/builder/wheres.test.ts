@@ -4,11 +4,11 @@ import { WhereBasic } from '../../../types/query/registry';
 import {
     ObjectArrayable,
     getBuilder,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getPostgresBuilder,
     getQueryBuilder,
-    getSQLiteBuilder,
-    getSqlServerBuilder,
+    getSqliteBuilder,
+    getSqlserverBuilder,
     pdo
 } from '../fixtures/mocked';
 
@@ -118,141 +118,141 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Date Base Wheres Accepts Two Arguments', () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereDate('created_at', '2023-02-10');
         expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDate('created_at', new Date('2023-02-10'));
         expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['2023-02-10']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDateNot('created_at', new Date('2023-02-10'));
         expect(builder.toSql()).toBe('select * from `users` where not date(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         // @ts-expect-error test wrong array will be flatted
         builder.select('*').from('users').whereDate('created_at', [1, 2]);
         expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = ?');
         expect(builder.getBindings()).toEqual([1]);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDay('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDay('created_at', new Date('2023-01-03'));
         expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['03']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDayNot('created_at', new Date('2023-01-03'));
         expect(builder.toSql()).toBe('select * from `users` where not day(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['03']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDay('created_at', 'aa');
         expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['00']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereMonth('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereMonth('created_at', new Date('2023-01-03'));
         expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['01']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereMonthNot('created_at', new Date('2023-01-03'));
         expect(builder.toSql()).toBe('select * from `users` where not month(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['01']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereMonth('created_at', 'aa');
         expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['00']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereYear('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereYear('created_at', new Date('2023-01-03'));
         expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['2023']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereYearNot('created_at', new Date('2023-01-03'));
         expect(builder.toSql()).toBe('select * from `users` where not year(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['2023']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereYear('created_at', 'aa');
         expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['0000']);
     });
 
     it('Works Date Base Or Wheres Accepts Two Arguments', () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereDate('created_at', '2023-02-10');
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or date(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereDateNot('created_at', '2023-02-10');
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not date(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereDay('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or day(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereDayNot('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not day(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereMonth('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or month(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereMonthNot('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not month(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereYear('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or year(`created_at`) = ?');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', 1).orWhereYearNot('created_at', 1);
         expect(builder.toSql()).toBe('select * from `users` where `id` = ? or not year(`created_at`) = ?');
     });
 
     it('Works Date Base Wheres Expression Is Not Bound', () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereDate('created_at', new Raw('NOW()')).where('admin', true);
         expect(builder.getBindings()).toEqual([true]);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDay('created_at', new Raw('NOW()'));
         expect(builder.getBindings()).toEqual([]);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereMonth('created_at', new Raw('NOW()'));
         expect(builder.getBindings()).toEqual([]);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereYear('created_at', new Raw('NOW()'));
         expect(builder.getBindings()).toEqual([]);
     });
 
-    it('Works Where Date MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Date Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereDate('created_at', '=', '2015-12-21');
         expect(builder.getBindings()).toEqual(['2015-12-21']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereDate('created_at', '=', new Raw('NOW()'));
         expect(builder.toSql()).toBe('select * from `users` where date(`created_at`) = NOW()');
     });
@@ -269,33 +269,33 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Date Sqlite', () => {
-        let builder = getSQLiteBuilder();
+        let builder = getSqliteBuilder();
         builder.select('*').from('users').whereDate('created_at', '=', '2015-12-21');
         expect(builder.toSql()).toBe(
             'select * from "users" where strftime(\'%Y-%m-%d\', "created_at") = cast(? as text)'
         );
         expect(builder.getBindings()).toEqual(['2015-12-21']);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').whereDate('created_at', '=', new Raw('NOW()'));
         expect(builder.toSql()).toBe(
             'select * from "users" where strftime(\'%Y-%m-%d\', "created_at") = cast(NOW() as text)'
         );
     });
 
-    it('Works Where Date SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Where Date Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').whereDate('created_at', '=', '2015-12-21');
         expect(builder.toSql()).toBe('select * from [users] where cast([created_at] as date) = ?');
         expect(builder.getBindings()).toEqual(['2015-12-21']);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').whereDate('created_at', '=', new Raw('NOW()'));
         expect(builder.toSql()).toBe('select * from [users] where cast([created_at] as date) = NOW()');
     });
 
-    it('Works Where Day MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Where Day Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereDay('created_at', '=', 1);
         expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['01']);
@@ -309,21 +309,21 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Day Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('*').from('users').whereDay('created_at', '=', 1);
         expect(builder.toSql()).toBe('select * from "users" where strftime(\'%d\', "created_at") = cast(? as text)');
         expect(builder.getBindings()).toEqual(['01']);
     });
 
-    it('Works Where Day SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Where Day Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('*').from('users').whereDay('created_at', '=', 1);
         expect(builder.toSql()).toBe('select * from [users] where day([created_at]) = ?');
         expect(builder.getBindings()).toEqual(['01']);
     });
 
-    it('Works Or Where Day MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Or Where Day Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereDay('created_at', '=', 1).orWhereDay('created_at', '=', 2);
         expect(builder.toSql()).toBe('select * from `users` where day(`created_at`) = ? or day(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['01', '02']);
@@ -338,15 +338,15 @@ describe('Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['01', '02']);
     });
 
-    it('Works Or Where Day SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Or Where Day Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('*').from('users').whereDay('created_at', '=', 1).orWhereDay('created_at', '=', 2);
         expect(builder.toSql()).toBe('select * from [users] where day([created_at]) = ? or day([created_at]) = ?');
         expect(builder.getBindings()).toEqual(['01', '02']);
     });
 
-    it('Works Where Month MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Where Month Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereMonth('created_at', '=', 5);
         expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['05']);
@@ -360,21 +360,21 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Month Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('*').from('users').whereMonth('created_at', '=', 5);
         expect(builder.toSql()).toBe('select * from "users" where strftime(\'%m\', "created_at") = cast(? as text)');
         expect(builder.getBindings()).toEqual(['05']);
     });
 
-    it('Works Where Month SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Where Month Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('*').from('users').whereMonth('created_at', '=', 5);
         expect(builder.toSql()).toBe('select * from [users] where month([created_at]) = ?');
         expect(builder.getBindings()).toEqual(['05']);
     });
 
-    it('Works Or Where Month MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Or Where Month Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereMonth('created_at', '=', 5).orWhereMonth('created_at', '=', 6);
         expect(builder.toSql()).toBe('select * from `users` where month(`created_at`) = ? or month(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['05', '06']);
@@ -389,15 +389,15 @@ describe('Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['05', '06']);
     });
 
-    it('Works Or Where Month SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Or Where Month Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('*').from('users').whereMonth('created_at', '=', 5).orWhereMonth('created_at', '=', 6);
         expect(builder.toSql()).toBe('select * from [users] where month([created_at]) = ? or month([created_at]) = ?');
         expect(builder.getBindings()).toEqual(['05', '06']);
     });
 
-    it('Works Where Year MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Where Year Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereYear('created_at', '=', 2014);
         expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['2014']);
@@ -411,21 +411,21 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Year Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('*').from('users').whereYear('created_at', '=', 2014);
         expect(builder.toSql()).toBe('select * from "users" where strftime(\'%Y\', "created_at") = cast(? as text)');
         expect(builder.getBindings()).toEqual(['2014']);
     });
 
-    it('Works Where Year SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Where Year Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('*').from('users').whereYear('created_at', '=', 2014);
         expect(builder.toSql()).toBe('select * from [users] where year([created_at]) = ?');
         expect(builder.getBindings()).toEqual(['2014']);
     });
 
-    it('Works Or Where Year MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Or Where Year Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereYear('created_at', '=', 2014).orWhereYear('created_at', '=', 2015);
         expect(builder.toSql()).toBe('select * from `users` where year(`created_at`) = ? or year(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['2014', '2015']);
@@ -440,20 +440,20 @@ describe('Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['2014', '2015']);
     });
 
-    it('Works Or Where Year SqlServer', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Or Where Year Sqlserver', () => {
+        const builder = getSqlserverBuilder();
         builder.select('*').from('users').whereYear('created_at', '=', 2014).orWhereYear('created_at', '=', 2015);
         expect(builder.toSql()).toBe('select * from [users] where year([created_at]) = ? or year([created_at]) = ?');
         expect(builder.getBindings()).toEqual(['2014', '2015']);
     });
 
-    it('Works Where Time MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Time Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereTime('created_at', '>=', '22:00');
         expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) >= ?');
         expect(builder.getBindings()).toEqual(['22:00']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereTime('created_at', '>=', new Date('2023-02-12 22:00:00'));
         expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) >= ?');
         expect(builder.getBindings()).toEqual(['22:00:00']);
@@ -467,7 +467,7 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Time Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('*').from('users').whereTime('created_at', '>=', '22:00');
         expect(builder.toSql()).toBe(
             'select * from "users" where strftime(\'%H:%M:%S\', "created_at") >= cast(? as text)'
@@ -475,20 +475,20 @@ describe('Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['22:00']);
     });
 
-    it('Works Where Time SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Where Time Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').whereTime('created_at', '22:00');
         expect(builder.toSql()).toBe('select * from [users] where cast([created_at] as time) = ?');
         expect(builder.getBindings()).toEqual(['22:00']);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').whereTime('created_at', new Raw('NOW()'));
         expect(builder.toSql()).toBe('select * from [users] where cast([created_at] as time) = NOW()');
         expect(builder.getBindings()).toEqual([]);
     });
 
-    it('Works Where Time Operator Optional MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Where Time Operator Optional Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereTime('created_at', '22:00');
         expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['22:00']);
@@ -502,7 +502,7 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Time Operator Optional Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         builder.select('*').from('users').whereTime('created_at', '22:00');
         expect(builder.toSql()).toBe(
             'select * from "users" where strftime(\'%H:%M:%S\', "created_at") = cast(? as text)'
@@ -510,13 +510,13 @@ describe('Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['22:00']);
     });
 
-    it('Works Or Where Time MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Or Where Time Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereTime('created_at', '<=', '10:00').orWhereTime('created_at', '22:00');
         expect(builder.toSql()).toBe('select * from `users` where time(`created_at`) <= ? or time(`created_at`) = ?');
         expect(builder.getBindings()).toEqual(['10:00', '22:00']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -540,8 +540,8 @@ describe('Builder Wheres', () => {
         expect(builder.getBindings()).toEqual(['10:00', '22:00']);
     });
 
-    it('Works Or Where Time SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Or Where Time Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder
             .select('*')
             .from('users')
@@ -552,7 +552,7 @@ describe('Builder Wheres', () => {
         );
         expect(builder.getBindings()).toEqual(['10:00', '22:00']);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder
             .select('*')
             .from('users')
@@ -991,48 +991,48 @@ describe('Builder Wheres', () => {
         }).toThrow('This database engine does not support fulltext search operations.');
     });
 
-    it('Works Where Fulltext MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Fulltext Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World');
         expect(builder.toSql()).toBe('select * from `users` where match (`body`) against (? in natural language mode)');
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereFulltextNot('body', 'Hello World');
         expect(builder.toSql()).toBe(
             'select * from `users` where not match (`body`) against (? in natural language mode)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('name', 'Claudio').orWhereFulltext('body', 'Hello World');
         expect(builder.toSql()).toBe(
             'select * from `users` where `name` = ? or match (`body`) against (? in natural language mode)'
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('name', 'Claudio').orWhereFulltextNot('body', 'Hello World');
         expect(builder.toSql()).toBe(
             'select * from `users` where `name` = ? or not match (`body`) against (? in natural language mode)'
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereFulltext('body', 'Hello World', { expanded: true });
         expect(builder.toSql()).toBe(
             'select * from `users` where match (`body`) against (? in natural language mode with query expansion)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereFulltextNot('body', 'Hello World', { expanded: true });
         expect(builder.toSql()).toBe(
             'select * from `users` where not match (`body`) against (? in natural language mode with query expansion)'
         );
         expect(builder.getBindings()).toEqual(['Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -1043,7 +1043,7 @@ describe('Builder Wheres', () => {
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -1054,17 +1054,17 @@ describe('Builder Wheres', () => {
         );
         expect(builder.getBindings()).toEqual(['Claudio', 'Hello World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereFulltext('body', '+Hello -World', { mode: 'boolean' });
         expect(builder.toSql()).toBe('select * from `users` where match (`body`) against (? in boolean mode)');
         expect(builder.getBindings()).toEqual(['+Hello -World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereFulltext('body', '+Hello -World', { mode: 'boolean', expanded: true });
         expect(builder.toSql()).toBe('select * from `users` where match (`body`) against (? in boolean mode)');
         expect(builder.getBindings()).toEqual(['+Hello -World']);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereFulltext(['body', 'title'], 'Car,Plane');
         expect(builder.toSql()).toBe(
             'select * from `users` where match (`body`, `title`) against (? in natural language mode)'
@@ -1188,20 +1188,20 @@ describe('Builder Wheres', () => {
         expect([1]).toEqual(builder.getBindings());
     });
 
-    it('Works Json Where Null MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Json Where Null Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereNull('items->id');
         expect(
             "select * from `users` where (json_extract(`items`, '$.\"id\"') is null OR json_type(json_extract(`items`, '$.\"id\"')) = 'NULL')"
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereNull('id');
         expect('select * from `users` where `id` is null').toBe(builder.toSql());
     });
 
-    it('Works Json Where Not Null MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works Json Where Not Null Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').whereNotNull('items->id');
         expect(
             "select * from `users` where (json_extract(`items`, '$.\"id\"') is not null AND json_type(json_extract(`items`, '$.\"id\"')) != 'NULL')"
@@ -1592,20 +1592,20 @@ describe('Builder Wheres', () => {
         }).toThrow('The number of columns must match the number of values');
     });
 
-    it('Works Where Json Contains MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Json Contains Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonContains('options', ['en']);
         expect('select * from `users` where json_contains(`options`, ?)').toBe(builder.toSql());
         expect(['["en"]']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonContains('users.options->languages', ['en']);
         expect('select * from `users` where json_contains(`users`.`options`, ?, \'$."languages"\')').toBe(
             builder.toSql()
         );
         expect(['["en"]']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -1641,27 +1641,27 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Json Contains Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         expect(() => {
             builder.select('*').from('users').whereJsonContains('options->languages', ['en']).toSql();
         }).toThrow('This database engine does not support JSON contains operations.');
     });
 
-    it('Works Where Json Contains SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Where Json Contains Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonContains('options', true);
 
         expect('select * from [users] where ? in (select [value] from openjson([options]))').toBe(builder.toSql());
         expect(['true']).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonContains('users.options->languages', 'en');
         expect(
             'select * from [users] where ? in (select [value] from openjson([users].[options], \'$."languages"\'))'
         ).toBe(builder.toSql());
         expect(['en']).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder
             .select('*')
             .from('users')
@@ -1673,13 +1673,13 @@ describe('Builder Wheres', () => {
         expect([1]).toEqual(builder.getBindings());
     });
 
-    it('Works Where Json Doesnt Contain MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Json Doesnt Contain Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonDoesntContain('options->languages', ['en']);
         expect('select * from `users` where not json_contains(`options`, ?, \'$."languages"\')').toBe(builder.toSql());
         expect(['["en"]']).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -1710,21 +1710,21 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Json Doesnt Contain Sqlite', () => {
-        const builder = getSQLiteBuilder();
+        const builder = getSqliteBuilder();
         expect(() => {
             builder.select('*').from('users').whereJsonDoesntContain('options->languages', ['en']).toSql();
         }).toThrow('This database engine does not support JSON contains operations.');
     });
 
-    it('Works Where Json Doesnt Contain SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Where Json Doesnt Contain Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonDoesntContain('options->languages', 'en');
         expect(
             'select * from [users] where not ? in (select [value] from openjson([options], \'$."languages"\'))'
         ).toBe(builder.toSql());
         expect(['en']).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder
             .select('*')
             .from('users')
@@ -1744,32 +1744,32 @@ describe('Builder Wheres', () => {
         }).toThrow('This database engine does not support JSON contains key operations.');
     });
 
-    it('Works Where Json Contains Key MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Json Contains Key Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
         expect(
             "select * from `users` where ifnull(json_contains_path(`users`.`options`, 'one', '$.\"languages\"'), 0)"
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->language->primary');
         expect(
             'select * from `users` where ifnull(json_contains_path(`options`, \'one\', \'$."language"."primary"\'), 0)'
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
         expect(
             "select * from `users` where `id` = ? or ifnull(json_contains_path(`options`, 'one', '$.\"languages\"'), 0)"
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
         expect(
             "select * from `users` where ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[*]') and json_contains_path(`options`, 'one', '$.\"languages\"[0]'), 0)"
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
         expect(
             "select * from `users` where ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[*][*]') and json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
@@ -1815,83 +1815,83 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Json Contains Key Sqlite', () => {
-        let builder = getSQLiteBuilder();
+        let builder = getSqliteBuilder();
         builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
         expect('select * from "users" where json_type("users"."options", \'$."languages"\') is not null').toBe(
             builder.toSql()
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->language->primary');
         expect('select * from "users" where json_type("options", \'$."language"."primary"\') is not null').toBe(
             builder.toSql()
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
         expect('select * from "users" where "id" = ? or json_type("options", \'$."languages"\') is not null').toBe(
             builder.toSql()
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
         expect('select * from "users" where json_type("options", \'$."languages"[0]\') is not null').toBe(
             builder.toSql()
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
         expect('select * from "users" where json_type("options", \'$."languages"[0][1]\') is not null').toBe(
             builder.toSql()
         );
     });
 
-    it('Works Where Json Contains Key SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Where Json Contains Key Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonContainsKey('users.options->languages');
         expect("select * from [users] where 'languages' in (select [key] from openjson([users].[options]))").toBe(
             builder.toSql()
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->language->primary');
         expect(
             "select * from [users] where 'primary' in (select [key] from openjson([options], '$.\"language\"'))"
         ).toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonContainsKey('options->languages');
         expect("select * from [users] where [id] = ? or 'languages' in (select [key] from openjson([options]))").toBe(
             builder.toSql()
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages->0');
         expect('select * from [users] where 0 in (select [key] from openjson([options], \'$."languages"\'))').toBe(
             builder.toSql()
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonContainsKey('options->languages[0][1]');
         expect('select * from [users] where 1 in (select [key] from openjson([options], \'$."languages"[0]\'))').toBe(
             builder.toSql()
         );
     });
 
-    it('Works Where Json Doesnt Contain Key MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Json Doesnt Contain Key Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonDoesntContainKey('options->languages');
         expect(
             "select * from `users` where not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"'), 0)"
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages');
         expect(
             "select * from `users` where `id` = ? or not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"'), 0)"
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonDoesntContainKey('options->languages[0][1]');
         expect(
             "select * from `users` where not ifnull(json_contains_path(`options`, 'one', '$.\"languages\"[*][*]') and json_contains_path(`options`, 'one', '$.\"languages\"[0][1]'), 0)"
@@ -1925,39 +1925,39 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Json Doesnt Contain Key Sqlite', () => {
-        let builder = getSQLiteBuilder();
+        let builder = getSqliteBuilder();
         builder.select('*').from('users').whereJsonDoesntContainKey('options->languages');
         expect('select * from "users" where not json_type("options", \'$."languages"\') is not null').toBe(
             builder.toSql()
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages');
         expect('select * from "users" where "id" = ? or not json_type("options", \'$."languages"\') is not null').toBe(
             builder.toSql()
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages[0][1]');
         expect(
             'select * from "users" where "id" = ? or not json_type("options", \'$."languages"[0][1]\') is not null'
         ).toBe(builder.toSql());
     });
 
-    it('Works Where Json Doesnt Contain Key SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Where Json Doesnt Contain Key Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonDoesntContainKey('options->languages');
         expect("select * from [users] where not 'languages' in (select [key] from openjson([options]))").toBe(
             builder.toSql()
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages');
         expect(
             "select * from [users] where [id] = ? or not 'languages' in (select [key] from openjson([options]))"
         ).toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonDoesntContainKey('options->languages[0][1]');
         expect(
             'select * from [users] where [id] = ? or not 1 in (select [key] from openjson([options], \'$."languages"[0]\'))'
@@ -1972,46 +1972,46 @@ describe('Builder Wheres', () => {
         }).toThrow('This database engine does not support JSON length operations.');
     });
 
-    it('Works Where Json Length MySql', () => {
-        let builder = getMySqlBuilder();
+    it('Works Where Json Length Mysql', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonLength('options', 0);
         expect('select * from `users` where json_length(`options`) = ?').toBe(builder.toSql());
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonLengthNot('options', 0);
         expect('select * from `users` where not json_length(`options`) = ?').toBe(builder.toSql());
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
         expect('select * from `users` where json_length(`users`.`options`, \'$."languages"\') > ?').toBe(
             builder.toSql()
         );
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').whereJsonLengthNot('users.options->languages', '>', 0);
         expect('select * from `users` where not json_length(`users`.`options`, \'$."languages"\') > ?').toBe(
             builder.toSql()
         );
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonLength('options->languages', new Raw('0'));
         expect('select * from `users` where `id` = ? or json_length(`options`, \'$."languages"\') = 0').toBe(
             builder.toSql()
         );
         expect([1]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonLengthNot('options->languages', new Raw('0'));
         expect('select * from `users` where `id` = ? or not json_length(`options`, \'$."languages"\') = 0').toBe(
             builder.toSql()
         );
         expect([1]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -2022,7 +2022,7 @@ describe('Builder Wheres', () => {
         );
         expect([1]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -2067,26 +2067,26 @@ describe('Builder Wheres', () => {
     });
 
     it('Works Where Json Length Sqlite', () => {
-        let builder = getSQLiteBuilder();
+        let builder = getSqliteBuilder();
         builder.select('*').from('users').whereJsonLength('options', 0);
         expect('select * from "users" where json_array_length("options") = ?').toBe(builder.toSql());
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
         expect('select * from "users" where json_array_length("users"."options", \'$."languages"\') > ?').toBe(
             builder.toSql()
         );
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonLength('options->languages', new Raw('0'));
         expect('select * from "users" where "id" = ? or json_array_length("options", \'$."languages"\') = 0').toBe(
             builder.toSql()
         );
         expect([1]).toEqual(builder.getBindings());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder
             .select('*')
             .from('users')
@@ -2098,27 +2098,27 @@ describe('Builder Wheres', () => {
         expect([1]).toEqual(builder.getBindings());
     });
 
-    it('Works Where Json Length SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Where Json Length Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonLength('options', 0);
         expect('select * from [users] where (select count(*) from openjson([options])) = ?').toBe(builder.toSql());
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').whereJsonLength('users.options->languages', '>', 0);
         expect(
             'select * from [users] where (select count(*) from openjson([users].[options], \'$."languages"\')) > ?'
         ).toBe(builder.toSql());
         expect([0]).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('id', '=', 1).orWhereJsonLength('options->languages', new Raw('0'));
         expect(
             'select * from [users] where [id] = ? or (select count(*) from openjson([options], \'$."languages"\')) = 0'
         ).toBe(builder.toSql());
         expect([1]).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder
             .select('*')
             .from('users')

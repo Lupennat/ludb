@@ -1,6 +1,6 @@
 import { PdoError } from 'lupdo';
 import ExpressionContract from '../query/expression-contract';
-import { ConnectionSessionI } from '../types/connection/connection';
+import { ConnectionSessionI } from '../types/connection';
 import { BindingExclude, BindingExcludeObject } from '../types/generics';
 
 class QueryError extends PdoError {

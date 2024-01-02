@@ -3,10 +3,10 @@ import BuilderI from '../../../types/query/builder';
 
 import {
     getBuilder,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getPostgresBuilder,
-    getSQLiteBuilder,
-    getSqlServerBuilder,
+    getSqliteBuilder,
+    getSqlserverBuilder,
     pdo
 } from '../fixtures/mocked';
 
@@ -114,8 +114,8 @@ describe('Builder Order-Group', () => {
         expect('select * from "users" order by RANDOM()').toBe(builder.toSql());
     });
 
-    it('Works In Random Order MySql', () => {
-        const builder = getMySqlBuilder();
+    it('Works In Random Order Mysql', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').inRandomOrder();
         expect('select * from `users` order by RAND()').toBe(builder.toSql());
     });
@@ -127,37 +127,37 @@ describe('Builder Order-Group', () => {
     });
 
     it('Works In Random Order Sql Server', () => {
-        const builder = getSqlServerBuilder();
+        const builder = getSqlserverBuilder();
         builder.select('*').from('users').inRandomOrder();
         expect('select * from [users] order by NEWID()').toBe(builder.toSql());
     });
 
-    it('Works Order Bys SqlServer', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Order Bys Sqlserver', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').orderBy('email').orderBy('age', 'desc');
         expect('select * from [users] order by [email] asc, [age] desc').toBe(builder.toSql());
 
         builder.getRegistry().orders = [];
         expect('select * from [users]').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').orderBy('email');
         expect('select * from [users] order by [email] asc').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').orderByDesc('name');
         expect('select * from [users] order by [name] desc').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').orderByRaw('[age] asc');
         expect('select * from [users] order by [age] asc').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').orderBy('email').orderByRaw('[age] ? desc', ['foo']);
         expect('select * from [users] order by [email] asc, [age] ? desc').toBe(builder.toSql());
         expect(['foo']).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').skip(25).take(10).orderByRaw('[email] desc');
         expect('select * from [users] order by [email] desc offset 25 rows fetch next 10 rows only').toBe(
             builder.toSql()
@@ -229,34 +229,34 @@ describe('Builder Order-Group', () => {
         }).toThrow('Order direction must be "asc" or "desc".');
     });
 
-    it('Works SQLite Order By', () => {
-        const builder = getSQLiteBuilder();
+    it('Works Sqlite Order By', () => {
+        const builder = getSqliteBuilder();
         builder.select('*').from('users').orderBy('email', 'desc');
         expect('select * from "users" order by "email" desc').toBe(builder.toSql());
     });
 
-    it('Works SqlServer Limits And Offsets', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Sqlserver Limits And Offsets', () => {
+        let builder = getSqlserverBuilder();
         builder.select('*').from('users').take(10);
         expect('select top 10 * from [users]').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').skip(10).orderBy('email', 'desc');
         expect('select * from [users] order by [email] desc offset 10 rows').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').skip(10).take(10);
         expect('select * from [users] order by (SELECT 0) offset 10 rows fetch next 10 rows only').toBe(
             builder.toSql()
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').skip(11).take(10).orderBy('email', 'desc');
         expect('select * from [users] order by [email] desc offset 11 rows fetch next 10 rows only').toBe(
             builder.toSql()
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         const subQuery = (query: BuilderI): void => {
             query
                 .select('created_at')
@@ -271,17 +271,17 @@ describe('Builder Order-Group', () => {
         ).toBe(builder.toSql());
         expect(['emailBinding', 'nameBinding']).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         // @ts-expect-error text wrong parameter
         builder.select('*').from('users').take('foo');
         expect('select * from [users]').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         // @ts-expect-error text wrong parameter
         builder.select('*').from('users').take('foo').offset('bar');
         expect('select * from [users]').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         // @ts-expect-error text wrong parameter
         builder.select('*').from('users').offset('bar');
         expect('select * from [users]').toBe(builder.toSql());

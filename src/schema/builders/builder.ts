@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { QueryBuilder } from '../../query';
-import { ConnectionSessionI } from '../../types/connection/connection';
+import DriverConnectionI, { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
 import BuilderI, {
@@ -22,11 +22,13 @@ import { ViewRegistryI } from '../../types/schema/registry';
 import Blueprint from '../blueprint';
 import CommandViewDefinition from '../definitions/commands/command-view-definition';
 
-class Builder implements BuilderI {
+class Builder<Session extends ConnectionSessionI<DriverConnectionI> = ConnectionSessionI<DriverConnectionI>>
+    implements BuilderI<Session>
+{
     /**
      * The schema grammar instance.
      */
-    protected grammar;
+    protected grammar: ReturnType<Session['getSchemaGrammar']>;
 
     /**
      * The Blueprint resolver callback.
@@ -46,8 +48,8 @@ class Builder implements BuilderI {
     /**
      * Create a new database Schema manager.
      */
-    constructor(protected connection: ConnectionSessionI) {
-        this.grammar = connection.getSchemaGrammar();
+    constructor(protected connection: Session) {
+        this.grammar = connection.getSchemaGrammar() as ReturnType<Session['getSchemaGrammar']>;
     }
 
     /**
@@ -125,10 +127,45 @@ class Builder implements BuilderI {
     }
 
     /**
-     * Drop a table from the schema if it exists.
+     * Drop a view from the schema if it exists.
      */
-    public async dropViewIfExists(_view: string): Promise<boolean> {
+    public async dropView(_view: Stringable): Promise<boolean> {
         throw new Error('This database driver does not support dropping views.');
+    }
+
+    /**
+     * Drop a view from the schema if it exists.
+     */
+    public async dropViewIfExists(_view: Stringable): Promise<boolean> {
+        throw new Error('This database driver does not support dropping views.');
+    }
+
+    /**
+     * Drop a type from the schema if it exists.
+     */
+    public async dropType(_type: Stringable): Promise<boolean> {
+        throw new Error('This database driver does not support dropping types.');
+    }
+
+    /**
+     * Drop a type from the schema if it exists.
+     */
+    public async dropTypeIfExists(_type: Stringable): Promise<boolean> {
+        throw new Error('This database driver does not support dropping types.');
+    }
+
+    /**
+     * Drop a domain from the schema if it exists.
+     */
+    public async dropDomain(_domain: Stringable): Promise<boolean> {
+        throw new Error('This database driver does not support dropping domains.');
+    }
+
+    /**
+     * Drop a domain from the schema if it exists.
+     */
+    public async dropDomainIfExists(_domain: Stringable): Promise<boolean> {
+        throw new Error('This database driver does not support dropping domains.');
     }
 
     /**
@@ -184,7 +221,7 @@ class Builder implements BuilderI {
      * Determine if the given table exists.
      */
     public async hasTable(table: string): Promise<boolean> {
-        table = `${this.connection.getTablePrefix()}${table}`;
+        table = `${this.getConnection().getTablePrefix()}${table}`;
         const tables = await this.getTables();
 
         for (const value of tables) {
@@ -199,7 +236,7 @@ class Builder implements BuilderI {
      * Determine if the given view exists.
      */
     public async hasView(view: string): Promise<boolean> {
-        view = `${this.connection.getTablePrefix()}${view}`;
+        view = `${this.getConnection().getTablePrefix()}${view}`;
         const views = await this.getViews();
 
         for (const value of views) {
@@ -271,7 +308,7 @@ class Builder implements BuilderI {
         }
 
         throw new Error(
-            `There is no column with name '${column}' on table '${this.connection.getTablePrefix()}${table}'.`
+            `There is no column with name '${column}' on table '${this.getConnection().getTablePrefix()}${table}'.`
         );
     }
 
@@ -285,7 +322,7 @@ class Builder implements BuilderI {
     /**
      * Create a new table on the schema.
      */
-    public async create(table: string, callback: BlueprintCallback): Promise<void> {
+    public async create(table: Stringable, callback: BlueprintCallback): Promise<void> {
         const blueprint = this.createBlueprint(table, blueprint => {
             blueprint.create();
             callback(blueprint);
@@ -297,8 +334,8 @@ class Builder implements BuilderI {
      * Create a new table on the schema.
      */
     public async createView(view: Stringable, callback: ViewCallback): Promise<boolean> {
-        return await this.connection.statement(
-            this.grammar.compileCreateView(
+        return await this.getConnection().statement(
+            this.getGrammar().compileCreateView(
                 view,
                 callback(
                     new CommandViewDefinition<ViewRegistryI>('create', {
@@ -310,9 +347,16 @@ class Builder implements BuilderI {
     }
 
     /**
+     * create user-defined type.
+     */
+    public async createType(_name: Stringable, _type: string, _definition: any): Promise<boolean> {
+        throw new Error('This database driver does not support creating types.');
+    }
+
+    /**
      * Drop a table from the schema.
      */
-    public async drop(table: string): Promise<void> {
+    public async drop(table: Stringable): Promise<void> {
         const blueprint = this.createBlueprint(table, blueprint => {
             blueprint.drop();
         });
@@ -322,7 +366,7 @@ class Builder implements BuilderI {
     /**
      * Drop a table from the schema if it exists.
      */
-    public async dropTableIfExists(table: string): Promise<void> {
+    public async dropTableIfExists(table: Stringable): Promise<void> {
         const blueprint = this.createBlueprint(table, blueprint => {
             blueprint.dropTableIfExists();
         });
@@ -352,14 +396,14 @@ class Builder implements BuilderI {
      * Enable foreign key constraints.
      */
     public async enableForeignKeyConstraints(): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileEnableForeignKeyConstraints());
+        return await this.getConnection().statement(this.getGrammar().compileEnableForeignKeyConstraints());
     }
 
     /**
      * Disable foreign key constraints.
      */
     public async disableForeignKeyConstraints(): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileDisableForeignKeyConstraints());
+        return await this.getConnection().statement(this.getGrammar().compileDisableForeignKeyConstraints());
     }
 
     /**
@@ -386,9 +430,9 @@ class Builder implements BuilderI {
     /**
      * Create a new command set with a Closure.
      */
-    protected createBlueprint(table: string, callback?: BlueprintCallback): BlueprintI {
-        const prefix = this.connection.getConfig<boolean>('prefix_indexes')
-            ? this.connection.getConfig<string>('prefix')
+    protected createBlueprint(table: Stringable, callback?: BlueprintCallback): BlueprintI {
+        const prefix = this.getConnection().getConfig<boolean>('prefix_indexes')
+            ? this.getConnection().getConfig<string>('prefix')
             : '';
 
         if (typeof this.resolver === 'function') {
@@ -401,17 +445,15 @@ class Builder implements BuilderI {
     /**
      * Get the database connection instance.
      */
-    public getConnection(): ConnectionSessionI {
+    public getConnection(): Session {
         return this.connection;
     }
 
     /**
-     * Set the database connection instance.
+     * Get the database schema grammar instance.
      */
-    public setConnection(connection: ConnectionSessionI): this {
-        this.connection = connection;
-
-        return this;
+    public getGrammar(): ReturnType<ReturnType<this['getConnection']>['getSchemaGrammar']> {
+        return this.grammar as ReturnType<ReturnType<this['getConnection']>['getSchemaGrammar']>;
     }
 
     /**
@@ -429,21 +471,23 @@ class Builder implements BuilderI {
     protected async getTablesFromDatabase<T = TableDictionary>(
         databaseOrSchemaOrWithSize?: string | boolean
     ): Promise<T[]> {
-        return this.connection.selectFromWriteConnection<T>(this.grammar.compileTables(databaseOrSchemaOrWithSize));
+        return this.getConnection().selectFromWriteConnection<T>(
+            this.getGrammar().compileTables(databaseOrSchemaOrWithSize)
+        );
     }
 
     /**
      * Get views From database
      */
     protected async getViewsFromDatabase<T = ViewDictionary>(databaseOrSchema?: string): Promise<T[]> {
-        return this.connection.selectFromWriteConnection<T>(this.grammar.compileViews(databaseOrSchema));
+        return this.getConnection().selectFromWriteConnection<T>(this.getGrammar().compileViews(databaseOrSchema));
     }
 
     /**
      * Get types From database
      */
     protected async getTypesFromDatabase<T = TypeDictionary>(databaseOrSchema?: string): Promise<T[]> {
-        return this.connection.selectFromWriteConnection<T>(this.grammar.compileTypes(databaseOrSchema));
+        return this.getConnection().selectFromWriteConnection<T>(this.getGrammar().compileTypes(databaseOrSchema));
     }
 
     /**
@@ -453,9 +497,11 @@ class Builder implements BuilderI {
         table: string,
         databaseOrSchema?: string
     ): Promise<T[]> {
-        table = `${this.connection.getTablePrefix()}${table}`;
+        table = `${this.getConnection().getTablePrefix()}${table}`;
 
-        return this.connection.selectFromWriteConnection<T>(this.grammar.compileColumns(table, databaseOrSchema));
+        return this.getConnection().selectFromWriteConnection<T>(
+            this.getGrammar().compileColumns(table, databaseOrSchema)
+        );
     }
 
     /**
@@ -465,9 +511,11 @@ class Builder implements BuilderI {
         table: string,
         databaseOrSchema?: string
     ): Promise<T[]> {
-        table = `${this.connection.getTablePrefix()}${table}`;
+        table = `${this.getConnection().getTablePrefix()}${table}`;
 
-        return this.connection.selectFromWriteConnection<T>(this.grammar.compileIndexes(table, databaseOrSchema));
+        return this.getConnection().selectFromWriteConnection<T>(
+            this.getGrammar().compileIndexes(table, databaseOrSchema)
+        );
     }
 
     /**
@@ -477,9 +525,11 @@ class Builder implements BuilderI {
         table: string,
         databaseOrSchema?: string
     ): Promise<T[]> {
-        table = `${this.connection.getTablePrefix()}${table}`;
+        table = `${this.getConnection().getTablePrefix()}${table}`;
 
-        return this.connection.selectFromWriteConnection<T>(this.grammar.compileForeignKeys(table, databaseOrSchema));
+        return this.getConnection().selectFromWriteConnection<T>(
+            this.getGrammar().compileForeignKeys(table, databaseOrSchema)
+        );
     }
 }
 

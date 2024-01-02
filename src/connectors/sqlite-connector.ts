@@ -1,18 +1,17 @@
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { SqliteOptions } from 'lupdo-sqlite';
 import { existsSync } from 'node:fs';
-import { SQLiteConfig } from '../types/config';
-import ConnectorI from '../types/connector';
+import { SqliteConfig } from '../types/config';
 import { merge } from '../utils';
 import Connector from './connector';
 
-class SQLiteConnector extends Connector implements ConnectorI {
+class SqliteConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect<T extends SQLiteConfig>(config: T): Pdo {
-        const attributes = this.getAttributes<SQLiteConfig>(config);
-        const poolOptions = this.getPoolOptions<SQLiteConfig>(config);
+    public connect(config: SqliteConfig): Pdo {
+        const attributes = this.getAttributes<SqliteConfig>(config);
+        const poolOptions = this.getPoolOptions<SqliteConfig>(config);
 
         const originalCreated = poolOptions.created;
 
@@ -28,8 +27,9 @@ class SQLiteConnector extends Connector implements ConnectorI {
             await Promise.all(promises);
         };
 
-        const options = merge(
+        const options: SqliteOptions = merge(
             {
+                readonly: config.readonly,
                 path: config.database,
                 wal: config.journal_mode_wal,
                 walMaxSize: config.wal_max_size,
@@ -43,34 +43,33 @@ class SQLiteConnector extends Connector implements ConnectorI {
             throw new Error('Database file path is required.');
         }
 
-        // SQLite supports "in-memory" databases that only last as long as the owning
+        // Sqlite supports "in-memory" databases that only last as long as the owning
         // connection does. These are useful for tests or for short lifetime store
         // querying. In-memory databases may only have a single open connection.
-        if (options.path === ':memory:')
-            return this.createConnection<SqliteOptions>('sqlite', options as SqliteOptions, poolOptions, attributes);
+        if (options.path === ':memory:') return this.createConnection('sqlite', options, poolOptions, attributes);
 
         const path = existsSync(options.path);
 
-        // Here we'll verify that the SQLite database exists before going any further
+        // Here we'll verify that the Sqlite database exists before going any further
         // as the developer probably wants to know if the database exists and this
-        // SQLite driver will not throw any exception if it does not by default.
+        // Sqlite driver will not throw any exception if it does not by default.
         if (path === false) {
             throw new Error(
                 `Database file at path [${options.path}] does not exist. Ensure this is an absolute path to the database.`
             );
         }
 
-        return this.createConnection<SqliteOptions>('sqlite', options as SqliteOptions, poolOptions, attributes);
+        return this.createConnection('sqlite', options, poolOptions, attributes);
     }
 
     /**
      * Configure the foreign_key_constraints setting.
      */
-    public async configureForeignKeyConstraints(connection: PdoConnectionI, config: SQLiteConfig): Promise<void> {
+    public async configureForeignKeyConstraints(connection: PdoConnectionI, config: SqliteConfig): Promise<void> {
         if (typeof config.foreign_key_constraints === 'boolean') {
             connection.query(`foreign_keys = ${Boolean(config.foreign_key_constraints) ? 'ON' : 'OFF'}`);
         }
     }
 }
 
-export default SQLiteConnector;
+export default SqliteConnector;

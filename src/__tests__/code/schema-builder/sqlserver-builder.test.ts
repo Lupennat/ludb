@@ -1,13 +1,14 @@
-import SqlServerBuilder from '../../../schema/builders/sqlserver-builder';
-import SqlServerSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
-import { getConnection } from '../fixtures/mocked';
+import SqlserverBuilder from '../../../schema/builders/sqlserver-builder';
+import { pdo as fakePdo, getSqlserverConnection } from '../fixtures/mocked';
 
-describe('SqlServer Schema Builder Test', () => {
+describe('Sqlserver Schema Builder Test', () => {
+    afterAll(async () => {
+        await fakePdo.disconnect();
+    });
+
     it('Works Enable Foreign Key Constraints', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -17,15 +18,13 @@ describe('SqlServer Schema Builder Test', () => {
             return true;
         });
 
-        const builder = new SqlServerBuilder(session);
+        const builder = new SqlserverBuilder(session);
         expect(await builder.enableForeignKeyConstraints()).toBeTruthy();
     });
 
     it('Works Disable Foreign Key Constraints', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe('EXEC sp_msforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT all";');
@@ -33,132 +32,166 @@ describe('SqlServer Schema Builder Test', () => {
             return true;
         });
 
-        const builder = new SqlServerBuilder(session);
+        const builder = new SqlserverBuilder(session);
         expect(await builder.disableForeignKeyConstraints()).toBeTruthy();
     });
 
     it('Works Create Table', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
-            expect(sql).toBe('create database "db"');
+            expect(sql).toBe('create database [database]');
             expect(bindings).toBeUndefined();
             return true;
         });
-        const builder = new SqlServerBuilder(session);
-        expect(await builder.createDatabase('db')).toBeTruthy();
+        const builder = new SqlserverBuilder(session);
+        expect(await builder.createDatabase('database')).toBeTruthy();
     });
 
     it('Works Create View', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(grammar, 'getTablePrefix').mockReturnValue('prefix_');
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'create view "prefix_foo" as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\')'
+                    "create view [schema].[prefix_foo] as select [id], [name] from [schema2].[prefix_baz] where [type] in ('bar', 'bax')"
                 );
                 expect(bindings).toBeUndefined();
                 return true;
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'create view "prefix_foo" ("id", "name") with encryption as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\') with check option'
+                    "create view [schema].[prefix_foo] ([id], [name]) with encryption as select [id], [name] from [schema2].[prefix_baz] where [type] in ('bar', 'bax') with check option"
                 );
                 expect(bindings).toBeUndefined();
                 return true;
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'create view "prefix_foo" ("id", "name") with schemabinding as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\') with check option'
+                    "create view [schema].[prefix_foo] ([id], [name]) with schemabinding as select [id], [name] from [schema2].[prefix_baz] where [type] in ('bar', 'bax') with check option"
                 );
                 expect(bindings).toBeUndefined();
                 return true;
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'create view "prefix_foo" ("id", "name") with view_metadata as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\') with check option'
+                    "create view [schema].[prefix_foo] ([id], [name]) with view_metadata as select [id], [name] from [schema2].[prefix_baz] where [type] in ('bar', 'bax') with check option"
                 );
                 expect(bindings).toBeUndefined();
                 return true;
             });
-        const builder = new SqlServerBuilder(session);
+        const builder = new SqlserverBuilder(session);
         expect(
-            await builder.createView('foo', view =>
-                view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+            await builder.createView('schema.foo', view =>
+                view.as(query => {
+                    return query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz');
+                })
             )
         ).toBeTruthy();
         expect(
-            await builder.createView('foo', view =>
+            await builder.createView('schema.foo', view =>
                 view
                     .columnNames(['id', 'name'])
                     .withEncryption()
-                    .withCheckLocal()
-                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+                    .check()
+                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))
             )
         ).toBeTruthy();
         expect(
-            await builder.createView('foo', view =>
+            await builder.createView('schema.foo', view =>
                 view
                     .columnNames(['id', 'name'])
                     .withSchemabinding()
-                    .withCheckLocal()
-                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+                    .check()
+                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))
             )
         ).toBeTruthy();
         expect(
-            await builder.createView('foo', view =>
+            await builder.createView('schema.foo', view =>
                 view
                     .columnNames(['id', 'name'])
                     .withViewMetadata()
-                    .withCheckLocal()
-                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+                    .check()
+                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))
             )
         ).toBeTruthy();
     });
 
     it('Works Drop Database If Exists', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
-            expect(sql).toBe('drop database if exists "db"');
+            expect(sql).toBe('drop database if exists [database]');
             expect(bindings).toBeUndefined();
             return true;
         });
 
-        const builder = new SqlServerBuilder(session);
-        expect(await builder.dropDatabaseIfExists('db')).toBeTruthy();
+        const builder = new SqlserverBuilder(session);
+        expect(await builder.dropDatabaseIfExists('database')).toBeTruthy();
+    });
+
+    it('Works Drop View', async () => {
+        const connection = getSqlserverConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop view [prefix_view]');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new SqlserverBuilder(session);
+        expect(await builder.dropView('view')).toBeTruthy();
     });
 
     it('Works Drop View If Exists', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(grammar, 'getTablePrefix').mockReturnValue('prefix_');
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
-            expect(sql).toBe('drop view if exists "prefix_view"');
+            expect(sql).toBe('drop view if exists [prefix_view]');
             expect(bindings).toBeUndefined();
             return true;
         });
 
-        const builder = new SqlServerBuilder(session);
+        const builder = new SqlserverBuilder(session);
         expect(await builder.dropViewIfExists('view')).toBeTruthy();
     });
 
-    it('Works Get Columns', async () => {
-        const connection = getConnection();
+    it('Works Drop Type', async () => {
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop type [prefix_type]');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new SqlserverBuilder(session);
+        expect(await builder.dropType('type')).toBeTruthy();
+    });
+
+    it('Works Drop View If Exists', async () => {
+        const connection = getSqlserverConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop type if exists [prefix_type]');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new SqlserverBuilder(session);
+        expect(await builder.dropTypeIfExists('type')).toBeTruthy();
+    });
+
+    it('Works Get Columns', async () => {
+        const connection = getSqlserverConnection();
+        const session = connection.sessionSchema();
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -216,8 +249,7 @@ describe('SqlServer Schema Builder Test', () => {
                 }
             ];
         });
-        const builder = new SqlServerBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new SqlserverBuilder(session);
         expect(await builder.getColumns('table')).toEqual([
             {
                 auto_increment: true,
@@ -263,10 +295,8 @@ describe('SqlServer Schema Builder Test', () => {
     });
 
     it('Works Drop Tables', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -281,16 +311,13 @@ describe('SqlServer Schema Builder Test', () => {
                 expect(bindings).toBeUndefined();
                 return true;
             });
-        const builder = new SqlServerBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+        const builder = new SqlserverBuilder(session);
         await builder.dropTables();
     });
 
     it('Works Drop Views', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql.replace(/\s\s+/g, ' ')).toBe(
@@ -300,16 +327,58 @@ describe('SqlServer Schema Builder Test', () => {
             return true;
         });
 
-        const builder = new SqlServerBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+        const builder = new SqlserverBuilder(session);
         await builder.dropViews();
     });
 
-    it('Works Get Indexes', async () => {
-        const connection = getConnection();
+    it('Works Drop Types', async () => {
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+
+        const spiedTransaction = jest.spyOn(fakePdo, 'beginTransaction');
+
+        jest.spyOn(session, 'getSchemaPdo').mockReturnValue(fakePdo);
+        const stmtSpied = jest
+            .spyOn(session, 'statement')
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('drop type [dbo].[prefix_custom_string]');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('drop type [dbo].[prefix_custom_boolean]');
+                expect(bindings).toBeUndefined();
+                return true;
+            });
+
+        const builder = new SqlserverBuilder(session);
+        const getAllSpied = jest
+            .spyOn(builder, 'getTypes')
+            .mockResolvedValueOnce([
+                {
+                    name: 'custom_string',
+                    schema: 'dbo',
+                    type: 'varchar(11)'
+                },
+                {
+                    name: 'custom_boolean',
+                    schema: 'dbo',
+                    type: 'boolean'
+                }
+            ])
+            .mockResolvedValueOnce([]);
+
+        await builder.dropTypes();
+        await builder.dropTypes();
+        expect(getAllSpied).toHaveBeenCalledTimes(2);
+        expect(spiedTransaction).toHaveBeenCalledTimes(1);
+        expect(stmtSpied).toHaveBeenCalledTimes(2);
+    });
+
+    it('Works Get Indexes', async () => {
+        const connection = getSqlserverConnection();
+        const session = connection.sessionSchema();
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -327,8 +396,7 @@ describe('SqlServer Schema Builder Test', () => {
             ];
         });
 
-        const builder = new SqlServerBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new SqlserverBuilder(session);
         expect(await builder.getIndexes('table')).toEqual([
             {
                 columns: ['column1', 'column2'],
@@ -341,10 +409,8 @@ describe('SqlServer Schema Builder Test', () => {
     });
 
     it('Works Get Foreign Keys', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -355,7 +421,7 @@ describe('SqlServer Schema Builder Test', () => {
                 {
                     name: 'foreign',
                     columns: 'column1,column2',
-                    foreign_schema: 'db',
+                    foreign_schema: 'database',
                     foreign_table: 'prefix_table2',
                     foreign_columns: 'column3,column4',
                     on_update: 'NO_ACTION',
@@ -364,13 +430,12 @@ describe('SqlServer Schema Builder Test', () => {
             ];
         });
 
-        const builder = new SqlServerBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new SqlserverBuilder(session);
         expect(await builder.getForeignKeys('table')).toEqual([
             {
                 columns: ['column1', 'column2'],
                 foreign_columns: ['column3', 'column4'],
-                foreign_schema: 'db',
+                foreign_schema: 'database',
                 foreign_table: 'prefix_table2',
                 name: 'foreign',
                 on_delete: 'no action',
@@ -380,10 +445,8 @@ describe('SqlServer Schema Builder Test', () => {
     });
 
     it('Works Get Tables', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'select').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -393,16 +456,13 @@ describe('SqlServer Schema Builder Test', () => {
             return [{ name: 'users', schema: 'schema', size: 100 }];
         });
 
-        const builder = new SqlServerBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new SqlserverBuilder(session);
         expect(await builder.getTables()).toEqual([{ name: 'users', schema: 'schema', size: 100 }]);
     });
 
     it('Works Get Views', async () => {
-        const connection = getConnection();
+        const connection = getSqlserverConnection();
         const session = connection.sessionSchema();
-        const grammar = new SqlServerSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'select').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -412,8 +472,77 @@ describe('SqlServer Schema Builder Test', () => {
             return [{ name: 'view_users', schema: 'schema', definition: 'definition' }];
         });
 
-        const builder = new SqlServerBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
+        const builder = new SqlserverBuilder(session);
         expect(await builder.getViews()).toEqual([{ name: 'view_users', schema: 'schema', definition: 'definition' }]);
+    });
+
+    it('Works Get Types', async () => {
+        const connection = getSqlserverConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe(
+                'select name, SCHEMA_NAME(schema_id) as [schema_name], TYPE_NAME(system_type_id) as [type_name], max_length as [length], precision, scale from sys.types where is_user_defined = 1'
+            );
+            expect(bindings).toBeUndefined();
+            return [
+                {
+                    name: 'type1',
+                    type_name: 'numeric',
+                    length: 10,
+                    precision: 5,
+                    places: 4,
+                    schema: 'dbo'
+                },
+                {
+                    name: 'type2',
+                    type_name: 'binary',
+                    length: -1,
+                    precision: 1,
+                    places: 2,
+                    schema: 'dbo'
+                },
+                {
+                    name: 'type3',
+                    type_name: 'char',
+                    length: 30,
+                    precision: 1,
+                    places: 2,
+                    schema: 'dbo'
+                },
+                {
+                    name: 'type4',
+                    type_name: 'time',
+                    length: 30,
+                    precision: 3,
+                    places: 2,
+                    schema: 'dbo'
+                }
+            ];
+        });
+
+        const builder = new SqlserverBuilder(session);
+        expect(await builder.getTypes()).toEqual([
+            {
+                name: 'type1',
+                type: 'numeric(5,4)',
+                schema: 'dbo'
+            },
+            {
+                name: 'type2',
+                type: 'binary(max)',
+                schema: 'dbo'
+            },
+            {
+                name: 'type3',
+                type: 'char(30)',
+                schema: 'dbo'
+            },
+            {
+                name: 'type4',
+                type: 'time(3)',
+                schema: 'dbo'
+            }
+        ]);
     });
 });

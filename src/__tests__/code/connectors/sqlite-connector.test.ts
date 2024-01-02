@@ -1,9 +1,9 @@
 import { Pdo } from 'lupdo';
 import { rm, writeFile } from 'node:fs/promises';
-import SQLiteConnector from '../../../connectors/sqlite-connector';
+import SqliteConnector from '../../../connectors/sqlite-connector';
 import { FakeConnection, pdo } from '../fixtures/mocked';
 
-describe('SQLite Connector', () => {
+describe('Sqlite Connector', () => {
     beforeAll(async () => {
         await writeFile(__dirname + '/test.sql', '');
     });
@@ -13,8 +13,8 @@ describe('SQLite Connector', () => {
         await rm(__dirname + '/test.sql');
     });
 
-    it('Works SQLite Connector', async () => {
-        const connector = new SQLiteConnector();
+    it('Works Sqlite Connector', async () => {
+        const connector = new SqliteConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({ driver: 'sqlite', database: ':memory:', foreign_key_constraints: false });
         expect(spiedConnection).toHaveBeenLastCalledWith(
@@ -26,7 +26,7 @@ describe('SQLite Connector', () => {
     });
 
     it('Works Created Callback', async () => {
-        let connector = new SQLiteConnector();
+        let connector = new SqliteConnector();
         let spiedCallback: jest.SpyInstance[] = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
@@ -53,7 +53,7 @@ describe('SQLite Connector', () => {
         expect(callback).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
 
-        connector = new SQLiteConnector();
+        connector = new SqliteConnector();
         spiedCallback = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
@@ -72,10 +72,10 @@ describe('SQLite Connector', () => {
         await pdo.disconnect();
     });
 
-    it('Works SQLite Foreign Key Constraints', async () => {
+    it('Works Sqlite Foreign Key Constraints', async () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
-        const connector = new SQLiteConnector();
+        const connector = new SqliteConnector();
 
         await connector.configureForeignKeyConstraints(fakeConnection, {
             driver: 'sqlite',
@@ -96,8 +96,8 @@ describe('SQLite Connector', () => {
         expect(spiedPdoFake).toHaveBeenLastCalledWith('foreign_keys = ON');
     });
 
-    it('Works SQLite Connector With Real Path', () => {
-        const connector = new SQLiteConnector();
+    it('Works Sqlite Connector With Real Path', () => {
+        const connector = new SqliteConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({ driver: 'sqlite', database: __dirname + '/test.sql', foreign_key_constraints: false });
         expect(spiedConnection).toHaveBeenLastCalledWith(
@@ -109,15 +109,14 @@ describe('SQLite Connector', () => {
     });
 
     it('Works Missing Database Throw An Error', () => {
-        const connector = new SQLiteConnector();
+        const connector = new SqliteConnector();
         expect(() => {
-            // @ts-expect-error test missing database
             connector.connect({ driver: 'sqlite' });
         }).toThrow('Database file path is required.');
     });
 
     it('Works Path Not Found Throw An Error', () => {
-        const connector = new SQLiteConnector();
+        const connector = new SqliteConnector();
         expect(() => {
             connector.connect({ driver: 'sqlite', database: './not-exists.sql' });
         }).toThrow(

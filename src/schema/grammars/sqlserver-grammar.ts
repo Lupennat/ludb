@@ -1,6 +1,7 @@
 import Expression from '../../query/expression';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
+import { SimpleType } from '../../types/schema/builder/sqlserver-schema-builder';
 import {
     ColumnDefinitionRegistryI,
     ColumnType,
@@ -19,7 +20,7 @@ import CommandIndexDefinition from '../definitions/commands/command-index-defini
 import CommandViewDefinition from '../definitions/commands/command-view-definition';
 import Grammar from './grammar';
 
-class SqlServerGrammar extends Grammar {
+class SqlserverGrammar extends Grammar {
     /**
      * The possible column modifiers.
      */
@@ -43,6 +44,32 @@ class SqlServerGrammar extends Grammar {
     }
 
     /**
+     * Compile a create user-defined type.
+     */
+    public compileCreateType(name: Stringable, type: 'simple', definition: SimpleType): string;
+    public compileCreateType(name: Stringable, type: 'external', definition: string): string;
+    public compileCreateType(
+        name: Stringable,
+        type: 'simple' | 'external',
+        definition: SimpleType | Stringable
+    ): string;
+    public compileCreateType(
+        name: Stringable,
+        _type: 'simple' | 'external',
+        definition: SimpleType | Stringable
+    ): string {
+        if (isStringable(definition)) {
+            return `create type ${this.getValue(name).toString()} external name ${this.getValue(
+                definition
+            ).toString()}`;
+        }
+
+        return `create type ${this.getValue(name).toString()} from ${this.getValue(definition.from)}${
+            definition.nullable !== undefined ? (definition.nullable ? ' NULL' : ' NOT NULL') : ''
+        }`;
+    }
+
+    /**
      * Compile a create view command;
      */
     public compileCreateView(name: Stringable, command: CommandViewDefinition<ViewRegistryI>): string {
@@ -63,9 +90,7 @@ class SqlServerGrammar extends Grammar {
 
         sql += ` as ${registry.as.toRawSql()}`;
 
-        const check = registry.check ? registry.check : '';
-
-        if (check) {
+        if (registry.check) {
             sql += ` with check option`;
         }
 
@@ -94,6 +119,16 @@ class SqlServerGrammar extends Grammar {
             'select name, SCHEMA_NAME(v.schema_id) as [schema], definition from sys.views as v ' +
             'inner join sys.sql_modules as m on v.object_id = m.object_id ' +
             'order by name'
+        );
+    }
+
+    /**
+     * Compile the query to determine the user-defined types.
+     */
+    public compileTypes(): string {
+        return (
+            'select name, SCHEMA_NAME(schema_id) as [schema_name], TYPE_NAME(system_type_id) as [type_name], max_length as [length], precision, scale ' +
+            'from sys.types where is_user_defined = 1'
         );
     }
 
@@ -203,8 +238,8 @@ class SqlServerGrammar extends Grammar {
     public compileDropForeignKeys(): string {
         return `DECLARE @sql NVARCHAR(MAX) = N'';
         SELECT @sql += 'ALTER TABLE '
-            + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + '.' + + QUOTENAME(OBJECT_NAME(parent_object_id))
-            + ' DROP CONSTRAINT ' + QUOTENAME(name) + ';'
+        + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + '.' + + QUOTENAME(OBJECT_NAME(parent_object_id))
+        + ' DROP CONSTRAINT ' + QUOTENAME(name) + ';'
         FROM sys.foreign_keys;
 
         EXEC sp_executesql @sql;`;
@@ -407,10 +442,31 @@ class SqlServerGrammar extends Grammar {
     }
 
     /**
+     * Compile a drop view command.
+     */
+    public compileDropView(name: Stringable): string {
+        return `drop view ${this.wrapTable(name)}`;
+    }
+
+    /**
      * Compile a drop view (if exists) command.
      */
-    public compileDropViewIfExists(name: string): string {
+    public compileDropViewIfExists(name: Stringable): string {
         return `drop view if exists ${this.wrapTable(name)}`;
+    }
+
+    /**
+     * Compile a drop type command.
+     */
+    public compileDropType(name: Stringable): string {
+        return `drop type ${this.wrapTable(name)}`;
+    }
+
+    /**
+     * Compile a drop type (if exists) command.
+     */
+    public compileDropTypeIfExists(name: Stringable): string {
+        return `drop type if exists ${this.wrapTable(name)}`;
     }
 
     /**
@@ -718,6 +774,14 @@ class SqlServerGrammar extends Grammar {
     }
 
     /**
+     * Wrap a single string in keyword identifiers.
+     */
+    protected wrapValue(value: string): string {
+        // return value === '*' ? value : `[${value.replace(/]/g, ']]')}]`;
+        return `[${value.replace(/]/g, ']]')}]`;
+    }
+
+    /**
      * Wrap a table in keyword identifiers.
      */
     public wrapTable(table: Stringable | BlueprintI): string {
@@ -740,4 +804,4 @@ class SqlServerGrammar extends Grammar {
     }
 }
 
-export default SqlServerGrammar;
+export default SqlserverGrammar;

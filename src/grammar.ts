@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import ExpressionContract from './query/expression-contract';
-import BaseGrammarI from './types/base-grammar';
 import { Stringable } from './types/generics';
 import { beforeLast, isExpression } from './utils';
 
-abstract class Grammar implements BaseGrammarI {
+abstract class Grammar {
     /**
      * The grammar table prefix.
      */
@@ -23,7 +22,26 @@ abstract class Grammar implements BaseGrammarI {
      */
     public wrapTable(table: Stringable): string {
         if (!this.isExpression(table)) {
-            return this.wrap(`${this.getTablePrefix()}${table}`, true);
+            let alias = '';
+            // If the value being wrapped has a column alias we will need to separate out
+            // the pieces so we can wrap each of the segments of the expression on its
+            // own, and then join these both back together using the "as" connector.
+            if (table.toLowerCase().includes(' as ')) {
+                [table, alias] = this.getAliasedValues(table);
+            }
+
+            const segments = table.split('.');
+
+            table = segments
+                .reduce((carry: string[], segment: string, index: number) => {
+                    carry.push(
+                        this.wrapValue(`${index === segments.length - 1 ? this.getTablePrefix() : ''}${segment}`)
+                    );
+                    return carry;
+                }, [])
+                .join('.');
+
+            return `${table}${alias ? ' as ' + this.wrapValue(this.getTablePrefix() + alias) : ''}`;
         }
 
         return this.getValue(table).toString();
@@ -32,7 +50,7 @@ abstract class Grammar implements BaseGrammarI {
     /**
      * Wrap a value in keyword identifiers.
      */
-    public wrap(value: Stringable, prefixAlias = false): string {
+    public wrap(value: Stringable): string {
         if (this.isExpression(value)) {
             return this.getValue(value).toString();
         }
@@ -41,7 +59,7 @@ abstract class Grammar implements BaseGrammarI {
         // the pieces so we can wrap each of the segments of the expression on its
         // own, and then join these both back together using the "as" connector.
         if (value.toLowerCase().includes(' as ')) {
-            return this.wrapAliasedValue(value, prefixAlias);
+            return this.wrapAliasedValue(value, false);
         }
 
         // If the given value is a JSON selector we will wrap it differently than a
@@ -52,6 +70,15 @@ abstract class Grammar implements BaseGrammarI {
         }
 
         return this.wrapSegments(value.split('.'));
+    }
+
+    /**
+     * Get aliased values
+     */
+    protected getAliasedValues(value: string): [string, string] {
+        const segments = value.split(new RegExp(/\s+as\s+/, 'gmi'));
+
+        return [segments[0], segments[1]];
     }
 
     /**

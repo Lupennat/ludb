@@ -1,7 +1,9 @@
+import PostgresConnection from '../../connections/postgres-connection';
 import Expression from '../../query/expression';
-import { ConnectionSessionI } from '../../types/connection/connection';
+import { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
+import { ArrayType, DomainType, FunctionType, RangeType } from '../../types/schema/builder/postgres-schema-builder';
 import {
     ColumnDefinitionRegistryI,
     ColumnType,
@@ -48,13 +50,126 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a create database command.
      */
-    public compileCreateDatabase(name: string, connection: ConnectionSessionI): string {
+    public compileCreateDatabase(name: string, connection: ConnectionSessionI<PostgresConnection>): string {
         let sql = `create database ${this.wrapValue(name)}`;
         const charset = connection.getConfig<string>('charset');
         if (charset) {
             sql += ` encoding ${this.wrapValue(charset)}`;
         }
         return sql;
+    }
+
+    /**
+     * Compile a create user-defined type.
+     */
+    public compileCreateType(name: Stringable, type: 'enum', definition: string[]): string;
+    public compileCreateType(name: Stringable, type: 'range', definition: RangeType): string;
+    public compileCreateType(name: Stringable, type: 'array', definition: ArrayType[]): string;
+    public compileCreateType(name: Stringable, type: 'fn', definition: FunctionType): string;
+    public compileCreateType(name: Stringable, type: 'domain', definition: DomainType): string;
+    public compileCreateType(
+        name: Stringable,
+        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
+        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
+    ): string;
+    public compileCreateType(
+        name: Stringable,
+        type: 'enum' | 'range' | 'array' | 'fn' | 'domain',
+        definition: string[] | RangeType | ArrayType[] | FunctionType | DomainType
+    ): string {
+        if (this.isRangeType(type, definition)) {
+            return this.createTypeRange(name, definition);
+        }
+
+        if (this.isArrayType(type, definition)) {
+            return this.createTypeArray(name, definition);
+        }
+
+        if (this.isFunctionType(type, definition)) {
+            return this.createTypeFunction(name, definition);
+        }
+
+        if (this.isDomainType(type, definition)) {
+            return this.createTypeDomain(name, definition);
+        }
+
+        return `create type ${this.getValue(name).toString()} as enum (${this.quoteString(definition)})`;
+    }
+
+    protected createTypeDomain(name: Stringable, definition: DomainType): string {
+        let sql = `create domain ${this.getValue(name).toString()} as ${definition.type}`;
+
+        if (definition.collate) {
+            sql += ` collate ${definition.collate}`;
+        }
+        if (definition.default) {
+            sql += ` default ${definition.default}`;
+        }
+
+        if (definition.constraint) {
+            sql += ` constraint ${definition.constraint}`;
+        }
+
+        if (definition.nullable !== undefined) {
+            sql += definition.nullable ? ' NULL' : ' NOT NULL';
+        }
+
+        if (definition.check) {
+            sql += ` check(${definition.check})`;
+        }
+
+        return sql;
+    }
+
+    protected createTypeRange(name: Stringable, definition: RangeType): string {
+        const rangeOptions = [];
+        for (const [key, value] of Object.entries(definition)) {
+            if (value) {
+                rangeOptions.push(`${key} = ${value}`);
+            }
+        }
+
+        return `create type ${this.getValue(name).toString()} as range (${rangeOptions.join(', ')})`;
+    }
+
+    protected createTypeArray(name: Stringable, definition: ArrayType[]): string {
+        const arrayOptions = [];
+        for (const element of definition) {
+            arrayOptions.push(
+                `${element.name} ${element.type}${element.collation ? ' collate' + element.collation : ''}`
+            );
+        }
+
+        return `create type ${this.getValue(name).toString()} as (${arrayOptions.join(', ')})`;
+    }
+
+    protected createTypeFunction(name: Stringable, definition: FunctionType): string {
+        const fnOptions = [];
+        for (const [key, value] of Object.entries(definition)) {
+            if (typeof value === 'boolean') {
+                fnOptions.push(`${key.toUpperCase()} = ${value ? 'true' : 'false'}`);
+            } else if (value) {
+                fnOptions.push(`${key.toUpperCase()} = ${value}`);
+            }
+        }
+
+        return `create type ${this.getValue(name).toString()} (${fnOptions.join(', ')})`;
+    }
+
+    protected isDomainType(type: string, _definition: any): _definition is DomainType {
+        return type === 'domain';
+    }
+
+    protected isRangeType(type: string, _definition: any): _definition is RangeType {
+        return type === 'range';
+    }
+
+    protected isArrayType(type: string, _definition: any): _definition is ArrayType[] {
+        return type === 'array';
+    }
+
+    protected isFunctionType(type: string, _definition: any): _definition is FunctionType {
+        return type === 'fn';
     }
 
     /**
@@ -80,10 +195,9 @@ class PostgresGrammar extends Grammar {
 
         sql += ` as ${registry.as.toRawSql()}`;
 
-        const check = registry.check ? registry.check : '';
-
-        if (check) {
-            sql += ` with ${check} check option`;
+        if (registry.check) {
+            const checkType = registry.checkType ? registry.checkType : '';
+            sql += ` with${checkType ? ` ${checkType}` : ''} check option`;
         }
 
         return sql;
@@ -226,6 +340,34 @@ class PostgresGrammar extends Grammar {
      */
     public compileDropTypes(types: Stringable[]): string {
         return `drop type ${this.escapeNames(types).join(',')} cascade`;
+    }
+
+    /**
+     * Compile a drop type command.
+     */
+    public compileDropType(name: Stringable): string {
+        return `drop type ${this.wrapTable(name)} cascade`;
+    }
+
+    /**
+     * Compile a drop type (if exists) command.
+     */
+    public compileDropTypeIfExists(name: Stringable): string {
+        return `drop type if exists ${this.wrapTable(name)} cascade`;
+    }
+
+    /**
+     * Compile a drop domain command.
+     */
+    public compileDropDomain(name: Stringable): string {
+        return `drop domain ${this.wrapTable(name)} cascade`;
+    }
+
+    /**
+     * Compile a drop domain (if exists) command.
+     */
+    public compileDropDomainIfExists(name: Stringable): string {
+        return `drop domain if exists ${this.wrapTable(name)} cascade`;
     }
 
     /**
@@ -467,9 +609,13 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a foreign key command.
      */
-    public compileForeign(blueprint: BlueprintI, command: CommandForeignKeyDefinition): string {
+    public compileForeign(
+        blueprint: BlueprintI,
+        command: CommandForeignKeyDefinition,
+        connection: ConnectionSessionI<PostgresConnection>
+    ): string {
         const registry = command.getRegistry();
-        let sql = super.compileForeign(blueprint, command);
+        let sql = super.compileForeign(blueprint, command, connection);
 
         if (registry.deferrable !== undefined) {
             sql += registry.deferrable ? ' deferrable' : ' not deferrable';
@@ -501,9 +647,16 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
+     * Compile a drop view command.
+     */
+    public compileDropView(name: Stringable): string {
+        return `drop view ${this.wrapTable(name)}`;
+    }
+
+    /**
      * Compile a drop view (if exists) command.
      */
-    public compileDropViewIfExists(name: string): string {
+    public compileDropViewIfExists(name: Stringable): string {
         return `drop view if exists ${this.wrapTable(name)}`;
     }
 

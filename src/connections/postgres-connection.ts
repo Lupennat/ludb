@@ -1,15 +1,31 @@
 import PostgresGrammar from '../query/grammars/postgres-grammar';
 import SchemaBuilder from '../schema/builders/postgres-builder';
 import SchemaGrammar from '../schema/grammars/postgres-grammar';
-import PostgresConnectionI from '../types/connection/postgres-connection';
 import Connection from './connection';
 
-class PostgresConnection extends Connection implements PostgresConnectionI {
+class PostgresConnection extends Connection {
     /**
-     * Get the default query grammar instance.
+     * The query grammar implementation.
      */
-    protected getDefaultQueryGrammar(): PostgresGrammar {
-        return this.withTablePrefix(new PostgresGrammar());
+    protected queryGrammar!: PostgresGrammar;
+
+    /**
+     * The schema grammar implementation.
+     */
+    protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * set Default Query Grammar
+     */
+    protected setDefaultQueryGrammar(): void {
+        this.queryGrammar = new PostgresGrammar().setTablePrefix(this.tablePrefix);
+    }
+
+    /**
+     * set Default Schema Grammar
+     */
+    protected setDefaultSchemaGrammar(): void {
+        this.schemaGrammar = new SchemaGrammar().setTablePrefix(this.tablePrefix);
     }
 
     /**
@@ -20,10 +36,17 @@ class PostgresConnection extends Connection implements PostgresConnectionI {
     }
 
     /**
-     * Get the default schema grammar instance.
+     * Get the schema grammar used by the connection.
      */
-    protected getDefaultSchemaGrammar(): SchemaGrammar {
-        return new SchemaGrammar();
+    public getSchemaGrammar(): SchemaGrammar {
+        return this.schemaGrammar;
+    }
+
+    /**
+     * Get the query grammar used by the connection.
+     */
+    public getQueryGrammar(): PostgresGrammar {
+        return this.queryGrammar;
     }
 }
 

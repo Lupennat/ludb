@@ -1,4 +1,4 @@
-import { ConnectionSessionI } from '../types/connection/connection';
+import { ConnectionSessionI } from '../types/connection';
 
 abstract class ConnectionEvent {
     /**

@@ -1,10 +1,10 @@
-import MysqlConnectionI from '../../../types/connection/mysql-connection';
-import { DB, isMySql } from '../fixtures/config';
+import MysqlBuilder from '../../../schema/builders/mysql-builder';
+import { DB, currentDB, isMysql } from '../fixtures/config';
 
-const maybe = isMySql() ? describe : describe.skip;
+const maybe = isMysql() ? describe : describe.skip;
 
-maybe('MySql Schema Builder', () => {
-    const Schema = DB.connection<MysqlConnectionI>().getSchemaBuilder();
+maybe('Mysql Schema Builder', () => {
+    const Schema = DB.connections[currentDB].getSchemaBuilder() as MysqlBuilder;
 
     beforeAll(async () => {
         await Schema.dropTableIfExists('test_schema_users');
@@ -19,13 +19,13 @@ maybe('MySql Schema Builder', () => {
         });
 
         await Schema.createView('test_schema_users_view', view =>
-            view.as(query => query.select('name', 'age').from('test_schema_users')).withCheckCascade()
+            view.as(query => query.select('name', 'age').from('test_schema_users'))
         );
     });
 
     afterAll(async () => {
         await Schema.drop('test_schema_users');
-        await DB.disconnect();
+        await DB.connections[currentDB].disconnect();
     });
 
     it('Works Add Comment To Table', async () => {

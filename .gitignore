@@ -108,3 +108,6 @@ dist
 
 # Sqlite Local files
 .sqlite*
+
+# api docs
+docs

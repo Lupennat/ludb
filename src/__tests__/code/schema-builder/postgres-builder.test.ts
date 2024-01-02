@@ -1,14 +1,10 @@
-import Raw from '../../../query/expression';
 import PostgresBuilder from '../../../schema/builders/postgres-builder';
-import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
-import { getConnection } from '../fixtures/mocked';
+import { getPostgresConnection } from '../fixtures/mocked';
 
 describe('Postgres Schema Builder Test', () => {
     it('Works Enable Foreign Key Constraints', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe('SET CONSTRAINTS ALL IMMEDIATE;');
@@ -21,10 +17,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Disable Foreign Key Constraints', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe('SET CONSTRAINTS ALL DEFERRED;');
@@ -37,52 +31,54 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Create Database', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
-                expect(sql).toBe('create database "db"');
+                expect(sql).toBe('create database "database"');
                 expect(bindings).toBeUndefined();
                 return true;
             })
             .mockImplementationOnce(async (sql, bindings) => {
-                expect(sql).toBe('create database "db" encoding "latin1"');
+                expect(sql).toBe('create database "database" encoding "latin1"');
                 expect(bindings).toBeUndefined();
                 return true;
             });
 
         const builder = new PostgresBuilder(session);
-        expect(await builder.createDatabase('db')).toBeTruthy();
+        expect(await builder.createDatabase('database')).toBeTruthy();
         jest.spyOn(session, 'getConfig').mockReturnValueOnce('latin1');
-        expect(await builder.createDatabase('db')).toBeTruthy();
+        expect(await builder.createDatabase('database')).toBeTruthy();
     });
 
     it('Works Create View', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(grammar, 'getTablePrefix').mockReturnValue('prefix_');
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'create view schema.prefix_foo as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\')'
+                    'create view "schema"."prefix_foo" as select "id", "name" from "schema2"."prefix_baz" where "type" in (\'bar\', \'bax\')'
                 );
                 expect(bindings).toBeUndefined();
                 return true;
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'create temporary recursive view schema.prefix_foo ("id", "name") with(security_barrier=true) as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\') with local check option'
+                    'create temporary recursive view "schema"."prefix_foo" ("id", "name") with(security_barrier=true) as select "id", "name" from "schema2"."prefix_baz" where "type" in (\'bar\', \'bax\') with local check option'
                 );
                 expect(bindings).toBeUndefined();
                 return true;
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'create temporary recursive view schema.prefix_foo ("id", "name") with(security_invoker=true) as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\') with cascade check option'
+                    'create temporary recursive view "schema"."prefix_foo" ("id", "name") with(security_invoker=true) as select "id", "name" from "schema2"."prefix_baz" where "type" in (\'bar\', \'bax\') with cascaded check option'
+                );
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe(
+                    'create temporary recursive view "schema"."prefix_foo" ("id", "name") with(security_invoker=true) as select "id", "name" from "schema2"."prefix_baz" where "type" in (\'bar\', \'bax\') with check option'
                 );
                 expect(bindings).toBeUndefined();
                 return true;
@@ -90,39 +86,48 @@ describe('Postgres Schema Builder Test', () => {
 
         const builder = new PostgresBuilder(session);
         expect(
-            await builder.createView(new Raw('schema.prefix_foo'), view =>
-                view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+            await builder.createView('schema.foo', view =>
+                view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))
             )
         ).toBeTruthy();
         expect(
-            await builder.createView(new Raw('schema.prefix_foo'), view =>
+            await builder.createView('schema.foo', view =>
                 view
                     .columnNames(['id', 'name'])
                     .temporary()
                     .withRecursive()
                     .withSecurityBarrier()
                     .withCheckLocal()
-                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))
             )
         ).toBeTruthy();
         expect(
-            await builder.createView(new Raw('schema.prefix_foo'), view =>
+            await builder.createView('schema.foo', view =>
                 view
                     .columnNames(['id', 'name'])
                     .temporary()
                     .withRecursive()
                     .withSecurityInvoker()
-                    .withCheckCascade()
-                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
+                    .withCheckCascaded()
+                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))
+            )
+        ).toBeTruthy();
+        expect(
+            await builder.createView('schema.foo', view =>
+                view
+                    .columnNames(['id', 'name'])
+                    .temporary()
+                    .withRecursive()
+                    .withSecurityInvoker()
+                    .check()
+                    .as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))
             )
         ).toBeTruthy();
     });
 
     it('Works Has Table', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         const builder = new PostgresBuilder(session);
 
@@ -156,7 +161,6 @@ describe('Postgres Schema Builder Test', () => {
             ];
         });
 
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
         expect(await builder.hasTable('table')).toBeTruthy();
         jest.spyOn(session, 'getConfig').mockReturnValueOnce('search_path');
         expect(await builder.hasTable('table')).toBeTruthy();
@@ -169,10 +173,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Has View', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         const builder = new PostgresBuilder(session);
 
@@ -211,7 +213,6 @@ describe('Postgres Schema Builder Test', () => {
             ];
         });
 
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
         expect(await builder.hasView('table')).toBeTruthy();
         jest.spyOn(session, 'getConfig').mockReturnValueOnce('search_path');
         expect(await builder.hasView('table')).toBeTruthy();
@@ -224,27 +225,37 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Drop Database If Exists', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
-            expect(sql).toBe('drop database if exists "db"');
+            expect(sql).toBe('drop database if exists "database"');
             expect(bindings).toBeUndefined();
             return true;
         });
 
         const builder = new PostgresBuilder(session);
-        expect(await builder.dropDatabaseIfExists('db')).toBeTruthy();
+        expect(await builder.dropDatabaseIfExists('database')).toBeTruthy();
+    });
+
+    it('Works Drop View', async () => {
+        const connection = getPostgresConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop view "prefix_view"');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.dropView('view')).toBeTruthy();
     });
 
     it('Works Drop View If Exists', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(grammar, 'getTablePrefix').mockReturnValue('prefix_');
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe('drop view if exists "prefix_view"');
             expect(bindings).toBeUndefined();
@@ -255,11 +266,65 @@ describe('Postgres Schema Builder Test', () => {
         expect(await builder.dropViewIfExists('view')).toBeTruthy();
     });
 
-    it('Works Get Columns', async () => {
-        const connection = getConnection();
+    it('Works Drop Type', async () => {
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop type "prefix_type" cascade');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.dropType('type')).toBeTruthy();
+    });
+
+    it('Works Drop Type If Exists', async () => {
+        const connection = getPostgresConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop type if exists "prefix_type" cascade');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.dropTypeIfExists('type')).toBeTruthy();
+    });
+
+    it('Works Drop Domain', async () => {
+        const connection = getPostgresConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop domain "prefix_domain" cascade');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.dropDomain('domain')).toBeTruthy();
+    });
+
+    it('Works Drop Domain If Exists', async () => {
+        const connection = getPostgresConnection();
+        const session = connection.sessionSchema();
+        jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
+        jest.spyOn(session, 'statement').mockImplementationOnce(async (sql, bindings) => {
+            expect(sql).toBe('drop domain if exists "prefix_domain" cascade');
+            expect(bindings).toBeUndefined();
+            return true;
+        });
+
+        const builder = new PostgresBuilder(session);
+        expect(await builder.dropDomainIfExists('domain')).toBeTruthy();
+    });
+
+    it('Works Get Columns', async () => {
+        const connection = getPostgresConnection();
+        const session = connection.sessionSchema();
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -349,7 +414,7 @@ describe('Postgres Schema Builder Test', () => {
             });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+
         expect(await builder.getColumns('table')).toEqual([
             {
                 auto_increment: false,
@@ -416,10 +481,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Get Indexes', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -499,7 +562,7 @@ describe('Postgres Schema Builder Test', () => {
             });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+
         expect(await builder.getIndexes('table')).toEqual([
             {
                 columns: ['column1', 'column2'],
@@ -551,10 +614,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Get Foreign Keys', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection')
             .mockImplementationOnce(async (sql, bindings) => {
@@ -644,7 +705,7 @@ describe('Postgres Schema Builder Test', () => {
             });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+
         expect(await builder.getForeignKeys('table')).toEqual([
             {
                 columns: ['column1', 'column2'],
@@ -706,10 +767,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Drop Tables', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
 
         const stmtSpied = jest
@@ -726,7 +785,6 @@ describe('Postgres Schema Builder Test', () => {
             });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
         const getAllSpied = jest
             .spyOn(builder, 'getTables')
             .mockResolvedValueOnce([
@@ -750,10 +808,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Drop Views', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         const stmtSpied = jest
             .spyOn(session, 'statement')
@@ -771,7 +827,6 @@ describe('Postgres Schema Builder Test', () => {
             });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
         const getAllSpied = jest
             .spyOn(builder, 'getViews')
             .mockResolvedValueOnce([
@@ -797,10 +852,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Drop Types', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         const stmtSpied = jest
             .spyOn(session, 'statement')
@@ -816,7 +869,6 @@ describe('Postgres Schema Builder Test', () => {
             });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
         const getAllSpied = jest
             .spyOn(builder, 'getTypes')
             .mockResolvedValueOnce([
@@ -851,10 +903,8 @@ describe('Postgres Schema Builder Test', () => {
     });
 
     it('Works Get Tables', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'select').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
                 "select c.relname as name, n.nspname as schema, pg_total_relation_size(c.oid) as size, obj_description(c.oid, 'pg_class') as comment from pg_class c, pg_namespace n where c.relkind in ('r', 'p') and n.oid = c.relnamespace and n.nspname not in ('pg_catalog', 'information_schema')order by c.relname"
@@ -864,15 +914,13 @@ describe('Postgres Schema Builder Test', () => {
         });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+
         expect(await builder.getTables()).toEqual([{ name: 'users', schema: 'public', size: 100, comment: '' }]);
     });
 
     it('Works Get Views', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
 
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -883,15 +931,13 @@ describe('Postgres Schema Builder Test', () => {
         });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValue('db');
+
         expect(await builder.getViews()).toEqual([{ name: 'view_users', schema: 'public', definition: 'definition' }]);
     });
 
     it('Works Get Types', async () => {
-        const connection = getConnection();
+        const connection = getPostgresConnection();
         const session = connection.sessionSchema();
-        const grammar = new PostgresSchemaGrammar();
-        jest.spyOn(session, 'getSchemaGrammar').mockReturnValue(grammar);
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
@@ -917,7 +963,6 @@ describe('Postgres Schema Builder Test', () => {
         });
 
         const builder = new PostgresBuilder(session);
-        jest.spyOn(builder.getConnection(), 'getDatabaseName').mockReturnValueOnce('db');
         expect(await builder.getTypes()).toEqual([
             {
                 category: 'boolean',

@@ -24,38 +24,45 @@ class CommandViewDefinition<Registry extends ViewRegistryI = ViewRegistryI> exte
     }
 
     /**
-     * Specify view definer (MySql)
+     * Specify view definer (Mysql)
      */
     public definer(definer: Stringable): this {
         return this.addToRegistry('definer', definer);
     }
 
     /**
-     * Specify if is temporary view (PostgreSql, SQLite)
+     * Specify if is temporary view (PostgreSql, Sqlite)
      */
     public temporary(temporary = true): this {
         return this.addToRegistry('temporary', temporary);
     }
 
     /**
-     * Add With Check Option (MySql,PostgreSQL)
+     * Enable Check Option (Mysql,PostgreSQL,Sqlserver)
      */
-    public withCheck(check: Stringable): this {
+    public check(check = true): this {
         return this.addToRegistry('check', check);
     }
 
     /**
-     * with Check Cascade Option (MySql,PostgreSQL)
+     * Add With Check Option Type (Mysql,PostgreSQL)
      */
-    public withCheckCascade(): this {
-        return this.withCheck('cascade');
+    public withCheckType(type: Stringable): this {
+        return this.check().addToRegistry('checkType', type);
     }
 
     /**
-     * with Check Local Option (MySql)
+     * with Check Cascade Option (Mysql,PostgreSQL)
+     */
+    public withCheckCascaded(): this {
+        return this.check().withCheckType('cascaded');
+    }
+
+    /**
+     * with Check Local Option (Mysql)
      */
     public withCheckLocal(): this {
-        return this.withCheck('local');
+        return this.check().withCheckType('local');
     }
 
     /**
@@ -66,7 +73,7 @@ class CommandViewDefinition<Registry extends ViewRegistryI = ViewRegistryI> exte
     }
 
     /**
-     * enable security_barrier option (PostgresSQL, SqlServer)
+     * enable security_barrier option (PostgresSQL, Sqlserver)
      */
     public withViewAttribute(attribute: Stringable): this {
         return this.addToRegistry('viewAttribute', attribute);
@@ -87,21 +94,21 @@ class CommandViewDefinition<Registry extends ViewRegistryI = ViewRegistryI> exte
     }
 
     /*
-     * enable ENCRYPTION option (SqlServer)
+     * enable ENCRYPTION option (Sqlserver)
      */
     public withEncryption(): this {
         return this.withViewAttribute('encryption');
     }
 
     /*
-     * enable SCHEMABINDING option (SqlServer)
+     * enable SCHEMABINDING option (Sqlserver)
      */
     public withSchemabinding(): this {
         return this.withViewAttribute('schemabinding');
     }
 
     /*
-     * enable VIEW_METADATA option (SqlServer)
+     * enable VIEW_METADATA option (Sqlserver)
      */
     public withViewMetadata(): this {
         return this.withViewAttribute('view_metadata');

@@ -1,9 +1,9 @@
 import {
     getBuilder,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getPostgresBuilder,
-    getSQLiteBuilder,
-    getSqlServerBuilder,
+    getSqliteBuilder,
+    getSqlserverBuilder,
     pdo
 } from '../fixtures/mocked';
 
@@ -36,9 +36,9 @@ describe('Builder Unions', () => {
         );
         expect([1, 2]).toEqual(builder.getBindings());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', '=', 1);
-        builder.union(getMySqlBuilder().select('*').from('users').where('id', '=', 2));
+        builder.union(getMysqlBuilder().select('*').from('users').where('id', '=', 2));
         expect('(select * from `users` where `id` = ?) union (select * from `users` where `id` = ?)').toBe(
             builder.toSql()
         );
@@ -52,17 +52,17 @@ describe('Builder Unions', () => {
         );
         expect([1, 2]).toEqual(builder.getBindings());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('name').from('users').where('id', '=', 1);
-        builder.union(getSQLiteBuilder().select('name').from('users').where('id', '=', 2));
+        builder.union(getSqliteBuilder().select('name').from('users').where('id', '=', 2));
         expect(
             'select * from (select "name" from "users" where "id" = ?) union select * from (select "name" from "users" where "id" = ?)'
         ).toBe(builder.toSql());
         expect([1, 2]).toEqual(builder.getBindings());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('name').from('users').where('id', '=', 1);
-        builder.union(getSqlServerBuilder().select('name').from('users').where('id', '=', 2));
+        builder.union(getSqlserverBuilder().select('name').from('users').where('id', '=', 2));
         expect(
             'select * from (select [name] from [users] where [id] = ?) as [temp_table] union select * from (select [name] from [users] where [id] = ?) as [temp_table]'
         ).toBe(builder.toSql());
@@ -159,10 +159,10 @@ describe('Builder Unions', () => {
         expect([1]).toEqual(builder.getBindings());
     });
 
-    it('Works MySql Union Order Bys', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Union Order Bys', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').where('id', '=', 1);
-        builder.union(getMySqlBuilder().select('*').from('users').where('id', '=', 2));
+        builder.union(getMysqlBuilder().select('*').from('users').where('id', '=', 2));
         builder.orderBy('id', 'desc');
         expect(
             '(select * from `users` where `id` = ?) union (select * from `users` where `id` = ?) order by `id` desc'
@@ -170,10 +170,10 @@ describe('Builder Unions', () => {
         expect([1, 2]).toEqual(builder.getBindings());
     });
 
-    it('Works MySql Union Limits And Offsets', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Union Limits And Offsets', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users');
-        builder.union(getMySqlBuilder().select('*').from('dogs'));
+        builder.union(getMysqlBuilder().select('*').from('dogs'));
         builder.skip(5).take(10);
         expect('(select * from `users`) union (select * from `dogs`) limit 10 offset 5').toBe(builder.toSql());
     });
@@ -181,16 +181,16 @@ describe('Builder Unions', () => {
     it('Works Union Aggregate', async () => {
         let expected =
             'select count(*) as aggregate from ((select * from `posts`) union (select * from `videos`)) as `temp_table`';
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         let spyConnection = jest.spyOn(builder.getConnection(), 'select');
-        await builder.from('posts').union(getMySqlBuilder().from('videos')).count();
+        await builder.from('posts').union(getMysqlBuilder().from('videos')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from ((select `id` from `posts`) union (select `id` from `videos`)) as `temp_table`';
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
-        await builder.from('posts').select('id').union(getMySqlBuilder().from('videos').select('id')).count();
+        await builder.from('posts').select('id').union(getMysqlBuilder().from('videos').select('id')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
 
         expected =
@@ -202,16 +202,16 @@ describe('Builder Unions', () => {
 
         expected =
             'select count(*) as aggregate from (select * from (select * from "posts") union select * from (select * from "videos")) as "temp_table"';
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
-        await builder.from('posts').union(getSQLiteBuilder().from('videos')).count();
+        await builder.from('posts').union(getSqliteBuilder().from('videos')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from (select * from (select * from [posts]) as [temp_table] union select * from (select * from [videos]) as [temp_table]) as [temp_table]';
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         spyConnection = jest.spyOn(builder.getConnection(), 'select');
-        await builder.from('posts').union(getSqlServerBuilder().from('videos')).count();
+        await builder.from('posts').union(getSqlserverBuilder().from('videos')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
     });
 });

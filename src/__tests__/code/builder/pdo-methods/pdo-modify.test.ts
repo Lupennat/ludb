@@ -1,10 +1,10 @@
 import Raw from '../../../../query/expression';
 import {
     getBuilder,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getPostgresBuilder,
-    getSQLiteBuilder,
-    getSqlServerBuilder,
+    getSqliteBuilder,
+    getSqlserverBuilder,
     pdo
 } from '../../fixtures/mocked';
 
@@ -116,8 +116,8 @@ describe('Builder Pdo Methods Modify', () => {
         expect(await builder.from('users').insertOrIgnore([])).toBe(0);
     });
 
-    it('Works MySql Insert Or Ignore Method', async () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Insert Or Ignore Method', async () => {
+        const builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe('insert ignore into `users` (`email`) values (?)');
             expect(bindings).toEqual(['foo']);
@@ -149,8 +149,8 @@ describe('Builder Pdo Methods Modify', () => {
         ).rejects.toThrow('Missing columns [name, role], please add to each rows.');
     });
 
-    it('Works SQLite Insert Or Ignore Method', async () => {
-        const builder = getSQLiteBuilder();
+    it('Works Sqlite Insert Or Ignore Method', async () => {
+        const builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe('insert or ignore into "users" ("email") values (?)');
             expect(bindings).toEqual(['foo']);
@@ -159,8 +159,8 @@ describe('Builder Pdo Methods Modify', () => {
         expect(await builder.from('users').insertOrIgnore({ email: 'foo' })).toBe(1);
     });
 
-    it('Works SqlServer Insert Or Ignore Method', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Insert Or Ignore Method', async () => {
+        const builder = getSqlserverBuilder();
         await expect(builder.from('users').insertOrIgnore({ email: 'foo' })).rejects.toThrow(
             'This database engine does not support inserting while ignoring errors.'
         );
@@ -201,7 +201,7 @@ describe('Builder Pdo Methods Modify', () => {
     });
 
     it('Works Insert Get Id With Empty Values', async () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'insertGetId').mockImplementationOnce(async (query, bindings, sequence) => {
             expect(query).toBe('insert into `users` () values ()');
             expect(bindings).toEqual([]);
@@ -219,7 +219,7 @@ describe('Builder Pdo Methods Modify', () => {
         });
         await builder.from('users').insertGetId({});
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'insertGetId').mockImplementationOnce(async (query, bindings, sequence) => {
             expect(query).toBe('insert into "users" default values');
             expect(bindings).toEqual([]);
@@ -228,7 +228,7 @@ describe('Builder Pdo Methods Modify', () => {
         });
         await builder.from('users').insertGetId({});
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'insertGetId').mockImplementationOnce(async (query, bindings, sequence) => {
             expect(query).toBe('insert into [users] default values');
             expect(bindings).toEqual([]);
@@ -269,7 +269,7 @@ describe('Builder Pdo Methods Modify', () => {
         });
         expect(await builder.from('users').where('id', '=', 1).update({ email: 'foo', name: 'bar' })).toBe(1);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe('update `users` set `email` = ?, `name` = ? where `id` = ? order by `foo` desc limit 5');
             expect(bindings).toEqual(['foo', 'bar', 1]);
@@ -298,7 +298,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).rejects.toThrow('This database engine does not support upserts.');
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(option => {
             expect(option).toBe('use_upsert_alias');
             return false;
@@ -321,7 +321,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(option => {
             expect(option).toBe('use_upsert_alias');
             return true;
@@ -363,7 +363,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'insert into "users" ("email", "name") values (?, ?), (?, ?) on conflict ("email") do update set "email" = "excluded"."email", "name" = "excluded"."name"'
@@ -381,7 +381,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'insert into "users" ("email", "name") values (?, ?) on conflict ("email") do update set "name" = "excluded"."name", "role" = ?'
@@ -393,7 +393,7 @@ describe('Builder Pdo Methods Modify', () => {
             await builder.from('users').upsert({ email: 'foo', name: 'bar' }, 'email', ['name', { role: 'fake' }])
         ).toBe(2);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'merge [users] using (values (?, ?), (?, ?)) [laravel_source] ([email], [name]) on [laravel_source].[email] = [users].[email] when matched then update set [email] = [laravel_source].[email], [name] = [laravel_source].[name] when not matched then insert ([email], [name]) values ([email], [name])'
@@ -411,7 +411,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'merge [users] using (values (?, ?)) [laravel_source] ([email], [name]) on [laravel_source].[email] = [users].[email] when matched then update set [email] = [laravel_source].[email], [name] = [laravel_source].[name] when not matched then insert ([email], [name]) values ([email], [name])'
@@ -421,7 +421,7 @@ describe('Builder Pdo Methods Modify', () => {
         });
         expect(await builder.from('users').upsert({ email: 'foo', name: 'bar' }, 'email')).toBe(2);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'merge [users] using (values (?, ?), (?, ?)) [laravel_source] ([email], [name]) on [laravel_source].[email] = [users].[email] when matched then update set [name] = [laravel_source].[name], [role] = ? when not matched then insert ([email], [name]) values ([email], [name])'
@@ -442,12 +442,12 @@ describe('Builder Pdo Methods Modify', () => {
     });
 
     it('Works Upsert Return Zero On Empty Columns', async () => {
-        const builder = getMySqlBuilder();
+        const builder = getMysqlBuilder();
         expect(await builder.upsert([], 'email', ['name'])).toBe(0);
     });
 
     it('Works Upsert Without Update Columns Call Insert', async () => {
-        const builder = getMySqlBuilder();
+        const builder = getMysqlBuilder();
         const spiedInsert = jest.spyOn(builder, 'insert');
         expect(
             await builder.upsert(
@@ -468,7 +468,7 @@ describe('Builder Pdo Methods Modify', () => {
     });
 
     it('Works Upsert Method With Update Columns', async () => {
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(option => {
             expect(option).toBe('use_upsert_alias');
             return false;
@@ -491,7 +491,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(option => {
             expect(option).toBe('use_upsert_alias');
             return true;
@@ -533,7 +533,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'insert into "users" ("email", "name") values (?, ?), (?, ?) on conflict ("email") do update set "name" = "excluded"."name"'
@@ -552,7 +552,7 @@ describe('Builder Pdo Methods Modify', () => {
             )
         ).toBe(2);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'merge [users] using (values (?, ?), (?, ?)) [laravel_source] ([email], [name]) on [laravel_source].[email] = [users].[email] when matched then update set [name] = [laravel_source].[name] when not matched then insert ([email], [name]) values ([email], [name])'
@@ -607,8 +607,8 @@ describe('Builder Pdo Methods Modify', () => {
         ).toBe(1);
     });
 
-    it('Works Update Method With Joins On SqlServer', async () => {
-        let builder = getSqlServerBuilder();
+    it('Works Update Method With Joins On Sqlserver', async () => {
+        let builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update [users] set [email] = ?, [name] = ? from [users] inner join [orders] on [users].[id] = [orders].[user_id] where [users].[id] = ?'
@@ -624,7 +624,7 @@ describe('Builder Pdo Methods Modify', () => {
                 .update({ email: 'foo', name: 'bar' })
         ).toBe(1);
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update [users] set [email] = ?, [name] = ? from [users] inner join [orders] on [users].[id] = [orders].[user_id] and [users].[id] = ?'
@@ -642,8 +642,8 @@ describe('Builder Pdo Methods Modify', () => {
         ).toBe(1);
     });
 
-    it('Works Update Method With Joins And Aliases On SqlServer', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Update Method With Joins And Aliases On Sqlserver', async () => {
+        const builder = getSqlserverBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update [u] set [email] = ?, [name] = ? from [users] as [u] inner join [orders] on [u].[id] = [orders].[user_id] where [u].[id] = ?'
@@ -660,8 +660,8 @@ describe('Builder Pdo Methods Modify', () => {
         ).toBe(1);
     });
 
-    it('Works Update Method With Joins On MySql', async () => {
-        let builder = getMySqlBuilder();
+    it('Works Update Method With Joins On Mysql', async () => {
+        let builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update `users` inner join `orders` on `users`.`id` = `orders`.`user_id` set `email` = ?, `name` = ? where `users`.`id` = ?'
@@ -677,7 +677,7 @@ describe('Builder Pdo Methods Modify', () => {
                 .update({ email: 'foo', name: 'bar' })
         ).toBe(1);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update `users` inner join `orders` on `users`.`id` = `orders`.`user_id` and `users`.`id` = ? set `email` = ?, `name` = ?'
@@ -695,8 +695,8 @@ describe('Builder Pdo Methods Modify', () => {
         ).toBe(1);
     });
 
-    it('Works Update Method With Joins On MySql', async () => {
-        let builder = getMySqlBuilder();
+    it('Works Update Method With Joins On Mysql', async () => {
+        let builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update `users` inner join `orders` on `users`.`id` = `orders`.`user_id` set `email` = ?, `name` = ? where `users`.`id` = ?'
@@ -712,7 +712,7 @@ describe('Builder Pdo Methods Modify', () => {
                 .update({ email: 'foo', name: 'bar' })
         ).toBe(1);
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update `users` inner join `orders` on `users`.`id` = `orders`.`user_id` and `users`.`id` = ? set `email` = ?, `name` = ?'
@@ -730,8 +730,8 @@ describe('Builder Pdo Methods Modify', () => {
         ).toBe(1);
     });
 
-    it('Works Update Method With Joins On SQLite', async () => {
-        let builder = getSQLiteBuilder();
+    it('Works Update Method With Joins On Sqlite', async () => {
+        let builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update "users" set "email" = ?, "name" = ? where "rowid" in (select "users"."rowid" from "users" inner join "orders" on "users"."id" = "orders"."user_id" where "users"."id" = ?)'
@@ -747,7 +747,7 @@ describe('Builder Pdo Methods Modify', () => {
                 .update({ email: 'foo', name: 'bar' })
         ).toBe(1);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update "users" set "email" = ?, "name" = ? where "rowid" in (select "users"."rowid" from "users" inner join "orders" on "users"."id" = "orders"."user_id" and "users"."id" = ?)'
@@ -764,7 +764,7 @@ describe('Builder Pdo Methods Modify', () => {
                 .update({ email: 'foo', name: 'bar' })
         ).toBe(1);
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update "users" as "u" set "email" = ?, "name" = ? where "rowid" in (select "u"."rowid" from "users" as "u" inner join "orders" as "o" on "u"."id" = "o"."user_id")'
@@ -780,8 +780,8 @@ describe('Builder Pdo Methods Modify', () => {
         ).toBe(1);
     });
 
-    it('Works Update Method With Limit On SQLite', async () => {
-        const builder = getSQLiteBuilder();
+    it('Works Update Method With Limit On Sqlite', async () => {
+        const builder = getSqliteBuilder();
         jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
             expect(query).toBe(
                 'update "users" set "email" = ?, "name" = ? where "rowid" in (select "users"."rowid" from "users" where "users"."id" > ? order by "id" asc limit 3)'

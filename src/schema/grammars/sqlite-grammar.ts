@@ -17,7 +17,7 @@ import CommandIndexDefinition from '../definitions/commands/command-index-defini
 import CommandViewDefinition from '../definitions/commands/command-view-definition';
 import Grammar from './grammar';
 
-class SQLiteGrammar extends Grammar {
+class SqliteGrammar extends Grammar {
     /**
      * The possible column modifiers.
      */
@@ -134,6 +134,13 @@ class SQLiteGrammar extends Grammar {
      */
     public compileDropTables(): string {
         return "delete from sqlite_master where type in ('table', 'index', 'trigger')";
+    }
+
+    /**
+     * Compile a drop view command.
+     */
+    public compileDropView(name: Stringable): string {
+        return `drop view ${this.wrapTable(name)}`;
     }
 
     /**
@@ -341,7 +348,7 @@ class SQLiteGrammar extends Grammar {
     /**
      * Compile a drop view (if exists) command.
      */
-    public compileDropViewIfExists(name: string): string {
+    public compileDropViewIfExists(name: Stringable): string {
         return `drop view if exists ${this.wrapTable(name)}`;
     }
 
@@ -617,4 +624,4 @@ class SQLiteGrammar extends Grammar {
     }
 }
 
-export default SQLiteGrammar;
+export default SqliteGrammar;

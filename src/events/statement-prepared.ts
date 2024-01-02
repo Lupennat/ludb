@@ -1,5 +1,5 @@
 import { PdoStatementI } from 'lupdo';
-import { ConnectionSessionI } from '../types/connection/connection';
+import { ConnectionSessionI } from '../types/connection';
 import ConnectionEvent from './connection-event';
 
 class StatementPrepared extends ConnectionEvent {

@@ -3,7 +3,6 @@ import Cursor from '../paginations/cursor';
 import CursorPaginator from '../paginations/cursor-paginator';
 import LengthAwarePaginator from '../paginations/length-aware-paginator';
 import Paginator from '../paginations/paginator';
-import { JoinClauseI } from '../types';
 import { Binding, Stringable } from '../types/generics';
 import PaginatorI, {
     CursorPaginatorI,
@@ -12,6 +11,7 @@ import PaginatorI, {
     PaginatorOptions
 } from '../types/paginations';
 import BuilderI from '../types/query/builder';
+import JoinClauseI from '../types/query/join-clause';
 import QueryBuilderI, { NumericValues, QueryAbleCallback, RowValues } from '../types/query/query-builder';
 import RegistryI, { BindingTypes, Order, OrderColumn } from '../types/query/registry';
 import { merge } from '../utils';

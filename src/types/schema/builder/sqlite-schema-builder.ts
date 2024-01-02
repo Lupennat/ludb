@@ -1,31 +1,33 @@
+import SqliteConnection from '../../../connections/sqlite-connection';
+import { ConnectionSessionI } from '../../connection';
 import {
-    SQLiteColumnDictionary,
-    SQLiteForeignKeyDictionary,
-    SQLiteIndexDictionary,
-    SQLiteTableDictionary,
-    SQLiteViewDictionary
+    SqliteColumnDictionary,
+    SqliteForeignKeyDictionary,
+    SqliteIndexDictionary,
+    SqliteTableDictionary,
+    SqliteViewDictionary
 } from '../generics';
 import SchemaBuilder from './schema-builder';
 
-export default interface SQLiteSchemaBuilderI extends SchemaBuilder {
+export default interface SqliteSchemaBuilderI extends SchemaBuilder<ConnectionSessionI<SqliteConnection>> {
     /**
      * Get the tables that belong to the database.
      */
-    getTables(): Promise<SQLiteTableDictionary[]>;
+    getTables(): Promise<SqliteTableDictionary[]>;
     /**
      * Get the views that belong to the database.
      */
-    getViews(): Promise<SQLiteViewDictionary[]>;
+    getViews(): Promise<SqliteViewDictionary[]>;
     /**
      * Get the columns for a given table.
      */
-    getColumns(table: string): Promise<SQLiteColumnDictionary[]>;
+    getColumns(table: string): Promise<SqliteColumnDictionary[]>;
     /**
      * Get the indexes for a given table.
      */
-    getIndexes(table: string): Promise<SQLiteIndexDictionary[]>;
+    getIndexes(table: string): Promise<SqliteIndexDictionary[]>;
     /**
      * Get the foreign keys for a given table.
      */
-    getForeignKeys(table: string): Promise<SQLiteForeignKeyDictionary[]>;
+    getForeignKeys(table: string): Promise<SqliteForeignKeyDictionary[]>;
 }

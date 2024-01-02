@@ -1,12 +1,12 @@
-import { ConnectionSessionI } from '..';
 import ColumnDefinition from '../../schema/definitions/column-definition';
 import CommandDefinition from '../../schema/definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../../schema/definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../../schema/definitions/commands/command-index-definition';
 import ForeignIdColumnDefinition from '../../schema/definitions/foreign-id-column-definition';
+import Grammar from '../../schema/grammars/grammar';
+import { ConnectionSessionI } from '../connection';
 import { Stringable } from '../generics';
 import { BlueprintCallback } from './builder/schema-builder';
-import GrammarI from './grammar';
 import RegistryI, {
     ColumnRegistryI,
     ColumnType,
@@ -635,7 +635,7 @@ export default interface BlueprintI {
     /**
      * Get the blueprint grammar.
      */
-    getGrammar(): GrammarI;
+    getGrammar(): Grammar;
 
     /**
      * Get the table the blueprint describes.

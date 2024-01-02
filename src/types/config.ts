@@ -4,10 +4,12 @@ import { PostgresOptions } from 'lupdo-postgres';
 import { SqliteOptions } from 'lupdo-sqlite';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
+import MysqlConnection from '../connections/mysql-connection';
+import PostgresConnection from '../connections/postgres-connection';
+import SqliteConnection from '../connections/sqlite-connection';
+import SqlserverConnection from '../connections/sqlserver-connection';
 
-export type ReadWriteType = 'write' | 'read';
-
-export interface ConnectionOptions {
+export interface DatabaseConnectionOptions {
     /**
      * database
      */
@@ -29,101 +31,16 @@ export interface ConnectionOptions {
      */
     password?: string;
     /**
-     * pool options
-     */
-    pool?: PoolOptions;
-}
-
-export interface FlattedConnectionConfig extends ConnectionOptions {
-    /**
-     * driver name
-     */
-    driver: string;
-    /**
-     * connection name
-     */
-    name: string;
-    /**
-     * table prefix
-     */
-    prefix: string;
-    /**
-     * database
-     */
-    database: string;
-    /**
-     * use prefix for schema builder
-     */
-    prefix_indexes?: boolean;
-    /**
-     * pdo attributes
-     */
-    attributes?: PdoAttributes;
-    /**
-     * pool options
-     */
-    pool?: PoolOptions;
-}
-
-export interface PreparedConnectionConfig extends FlattedConnectionConfig {
-    /**
-     * connection name
-     */
-    name: string;
-    /**
-     * table prefix
-     */
-    prefix: string;
-    /**
-     * table prefix
-     */
-    database: string;
-    /**
-     * write connection
-     */
-    write?: ConnectionOptions | ConnectionOptions[];
-    /**
-     * read connection
-     */
-    read?: ConnectionOptions | ConnectionOptions[];
-    /**
-     * use prefix for schema builder
-     */
-    prefix_indexes?: boolean;
-    /**
-     * pdo attributes
-     */
-    attributes?: PdoAttributes;
-    /**
-     * pool options
-     */
-    pool?: PoolOptions;
-}
-
-export interface ConnectionConfig extends Omit<PreparedConnectionConfig, 'name' | 'prefix' | 'database'> {
-    /**
-     * connection name
-     */
-    name?: string;
-    /**
      * table prefix
      */
     prefix?: string;
     /**
-     * table prefix
+     * pool options
      */
-    database?: string;
-    /**
-     * use prefix for schema builder
-     */
-    prefix_indexes?: boolean;
+    pool?: PoolOptions;
 }
 
-export interface MySqlConnectionOptions extends ConnectionOptions {
-    /**
-     * database
-     */
-    database?: string;
+interface MysqlConnectionOptions extends DatabaseConnectionOptions {
     /**
      * connection charset
      */
@@ -166,9 +83,7 @@ export interface MySqlConnectionOptions extends ConnectionOptions {
     lupdo_options?: MysqlOptions;
 }
 
-export interface MySqlFlattedConfig extends FlattedConnectionConfig, Omit<MySqlConnectionOptions, 'database'> {}
-
-export interface MySqlConfig extends MySqlConnectionOptions {
+export interface MysqlConfig extends MysqlConnectionOptions {
     /**
      * driver name
      */
@@ -176,11 +91,11 @@ export interface MySqlConfig extends MySqlConnectionOptions {
     /**
      * write connection
      */
-    write?: MySqlConnectionOptions | MySqlConnectionOptions[];
+    write?: MysqlConnectionOptions | MysqlConnectionOptions[];
     /**
      * read connection
      */
-    read?: MySqlConnectionOptions | MySqlConnectionOptions[];
+    read?: MysqlConnectionOptions | MysqlConnectionOptions[];
     /**
      * use prefix for schema builder
      */
@@ -191,12 +106,19 @@ export interface MySqlConfig extends MySqlConnectionOptions {
     attributes?: PdoAttributes;
 }
 
-export interface SQLiteConnectionOptions
-    extends Omit<ConnectionOptions, 'host' | 'port' | 'username' | 'password' | 'database'> {
+interface SqliteConnectionOptions {
     /**
      * database
      */
-    database: string;
+    database?: string;
+    /**
+     * table prefix
+     */
+    prefix?: string;
+    /**
+     * pool options
+     */
+    pool?: PoolOptions;
     /**
      * make Database ReadOnly
      */
@@ -227,11 +149,7 @@ export interface SQLiteConnectionOptions
     lupdo_options?: SqliteOptions;
 }
 
-export interface SQLiteFlattedConfig
-    extends Omit<FlattedConnectionConfig, 'host' | 'port' | 'username' | 'password'>,
-        SQLiteConnectionOptions {}
-
-export interface SQLiteConfig extends SQLiteConnectionOptions {
+export interface SqliteConfig extends SqliteConnectionOptions {
     /**
      * driver name
      */
@@ -239,11 +157,11 @@ export interface SQLiteConfig extends SQLiteConnectionOptions {
     /**
      * write connection
      */
-    write?: SQLiteConnectionOptions | SQLiteConnectionOptions[];
+    write?: SqliteConnectionOptions | SqliteConnectionOptions[];
     /**
      * read connection
      */
-    read?: SQLiteConnectionOptions | SQLiteConnectionOptions[];
+    read?: SqliteConnectionOptions | SqliteConnectionOptions[];
     /**
      * use prefix for schema builder
      */
@@ -254,9 +172,7 @@ export interface SQLiteConfig extends SQLiteConnectionOptions {
     attributes?: PdoAttributes;
 }
 
-export type PostgresSslMode = 'disable' | 'prefer' | 'require' | 'verify-ca' | 'verify-full' | 'no-verify';
-
-export interface PostgresConnectionOptions extends ConnectionOptions {
+interface PostgresConnectionOptions extends DatabaseConnectionOptions {
     /**
      * database
      */
@@ -297,7 +213,7 @@ export interface PostgresConnectionOptions extends ConnectionOptions {
     /**
      * ssl mode
      */
-    sslmode?: PostgresSslMode;
+    sslmode?: 'disable' | 'prefer' | 'require' | 'verify-ca' | 'verify-full' | 'no-verify';
     /**
      * trusted CA certificates path.
      */
@@ -315,8 +231,6 @@ export interface PostgresConnectionOptions extends ConnectionOptions {
      */
     lupdo_options?: PostgresOptions;
 }
-
-export interface PostgresFlattedConfig extends FlattedConnectionConfig, Omit<PostgresConnectionOptions, 'database'> {}
 
 export interface PostgresConfig extends PostgresConnectionOptions {
     /**
@@ -341,7 +255,7 @@ export interface PostgresConfig extends PostgresConnectionOptions {
     attributes?: PdoAttributes;
 }
 
-export interface SqlServerConnectionOptions extends ConnectionOptions {
+interface SqlserverConnectionOptions extends DatabaseConnectionOptions {
     /**
      * make Database ReadOnly
      */
@@ -354,6 +268,10 @@ export interface SqlServerConnectionOptions extends ConnectionOptions {
      * encrypt connection
      */
     encrypt?: boolean;
+    /**
+     * exclude from drop tables
+     */
+    dont_drop?: string[];
     /**
      * column encryption
      */
@@ -380,9 +298,7 @@ export interface SqlServerConnectionOptions extends ConnectionOptions {
     lupdo_options?: MssqlOptions;
 }
 
-export interface SqlServerFlattedConfig extends FlattedConnectionConfig, Omit<SqlServerConnectionOptions, 'database'> {}
-
-export interface SqlServerConfig extends SqlServerConnectionOptions {
+export interface SqlserverConfig extends SqlserverConnectionOptions {
     /**
      * driver name
      */
@@ -390,11 +306,11 @@ export interface SqlServerConfig extends SqlServerConnectionOptions {
     /**
      * write connection
      */
-    write?: SqlServerConnectionOptions | SqlServerConnectionOptions[];
+    write?: SqlserverConnectionOptions | SqlserverConnectionOptions[];
     /**
      * read connection
      */
-    read?: SqlServerConnectionOptions | SqlServerConnectionOptions[];
+    read?: SqlserverConnectionOptions | SqlserverConnectionOptions[];
     /**
      * use prefix for schema builder
      */
@@ -405,25 +321,17 @@ export interface SqlServerConfig extends SqlServerConnectionOptions {
     attributes?: PdoAttributes;
 }
 
-export type DriverConnectionOptions =
-    | PostgresConnectionOptions
-    | SqlServerConnectionOptions
-    | MySqlConnectionOptions
-    | SQLiteConnectionOptions
-    | ConnectionOptions;
+export type ReadWriteType = 'write' | 'read';
 
-export type DriverConfig = PostgresConfig | SqlServerConfig | MySqlConfig | SQLiteConfig | ConnectionConfig;
+export type DatabaseConfig = PostgresConfig | SqlserverConfig | MysqlConfig | SqliteConfig;
 
-export type DriverFLattedConfig =
-    | PostgresFlattedConfig
-    | SqlServerFlattedConfig
-    | MySqlFlattedConfig
-    | SQLiteFlattedConfig
-    | FlattedConnectionConfig;
+export type DatabaseConnectionsDrivers = {
+    mysql: MysqlConnection;
+    sqlite: SqliteConnection;
+    pgsql: PostgresConnection;
+    sqlsrv: SqlserverConnection;
+};
 
-export default interface DatabaseConfig {
-    default: string;
-    connections: {
-        [key: string]: DriverConfig;
-    };
-}
+type DatabaseConnections = Record<string, DatabaseConfig>;
+
+export default DatabaseConnections;

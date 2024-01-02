@@ -1,6 +1,8 @@
-import { ConnectionSessionI } from '../..';
+import { SchemaGrammar } from '../../../schema';
 import Blueprint from '../../../schema/blueprint';
 import CommandViewDefinition from '../../../schema/definitions/commands/command-view-definition';
+import Grammar from '../../../schema/grammars/grammar';
+import DriverConnectionI, { ConnectionSessionI } from '../../connection';
 import { Stringable } from '../../generics';
 import BlueprintI from '../blueprint';
 import {
@@ -11,7 +13,6 @@ import {
     TypeDictionary,
     ViewDictionary
 } from '../generics';
-import GrammarI from '../grammar';
 import { ViewRegistryI } from '../registry';
 
 export type MorphKeyType = 'int' | 'ulid' | 'uuid';
@@ -21,13 +22,13 @@ export type BlueprintCallback = (blueprint: Blueprint) => void;
 export type ViewCallback = (definition: CommandViewDefinition<ViewRegistryI>) => CommandViewDefinition<ViewRegistryI>;
 
 export type BlueprintResolver = (
-    table: string,
-    grammar: GrammarI,
+    table: Stringable,
+    grammar: Grammar,
     callback?: BlueprintCallback,
     prefix?: string
 ) => BlueprintI;
 
-export default interface SchemaBuilder {
+export default interface SchemaBuilderI<Session extends ConnectionSessionI<DriverConnectionI>> {
     /**
      * Create a database in the schema.
      */
@@ -104,27 +105,51 @@ export default interface SchemaBuilder {
     /**
      * Modify a table on the schema.
      */
-    table(table: string, callback: BlueprintCallback): Promise<void>;
+    table(table: Stringable, callback: BlueprintCallback): Promise<void>;
     /**
      * Create a new table on the schema.
      */
-    create(table: string, callback: BlueprintCallback): Promise<void>;
+    create(table: Stringable, callback: BlueprintCallback): Promise<void>;
     /**
      * Create a new table on the schema.
      */
     createView(view: Stringable, callback: ViewCallback): Promise<boolean>;
     /**
+     * create user-defined type.
+     */
+    createType(name: Stringable, type: string, definition: any): Promise<boolean>;
+    /**
      * Drop a table from the schema.
      */
-    drop(table: string): Promise<void>;
+    drop(table: Stringable): Promise<void>;
     /**
      * Drop a table from the schema if it exists.
      */
-    dropTableIfExists(table: string): Promise<void>;
+    dropTableIfExists(table: Stringable): Promise<void>;
+    /**
+     * Drop a view from the schema.
+     */
+    dropView(view: Stringable): Promise<boolean>;
     /**
      * Drop a view from the schema if it exists.
      */
-    dropViewIfExists(view: string): Promise<boolean>;
+    dropViewIfExists(view: Stringable): Promise<boolean>;
+    /**
+     * Drop a type from the schema if it exists.
+     */
+    dropType(_type: Stringable): Promise<boolean>;
+    /**
+     * Drop a type from the schema if it exists.
+     */
+    dropTypeIfExists(_type: Stringable): Promise<boolean>;
+    /**
+     * Drop a domain from the schema if it exists.
+     */
+    dropDomain(_type: Stringable): Promise<boolean>;
+    /**
+     * Drop a domain from the schema if it exists.
+     */
+    dropDomainIfExists(_type: Stringable): Promise<boolean>;
     /**
      * Drop columns from a table schema.
      */
@@ -148,9 +173,9 @@ export default interface SchemaBuilder {
     /**
      * Get the database connection instance.
      */
-    getConnection(): ConnectionSessionI;
+    getConnection(): Session;
     /**
-     * Set the database connection instance.
+     * Get the database schema grammar instance.
      */
-    setConnection(connection: ConnectionSessionI): this;
+    getGrammar(): SchemaGrammar;
 }

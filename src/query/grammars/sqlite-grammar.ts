@@ -5,7 +5,7 @@ import { stringifyReplacer } from '../../utils';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
-class SQLiteGrammar extends Grammar {
+class SqliteGrammar extends Grammar {
     /**
      * All of the available clause operators.
      */
@@ -308,4 +308,4 @@ class SQLiteGrammar extends Grammar {
     }
 }
 
-export default SQLiteGrammar;
+export default SqliteGrammar;

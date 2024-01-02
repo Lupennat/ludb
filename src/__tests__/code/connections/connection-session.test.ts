@@ -211,28 +211,12 @@ describe('Connection Session', () => {
         expect(spiedConnection).toHaveBeenCalled();
     });
 
-    it('Works Get Name With Read Write Type', () => {
-        const connection = getConnection();
-        const spiedConnection = jest.spyOn(connection, 'getNameWithReadWriteType');
-        const session = new MockedConnectionSession(connection);
-        session.getNameWithReadWriteType();
-        expect(spiedConnection).toHaveBeenCalled();
-    });
-
     it('Works Get Config', () => {
         const connection = getConnection();
         const spiedConnection = jest.spyOn(connection, 'getConfig');
         const session = new MockedConnectionSession(connection);
         session.getConfig('name', 'default');
         expect(spiedConnection).toHaveBeenCalledWith('name', 'default');
-    });
-
-    it('Works Get Driver Name', () => {
-        const connection = getConnection();
-        const spiedConnection = jest.spyOn(connection, 'getDriverName');
-        const session = new MockedConnectionSession(connection);
-        session.getDriverName();
-        expect(spiedConnection).toHaveBeenCalled();
     });
 
     it('Works Get Before Executing', () => {

@@ -1,14 +1,13 @@
 import deepmerge from 'deepmerge';
 import { isPlainObject } from 'is-plain-object';
-
 import { TypedBinding } from 'lupdo';
+import { Grammar } from './query';
 import Expression from './query/expression';
 import ExpressionContract from './query/expression-contract';
 import { Stringable } from './types/generics';
-import GrammarI from './types/query/grammar';
 import { Arrayable, Objectable } from './types/query/query-builder';
 
-export function stringifyReplacer(grammar: GrammarI): (key: string, value: any) => any {
+export function stringifyReplacer(grammar: Grammar): (key: string, value: any) => any {
     return (_key: string, value: any): any => {
         if (typeof value === 'bigint') {
             return value.toString();

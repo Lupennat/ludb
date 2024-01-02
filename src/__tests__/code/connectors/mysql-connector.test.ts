@@ -1,14 +1,14 @@
 import { Pdo } from 'lupdo';
-import MySqlConnector from '../../../connectors/mysql-connectors';
+import MysqlConnector from '../../../connectors/mysql-connectors';
 import { FakeConnection, pdo } from '../fixtures/mocked';
 
-describe('MySql Connector', () => {
+describe('Mysql Connector', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
 
-    it('Works MySql Connector', async () => {
-        const connector = new MySqlConnector();
+    it('Works Mysql Connector', async () => {
+        const connector = new MysqlConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
             username: 'username',
@@ -37,7 +37,7 @@ describe('MySql Connector', () => {
     });
 
     it('Works Created Callback', async () => {
-        let connector = new MySqlConnector();
+        let connector = new MysqlConnector();
         let spiedCallback: jest.SpyInstance[] = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
@@ -67,7 +67,7 @@ describe('MySql Connector', () => {
         expect(callback).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
 
-        connector = new MySqlConnector();
+        connector = new MysqlConnector();
         spiedCallback = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
@@ -91,20 +91,20 @@ describe('MySql Connector', () => {
         await pdo.disconnect();
     });
 
-    it('Works MySql Configure Isolation Level', async () => {
+    it('Works Mysql Configure Isolation Level', async () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
-        const connector = new MySqlConnector();
+        const connector = new MysqlConnector();
         await connector.configureIsolationLevel(fakeConnection, { driver: 'mysql' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.configureIsolationLevel(fakeConnection, { driver: 'mysql', isolation_level: 'READ COMMITTED' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set session transaction isolation level READ COMMITTED');
     });
 
-    it('Works MySql Configure Encoding', async () => {
+    it('Works Mysql Configure Encoding', async () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
-        const connector = new MySqlConnector();
+        const connector = new MysqlConnector();
         await connector.configureEncoding(fakeConnection, { driver: 'mysql', collation: 'utf8_unicode_ci' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.configureEncoding(fakeConnection, { driver: 'mysql', charset: 'utf8' });
@@ -117,20 +117,20 @@ describe('MySql Connector', () => {
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set names 'utf8' collate 'utf8_unicode_ci'");
     });
 
-    it('Works MySql Configure Timezone', async () => {
+    it('Works Mysql Configure Timezone', async () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
-        const connector = new MySqlConnector();
+        const connector = new MysqlConnector();
         await connector.configureTimezone(fakeConnection, { driver: 'mysql' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.configureTimezone(fakeConnection, { driver: 'mysql', timezone: 'Europe/Rome' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set time_zone="Europe/Rome"');
     });
 
-    it('Works MySql Set Modes', async () => {
+    it('Works Mysql Set Modes', async () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
-        const connector = new MySqlConnector();
+        const connector = new MysqlConnector();
         await connector.setModes(fakeConnection, { driver: 'mysql' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.setModes(fakeConnection, {

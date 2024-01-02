@@ -1,5 +1,5 @@
 import Raw from '../../../../query/expression';
-import { getBuilder, getSqlServerBuilder, pdo } from '../../fixtures/mocked';
+import { getBuilder, getSqlserverBuilder, pdo } from '../../fixtures/mocked';
 
 describe('Builder Pdo Methods Select', () => {
     afterAll(async () => {
@@ -519,8 +519,8 @@ describe('Builder Pdo Methods Select', () => {
         expect(await builder.from('users').numericAggregate('count', ['id'])).toBe(100);
     });
 
-    it('Works SqlServer Exists', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Exists', async () => {
+        const builder = getSqlserverBuilder();
         const spiedConnection = jest.spyOn(builder.getConnection(), 'select');
         spiedConnection.mockImplementationOnce(async (query, bindings, useReadPdo) => {
             expect(query).toBe('select top 1 1 [exists] from [users]');

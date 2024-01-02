@@ -2,10 +2,10 @@ import Raw from '../../../query/expression';
 import { stringifyReplacer } from '../../../utils';
 import {
     getBuilder,
-    getMySqlBuilder,
+    getMysqlBuilder,
     getPostgresBuilder,
-    getSQLiteBuilder,
-    getSqlServerBuilder,
+    getSqliteBuilder,
+    getSqlserverBuilder,
     pdo
 } from '../fixtures/mocked';
 
@@ -38,20 +38,20 @@ describe('Builder Select-From', () => {
         expect(builder.toSql()).toBe('select * from "public"."users"');
     });
 
-    it('Works MySql Wrapping Protectets Quotation Marks', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Wrapping Protectets Quotation Marks', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('some`table');
         expect(builder.toSql()).toBe('select * from `some``table`');
     });
 
-    it('Works MySql Wrapping', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Wrapping', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users');
         expect('select * from `users`').toBe(builder.toSql());
     });
 
-    it('Works MySql Can Combine Json On Update', async () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Can Combine Json On Update', async () => {
+        const builder = getMysqlBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         const date = new Date('2019-08-06');
 
@@ -83,8 +83,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works MySql Update Wrapping Json', async () => {
-        let builder = getMySqlBuilder();
+    it('Works Mysql Update Wrapping Json', async () => {
+        let builder = getMysqlBuilder();
         let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -96,7 +96,7 @@ describe('Builder Select-From', () => {
             ['John', 'Doe', 1]
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -109,8 +109,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works MySql Update Wrapping Nested Json', async () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Update Wrapping Nested Json', async () => {
+        const builder = getMysqlBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -123,8 +123,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works MySql Update Wrapping Json Array', async () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Update Wrapping Json Array', async () => {
+        const builder = getMysqlBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         const date = new Date('2019-08-06');
@@ -153,8 +153,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works MySql Update Wrapping Json Path Array Index', async () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Update Wrapping Json Path Array Index', async () => {
+        const builder = getMysqlBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').where('active', 1).update({
@@ -169,8 +169,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works MySql Update With Json Prepares Bindings Correctly', async () => {
-        let builder = getMySqlBuilder();
+    it('Works Mysql Update With Json Prepares Bindings Correctly', async () => {
+        let builder = getMysqlBuilder();
         let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder
@@ -183,7 +183,7 @@ describe('Builder Select-From', () => {
             ['2015-05-26 22:02:06', 0]
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder
@@ -196,7 +196,7 @@ describe('Builder Select-From', () => {
             ['2015-05-26 22:02:06', 45, 0]
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').update({ 'options->size': null });
@@ -206,7 +206,7 @@ describe('Builder Select-From', () => {
             [null]
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').update({ 'options->size': new Raw('45') });
@@ -348,8 +348,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SQLite Can Combine Json On Update', async () => {
-        const builder = getSQLiteBuilder();
+    it('Works Sqlite Can Combine Json On Update', async () => {
+        const builder = getSqliteBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         const date = new Date('2019-08-06');
 
@@ -381,8 +381,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SQLite Update Wrapping Json', async () => {
-        let builder = getSQLiteBuilder();
+    it('Works Sqlite Update Wrapping Json', async () => {
+        let builder = getSqliteBuilder();
         let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -394,7 +394,7 @@ describe('Builder Select-From', () => {
             ['John', 'Doe', 1]
         );
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -407,8 +407,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SQLite Update Wrapping Nested Json', async () => {
-        const builder = getSQLiteBuilder();
+    it('Works Sqlite Update Wrapping Nested Json', async () => {
+        const builder = getSqliteBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -421,8 +421,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SQLite Update Wrapping Json Array', async () => {
-        const builder = getSQLiteBuilder();
+    it('Works Sqlite Update Wrapping Json Array', async () => {
+        const builder = getSqliteBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         const date = new Date('2019-08-06');
@@ -453,8 +453,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SQLite Update Wrapping Json Path Array Index', async () => {
-        const builder = getSQLiteBuilder();
+    it('Works Sqlite Update Wrapping Json Path Array Index', async () => {
+        const builder = getSqliteBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').where('active', 1).update({
@@ -469,8 +469,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SqlServer Can Combine Json On Update', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Can Combine Json On Update', async () => {
+        const builder = getSqlserverBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         const date = new Date('2019-08-06');
 
@@ -502,8 +502,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SqlServer Update Wrapping Json', async () => {
-        let builder = getSqlServerBuilder();
+    it('Works Sqlserver Update Wrapping Json', async () => {
+        let builder = getSqlserverBuilder();
         let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -515,7 +515,7 @@ describe('Builder Select-From', () => {
             ['John', 'Doe', 1]
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -528,8 +528,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SqlServer Update Wrapping Nested Json', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Update Wrapping Nested Json', async () => {
+        const builder = getSqlserverBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
         await builder
             .from('users')
@@ -542,8 +542,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SqlServer Update Wrapping Json Array', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Update Wrapping Json Array', async () => {
+        const builder = getSqlserverBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         const date = new Date('2019-08-06');
@@ -575,8 +575,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SqlServer Update Wrapping Json Path Array Index', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Update Wrapping Json Path Array Index', async () => {
+        const builder = getSqlserverBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').where('active', 1).update({
@@ -591,8 +591,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works SqlServer Update Json With Nullable', async () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Update Json With Nullable', async () => {
+        const builder = getSqlserverBuilder();
         const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
 
         await builder.from('users').where('active', 1).update({
@@ -607,8 +607,8 @@ describe('Builder Select-From', () => {
         );
     });
 
-    it('Works MySql Wrapping Json With String', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Wrapping Json With String', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').where('items->sku', '=', 'foo-bar');
         expect('select * from `users` where json_unquote(json_extract(`items`, \'$."sku"\')) = ?').toBe(
             builder.toSql()
@@ -617,32 +617,32 @@ describe('Builder Select-From', () => {
         expect('foo-bar').toBe(builder.getRawBindings().where[0]);
     });
 
-    it('Works MySql Wrapping Json With Integer', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Wrapping Json With Integer', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').where('items->price', '=', 1);
         expect('select * from `users` where json_unquote(json_extract(`items`, \'$."price"\')) = ?').toBe(
             builder.toSql()
         );
     });
 
-    it('Works MySql Wrapping Json With Double', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Wrapping Json With Double', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').where('items->price', '=', 1.5);
         expect('select * from `users` where json_unquote(json_extract(`items`, \'$."price"\')) = ?').toBe(
             builder.toSql()
         );
     });
 
-    it('Works MySql Wrapping Json With Boolean', () => {
-        let builder = getMySqlBuilder();
+    it('Works Mysql Wrapping Json With Boolean', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereNot('items->available', '=', true);
         expect('select * from `users` where not json_extract(`items`, \'$."available"\') = true').toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('items->available', '=', true);
         expect('select * from `users` where json_extract(`items`, \'$."available"\') = true').toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where(new Raw("items->'$.available'"), '=', true);
         expect("select * from `users` where items->'$.available' = true").toBe(builder.toSql());
     });
@@ -656,8 +656,8 @@ describe('Builder Select-From', () => {
         expect('select count(distinct "id", "name") as aggregate from "users"').toBe(builder.toSql());
     });
 
-    it('Works MySql Wrapping Json With Boolean And Integer That Looks Like One', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Wrapping Json With Boolean And Integer That Looks Like One', () => {
+        const builder = getMysqlBuilder();
         builder
             .select('*')
             .from('users')
@@ -673,43 +673,43 @@ describe('Builder Select-From', () => {
     it('Works Json Path Escaping', () => {
         const expectedWithJsonEscaped = "select json_unquote(json_extract(`json`, '$.\"''))#\"'))";
 
-        let builder = getMySqlBuilder();
+        let builder = getMysqlBuilder();
         builder.select("json->'))#");
         expect(expectedWithJsonEscaped).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         // prettier-ignore
         builder.select("json->\'))#");
         expect(expectedWithJsonEscaped).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select("json->\\'))#");
         expect(expectedWithJsonEscaped).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         // prettier-ignore
         builder.select("json->\\\'))#");
         expect(expectedWithJsonEscaped).toBe(builder.toSql());
     });
 
-    it('Works MySql Wrapping Json', () => {
-        let builder = getMySqlBuilder();
+    it('Works Mysql Wrapping Json', () => {
+        let builder = getMysqlBuilder();
         builder.select('*').from('users').whereRaw('items->\'$."price"\' = 1');
         expect('select * from `users` where items->\'$."price"\' = 1').toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('items->price').from('users').where('users.items->price', '=', 1).orderBy('items->price');
         expect(
             'select json_unquote(json_extract(`items`, \'$."price"\')) from `users` where json_unquote(json_extract(`users`.`items`, \'$."price"\')) = ? order by json_unquote(json_extract(`items`, \'$."price"\')) asc'
         ).toBe(builder.toSql());
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('items->price->in_usd', '=', 1);
         expect('select * from `users` where json_unquote(json_extract(`items`, \'$."price"."in_usd"\')) = ?').toBe(
             builder.toSql()
         );
 
-        builder = getMySqlBuilder();
+        builder = getMysqlBuilder();
         builder.select('*').from('users').where('items->price->in_usd', '=', 1).where('items->age', '=', 2);
         expect(
             'select * from `users` where json_unquote(json_extract(`items`, \'$."price"."in_usd"\')) = ? and json_unquote(json_extract(`items`, \'$."age"\')) = ?'
@@ -744,13 +744,13 @@ describe('Builder Select-From', () => {
         expect('select * from "users" where ("items"->\'available\')::jsonb = \'true\'::jsonb').toBe(builder.toSql());
     });
 
-    it('Works SqlServer Columns', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Sqlserver Columns', () => {
+        let builder = getSqlserverBuilder();
         expect(builder.from('users').select('name').setAggregate('count', ['*']).toSql()).toBe(
             'select count(*) as aggregate from [users]'
         );
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         expect(builder.from('users').select('name').distinct().toSql()).toBe('select distinct [name] from [users]');
     });
 
@@ -764,70 +764,70 @@ describe('Builder Select-From', () => {
         expect(builder.from('users').select('name').distinct().toSql()).toBe('select distinct "name" from "users"');
     });
 
-    it('Works SqlServer Save Points', () => {
-        const builder = getSqlServerBuilder();
+    it('Works Sqlserver Save Points', () => {
+        const builder = getSqlserverBuilder();
         expect(builder.getGrammar().compileSavepoint('trans1')).toBe('SAVE TRANSACTION trans1');
         expect(builder.getGrammar().compileSavepointRollBack('trans1')).toBe('ROLLBACK TRANSACTION trans1');
     });
 
-    it('Works SqlServer Wrapping Json', () => {
-        let builder = getSqlServerBuilder();
+    it('Works Sqlserver Wrapping Json', () => {
+        let builder = getSqlserverBuilder();
         builder.select('items->price').from('users').where('users.items->price', '=', 1).orderBy('items->price');
         expect(
             'select json_value([items], \'$."price"\') from [users] where json_value([users].[items], \'$."price"\') = ? order by json_value([items], \'$."price"\') asc'
         ).toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('items->price->in_usd', '=', 1);
         expect('select * from [users] where json_value([items], \'$."price"."in_usd"\') = ?').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('items->price->in_usd', '=', 1).where('items->age', '=', 2);
         expect(
             'select * from [users] where json_value([items], \'$."price"."in_usd"\') = ? and json_value([items], \'$."age"\') = ?'
         ).toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('items->prices->0', '=', 1).where('items->age', '=', 2);
         expect(
             'select * from [users] where json_value([items], \'$."prices"."0"\') = ? and json_value([items], \'$."age"\') = ?'
         ).toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('items->available', '=', true);
         expect("select * from [users] where json_value([items], '$.\"available\"') = 'true'").toBe(builder.toSql());
     });
 
-    it('Works SQLite Wrapping Json', () => {
-        let builder = getSQLiteBuilder();
+    it('Works Sqlite Wrapping Json', () => {
+        let builder = getSqliteBuilder();
         builder.select('items->price').from('users').where('users.items->price', '=', 1).orderBy('items->price');
         expect(
             'select json_extract("items", \'$."price"\') from "users" where json_extract("users"."items", \'$."price"\') = ? order by json_extract("items", \'$."price"\') asc'
         ).toBe(builder.toSql());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('items->price->in_usd', '=', 1);
         expect('select * from "users" where json_extract("items", \'$."price"."in_usd"\') = ?').toBe(builder.toSql());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('items->price->in_usd', '=', 1).where('items->age', '=', 2);
         expect(
             'select * from "users" where json_extract("items", \'$."price"."in_usd"\') = ? and json_extract("items", \'$."age"\') = ?'
         ).toBe(builder.toSql());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('items->prices->0', '=', 1).where('items->age', '=', 2);
         expect(
             'select * from "users" where json_extract("items", \'$."prices"."0"\') = ? and json_extract("items", \'$."age"\') = ?'
         ).toBe(builder.toSql());
 
-        builder = getSQLiteBuilder();
+        builder = getSqliteBuilder();
         builder.select('*').from('users').where('items->available', '=', true);
         expect('select * from "users" where json_extract("items", \'$."available"\') = true').toBe(builder.toSql());
     });
 
-    it('Works MySql Sounds Like Operator', () => {
-        const builder = getMySqlBuilder();
+    it('Works Mysql Sounds Like Operator', () => {
+        const builder = getMysqlBuilder();
         builder.select('*').from('users').where('name', 'sounds like', 'John Doe');
         expect('select * from `users` where `name` sounds like ?').toBe(builder.toSql());
         expect(['John Doe']).toEqual(builder.getBindings());
@@ -846,7 +846,7 @@ describe('Builder Select-From', () => {
         builder.select('*').from('users').where('range', '>>', '[2022-01-08 00:00:00,2022-01-09 00:00:00)');
         expect('select * from "users" where ("range" >> ?)::bool').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').where('bar', '&', 1);
         expect('select * from [users] where ([bar] & ?) != 0').toBe(builder.toSql());
 
@@ -862,7 +862,7 @@ describe('Builder Select-From', () => {
         builder.select('*').from('users').having('range', '>>', '[2022-01-08 00:00:00,2022-01-09 00:00:00)');
         expect('select * from "users" having ("range" >> ?)::bool').toBe(builder.toSql());
 
-        builder = getSqlServerBuilder();
+        builder = getSqlserverBuilder();
         builder.select('*').from('users').having('bar', '&', 1);
         expect('select * from [users] having ([bar] & ?) != 0').toBe(builder.toSql());
     });

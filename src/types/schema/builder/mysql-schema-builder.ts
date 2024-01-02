@@ -1,3 +1,5 @@
+import MysqlConnection from '../../../connections/mysql-connection';
+import { ConnectionSessionI } from '../../connection';
 import {
     MysqlColumnDictionary,
     MysqlForeignKeyDictionary,
@@ -7,7 +9,7 @@ import {
 } from '../generics';
 import SchemaBuilder from './schema-builder';
 
-export default interface MysqlSchemaBuilderI extends SchemaBuilder {
+export default interface MysqlSchemaBuilderI extends SchemaBuilder<ConnectionSessionI<MysqlConnection>> {
     /**
      * Get the tables that belong to the database.
      */

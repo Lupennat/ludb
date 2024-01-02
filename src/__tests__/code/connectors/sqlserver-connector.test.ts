@@ -1,13 +1,13 @@
-import SqlServerConnector from '../../../connectors/sqlserver-connector';
+import SqlserverConnector from '../../../connectors/sqlserver-connector';
 import { pdo } from '../fixtures/mocked';
 
-describe('SqlServer Connector', () => {
+describe('Sqlserver Connector', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
 
-    it('Works SqlServer Connect Calls Create Connection With Proper Arguments', () => {
-        const connector = new SqlServerConnector();
+    it('Works Sqlserver Connect Calls Create Connection With Proper Arguments', () => {
+        const connector = new SqlserverConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({ driver: 'sqlsrv', host: 'foo', database: 'bar', port: 111 });
         expect(spiedConnection).toHaveBeenLastCalledWith(
@@ -32,8 +32,8 @@ describe('SqlServer Connector', () => {
         );
     });
 
-    it('Works SqlServer Connect Calls Create Connection With Optional Arguments', () => {
-        const connector = new SqlServerConnector();
+    it('Works Sqlserver Connect Calls Create Connection With Optional Arguments', () => {
+        const connector = new SqlserverConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
             driver: 'sqlsrv',
@@ -84,8 +84,8 @@ describe('SqlServer Connector', () => {
         );
     });
 
-    it('Works SqlServer Connector Authentication Options', () => {
-        const connector = new SqlServerConnector();
+    it('Works Sqlserver Connector Authentication Options', () => {
+        const connector = new SqlserverConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
             driver: 'sqlsrv',

@@ -2,10 +2,9 @@
 
 import BaseGrammar from '../../grammar';
 import ExpressionContract from '../../query/expression-contract';
-import { ConnectionSessionI } from '../../types/connection/connection';
+import { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
-import GrammarI from '../../types/schema/grammar';
 import {
     ColumnDefinitionRegistryI,
     ColumnsRegistryI,
@@ -23,7 +22,7 @@ import CommandForeignKeyDefinition from '../definitions/commands/command-foreign
 import CommandIndexDefinition from '../definitions/commands/command-index-definition';
 import CommandViewDefinition from '../definitions/commands/command-view-definition';
 
-class Grammar extends BaseGrammar implements GrammarI {
+class Grammar extends BaseGrammar {
     /**
      * The possible column modifiers.
      */
@@ -44,6 +43,13 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     public compileCreateDatabase(_name: string, _connection: ConnectionSessionI): string {
         throw new Error('This database driver does not support creating databases.');
+    }
+
+    /**
+     * Compile a create user-defined type.
+     */
+    public compileCreateType(_name: Stringable, _type: string, _definition: any): string {
+        throw new Error('This database driver does not support creating types.');
     }
 
     /**
@@ -394,7 +400,11 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a foreign key command.
      */
-    public compileForeign(blueprint: BlueprintI, command: CommandForeignKeyDefinition): string {
+    public compileForeign(
+        blueprint: BlueprintI,
+        command: CommandForeignKeyDefinition,
+        _connection: ConnectionSessionI
+    ): string {
         const registry = command.getRegistry();
         // We need to prepare several of the elements of the foreign key definition
         // before we can create the SQL, such as wrapping the tables and convert
@@ -445,10 +455,45 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
+     * Compile a drop view command.
+     */
+    public compileDropView(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping views.');
+    }
+
+    /**
      * Compile a drop view (if exists) command.
      */
-    public compileDropViewIfExists(_name: string): string {
+    public compileDropViewIfExists(_name: Stringable): string {
         throw new Error('This database driver does not support dropping views.');
+    }
+
+    /**
+     * Compile a drop type command.
+     */
+    public compileDropType(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping types.');
+    }
+
+    /**
+     * Compile a drop type (if exists) command.
+     */
+    public compileDropTypeIfExists(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping types.');
+    }
+
+    /**
+     * Compile a drop domain command.
+     */
+    public compileDropDomain(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping domains.');
+    }
+
+    /**
+     * Compile a drop domain (if exists) command.
+     */
+    public compileDropDomainIfExists(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping domains.');
     }
 
     /**
@@ -1081,11 +1126,8 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Wrap a value in keyword identifiers.
      */
-    public wrap(value: Stringable | CommandDefinition | ColumnDefinition, prefixAlias = false): string {
-        return super.wrap(
-            value instanceof CommandDefinition || value instanceof ColumnDefinition ? value.name : value,
-            prefixAlias
-        );
+    public wrap(value: Stringable | CommandDefinition | ColumnDefinition): string {
+        return super.wrap(value instanceof CommandDefinition || value instanceof ColumnDefinition ? value.name : value);
     }
 
     /**

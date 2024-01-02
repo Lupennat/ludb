@@ -2,7 +2,7 @@ import Raw from '../../../query/expression';
 import Blueprint from '../../../schema/blueprint';
 import Builder from '../../../schema/builders/builder';
 import Grammar from '../../../schema/grammars/grammar';
-import { MockedSchemaBuilder, getConnection, getConnection2 } from '../fixtures/mocked';
+import { MockedSchemaBuilder, getConnection } from '../fixtures/mocked';
 
 describe('Schema Builder Test', () => {
     it('Works With Default String Length', async () => {
@@ -51,6 +51,14 @@ describe('Schema Builder Test', () => {
         ).rejects.toThrow('This database driver does not support creating views.');
     });
 
+    it('Works Create Type', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.createType('foo', 'domain', {})).rejects.toThrow(
+            'This database driver does not support creating types.'
+        );
+    });
+
     it('Works Drop Tables', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
@@ -77,11 +85,47 @@ describe('Schema Builder Test', () => {
         );
     });
 
+    it('Works Drop View', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.dropView('foo')).rejects.toThrow('This database driver does not support dropping views.');
+    });
+
     it('Works Drop View If Exists', async () => {
         const session = getConnection().sessionSchema();
         const builder = new Builder(session);
         await expect(builder.dropViewIfExists('foo')).rejects.toThrow(
             'This database driver does not support dropping views.'
+        );
+    });
+
+    it('Works Drop Type', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.dropType('foo')).rejects.toThrow('This database driver does not support dropping types.');
+    });
+
+    it('Works Drop Type If Exists', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.dropTypeIfExists('foo')).rejects.toThrow(
+            'This database driver does not support dropping types.'
+        );
+    });
+
+    it('Works Drop Domain', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.dropDomain('foo')).rejects.toThrow(
+            'This database driver does not support dropping domains.'
+        );
+    });
+
+    it('Works Drop Domain If Exists', async () => {
+        const session = getConnection().sessionSchema();
+        const builder = new Builder(session);
+        await expect(builder.dropDomainIfExists('foo')).rejects.toThrow(
+            'This database driver does not support dropping domains.'
         );
     });
 
@@ -384,14 +428,5 @@ describe('Schema Builder Test', () => {
         const builder = new MockedSchemaBuilder(session);
 
         expect(builder.getConnection()).toEqual(session);
-    });
-
-    it('Works Set Connection', async () => {
-        const session = getConnection().sessionSchema();
-        const builder = new MockedSchemaBuilder(session);
-        const session2 = getConnection2().sessionSchema();
-        builder.setConnection(session2);
-        expect(builder.getConnection()).toEqual(session2);
-        expect(builder.getConnection()).not.toEqual(session);
     });
 });

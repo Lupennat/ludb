@@ -5,7 +5,7 @@ import { stringifyReplacer } from '../../utils';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
-class MySqlGrammar extends Grammar {
+class MysqlGrammar extends Grammar {
     /**
      * The grammar specific operators.
      */
@@ -317,4 +317,4 @@ class MySqlGrammar extends Grammar {
     }
 }
 
-export default MySqlGrammar;
+export default MysqlGrammar;

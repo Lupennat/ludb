@@ -10,9 +10,9 @@ import {
     RenameFullRegistryI,
     RenameRegistryI
 } from '../../../../types/schema/registry';
-import { MockedGrammar, getConnection, getMySqlBlueprint } from '../../fixtures/mocked';
+import { MockedGrammar, getConnection, getMysqlBlueprint } from '../../fixtures/mocked';
 
-describe('MySql Schema Grammar', () => {
+describe('Mysql Schema Grammar', () => {
     function getCommand(): CommandDefinition {
         return new CommandDefinition('add', {});
     }
@@ -22,6 +22,13 @@ describe('MySql Schema Grammar', () => {
         expect(() => {
             grammar.compileCreateDatabase('name', getConnection().sessionSchema());
         }).toThrow('This database driver does not support creating databases.');
+    });
+
+    it('Works Compile Create Type', () => {
+        const grammar = new Grammar();
+        expect(() => {
+            grammar.compileCreateType('type', 'domain', {});
+        }).toThrow('This database driver does not support creating types.');
     });
 
     it('Works Compile DbStat Database', () => {
@@ -80,6 +87,13 @@ describe('MySql Schema Grammar', () => {
         }).toThrow('This database driver does not support dropping databases.');
     });
 
+    it('Works Compile Drop View', () => {
+        const grammar = new Grammar();
+        expect(() => {
+            grammar.compileDropView('name');
+        }).toThrow('This database driver does not support dropping views.');
+    });
+
     it('Works Compile Drop View If Exists', () => {
         const grammar = new Grammar();
         expect(() => {
@@ -87,10 +101,38 @@ describe('MySql Schema Grammar', () => {
         }).toThrow('This database driver does not support dropping views.');
     });
 
+    it('Works Compile Drop Type', () => {
+        const grammar = new Grammar();
+        expect(() => {
+            grammar.compileDropType('name');
+        }).toThrow('This database driver does not support dropping types.');
+    });
+
+    it('Works Compile Drop Type If Exists', () => {
+        const grammar = new Grammar();
+        expect(() => {
+            grammar.compileDropTypeIfExists('name');
+        }).toThrow('This database driver does not support dropping types.');
+    });
+
+    it('Works Compile Drop Domain', () => {
+        const grammar = new Grammar();
+        expect(() => {
+            grammar.compileDropDomain('name');
+        }).toThrow('This database driver does not support dropping domains.');
+    });
+
+    it('Works Compile Drop Domain If Exists', () => {
+        const grammar = new Grammar();
+        expect(() => {
+            grammar.compileDropDomainIfExists('name');
+        }).toThrow('This database driver does not support dropping domains.');
+    });
+
     it('Works Compile Drop', () => {
         const grammar = new Grammar();
         expect(() => {
-            grammar.compileDrop(getMySqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
+            grammar.compileDrop(getMysqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
         }).toThrow('This database driver does not support drop table.');
     });
 
@@ -139,7 +181,7 @@ describe('MySql Schema Grammar', () => {
     it('Works Compile Create', () => {
         const grammar = new Grammar();
         expect(() => {
-            grammar.compileCreate(getMySqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
+            grammar.compileCreate(getMysqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
         }).toThrow('This database driver does not support create table.');
     });
 
@@ -175,7 +217,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileRename(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandDefinition<RenameRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -185,14 +227,14 @@ describe('MySql Schema Grammar', () => {
     it('Works Compile Add', () => {
         const grammar = new Grammar();
         expect(() => {
-            grammar.compileAdd(getMySqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
+            grammar.compileAdd(getMysqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
         }).toThrow('This database driver does not support add column.');
     });
 
     it('Works Compile Change', () => {
         const grammar = new Grammar();
         expect(() => {
-            grammar.compileChange(getMySqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
+            grammar.compileChange(getMysqlBlueprint('test'), getCommand(), getConnection().sessionSchema());
         }).toThrow('This database driver does not support change column.');
     });
 
@@ -200,7 +242,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileDropColumn(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandDefinition<ColumnsRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -211,7 +253,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileRenameColumn(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandDefinition<RenameFullRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -222,7 +264,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileAutoIncrementStartingValues(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandDefinition<ColumnDefinitionRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -233,7 +275,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileComment(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandDefinition<ColumnDefinitionRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -244,7 +286,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileDefault(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandDefinition<ColumnDefinitionRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -255,7 +297,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compilePrimary(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -266,7 +308,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileDropPrimary(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -277,7 +319,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileUnique(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -288,7 +330,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileDropUnique(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -299,7 +341,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileIndex(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -310,7 +352,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileDropIndex(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -321,7 +363,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileFulltext(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -332,7 +374,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileDropFulltext(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -343,7 +385,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileSpatialIndex(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -354,7 +396,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileDropSpatialIndex(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandIndexDefinition<IndexRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -365,7 +407,7 @@ describe('MySql Schema Grammar', () => {
         const grammar = new Grammar();
         expect(() => {
             grammar.compileTableComment(
-                getMySqlBlueprint('test'),
+                getMysqlBlueprint('test'),
                 getCommand() as CommandDefinition<CommentRegistryI>,
                 getConnection().sessionSchema()
             );
@@ -375,112 +417,112 @@ describe('MySql Schema Grammar', () => {
     it('Works Compile Modify After', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyAfter(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyAfter(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support after column modifier.');
     });
 
     it('Works Compile Modify Charset', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyCharset(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyCharset(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support charset column modifier.');
     });
 
     it('Works Compile Modify Collate', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyCollate(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyCollate(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support collate column modifier.');
     });
 
     it('Works Compile Modify Comment', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyComment(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyComment(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support comment column modifier.');
     });
 
     it('Works Compile Modify Default', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyDefault(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyDefault(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support default column modifier.');
     });
 
     it('Works Compile Modify First', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyFirst(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyFirst(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support first column modifier.');
     });
 
     it('Works Compile Modify GeneratedAs', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyGeneratedAs(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyGeneratedAs(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support generated as column modifier.');
     });
 
     it('Works Compile Modify Increment', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyIncrement(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyIncrement(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support increment column modifier.');
     });
 
     it('Works Compile Modify Invisible', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyInvisible(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyInvisible(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support invisible column modifier.');
     });
 
     it('Works Compile Modify Nullable', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyNullable(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyNullable(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support nullable column modifier.');
     });
 
     it('Works Compile Modify OnUpdate', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyOnUpdate(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyOnUpdate(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support on update column modifier.');
     });
 
     it('Works Compile Modify Persisted', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyPersisted(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyPersisted(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support persisted column modifier.');
     });
 
     it('Works Compile Modify Srid', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifySrid(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifySrid(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support srid column modifier.');
     });
 
     it('Works Compile Modify StoredAs', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyStoredAs(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyStoredAs(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support stored as column modifier.');
     });
 
     it('Works Compile Modify Unsigned', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyUnsigned(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyUnsigned(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support unsigned column modifier.');
     });
 
     it('Works Compile Modify VirtualAs', () => {
         const grammar = new MockedGrammar();
         expect(() => {
-            grammar.compileModifyVirtualAs(getMySqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
+            grammar.compileModifyVirtualAs(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support virtual as column modifier.');
     });
 

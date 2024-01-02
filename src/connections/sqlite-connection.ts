@@ -1,15 +1,31 @@
-import SQLiteGrammar from '../query/grammars/sqlite-grammar';
+import SqliteGrammar from '../query/grammars/sqlite-grammar';
 import SchemaBuilder from '../schema/builders/sqlite-builder';
 import SchemaGrammar from '../schema/grammars/sqlite-grammar';
-import SQLiteConnectionI from '../types/connection/sqlite-connection';
 import Connection from './connection';
 
-class SQLiteConnection extends Connection implements SQLiteConnectionI {
+class SqliteConnection extends Connection {
     /**
-     * Get the default query grammar instance.
+     * The query grammar implementation.
      */
-    protected getDefaultQueryGrammar(): SQLiteGrammar {
-        return this.withTablePrefix(new SQLiteGrammar());
+    protected queryGrammar!: SqliteGrammar;
+
+    /**
+     * The schema grammar implementation.
+     */
+    protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * set Default Query Grammar
+     */
+    protected setDefaultQueryGrammar(): void {
+        this.queryGrammar = new SqliteGrammar().setTablePrefix(this.tablePrefix);
+    }
+
+    /**
+     * set Default Schema Grammar
+     */
+    protected setDefaultSchemaGrammar(): void {
+        this.schemaGrammar = new SchemaGrammar().setTablePrefix(this.tablePrefix);
     }
 
     /**
@@ -20,11 +36,18 @@ class SQLiteConnection extends Connection implements SQLiteConnectionI {
     }
 
     /**
-     * Get the default schema grammar instance.
+     * Get the schema grammar used by the connection.
      */
-    protected getDefaultSchemaGrammar(): SchemaGrammar {
-        return new SchemaGrammar();
+    public getSchemaGrammar(): SchemaGrammar {
+        return this.schemaGrammar;
+    }
+
+    /**
+     * Get the query grammar used by the connection.
+     */
+    public getQueryGrammar(): SqliteGrammar {
+        return this.queryGrammar;
     }
 }
 
-export default SQLiteConnection;
+export default SqliteConnection;

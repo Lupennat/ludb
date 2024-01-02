@@ -1,9 +1,8 @@
 import Expression from '../query/expression';
-import { ConnectionSessionI } from '../types/connection/connection';
+import { ConnectionSessionI } from '../types/connection';
 import { Stringable } from '../types/generics';
 import { Relatable, RelatableConstructor } from '../types/schema/blueprint';
 import { BlueprintCallback } from '../types/schema/builder/schema-builder';
-import GrammarI from '../types/schema/grammar';
 import RegistryI, {
     ColumnDefinitionRegistryI,
     ColumnIndex,
@@ -24,6 +23,7 @@ import CommandDefinition from './definitions/commands/command-definition';
 import CommandForeignKeyDefinition from './definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from './definitions/commands/command-index-definition';
 import ForeignIdColumnDefinition from './definitions/foreign-id-column-definition';
+import Grammar from './grammars/grammar';
 import createRegistry from './registries';
 
 class Blueprint {
@@ -32,7 +32,7 @@ class Blueprint {
     /**
      * Create a new schema blueprint.
      */
-    public constructor(table: string, protected grammar: GrammarI, callback?: BlueprintCallback, prefix?: string) {
+    public constructor(table: Stringable, protected grammar: Grammar, callback?: BlueprintCallback, prefix?: string) {
         this.registry = createRegistry();
         this.registry.table = table;
         this.registry.prefix = prefix ?? '';
@@ -253,7 +253,7 @@ class Blueprint {
         if (connection.getDriverName() === 'sqlite') {
             if (this.commandsNamed(['dropForeign']).length > 0) {
                 throw new Error(
-                    "SQLite doesn't support dropping foreign keys (you would need to re-create the table)."
+                    "Sqlite doesn't support dropping foreign keys (you would need to re-create the table)."
                 );
             }
         }
@@ -1379,7 +1379,7 @@ class Blueprint {
     /**
      * Get the blueprint grammar.
      */
-    public getGrammar(): GrammarI {
+    public getGrammar(): Grammar {
         return this.grammar;
     }
 
