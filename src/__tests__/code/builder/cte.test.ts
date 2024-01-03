@@ -137,10 +137,261 @@ describe('QueryBuilder Cte', () => {
         expect([3]).toEqual(builder.getBindings());
     });
 
+    it('Works Recursion Expression And Cycle Detection', () => {
+        let query = getBuilder()
+            .selectRaw('1')
+            .unionAll(getBuilder().selectRaw('number + 1').selectRaw('(number + 1) % 5').from('numbers'));
+
+        expect(
+            'with recursive "numbers" as ((select 1) union all (select number + 1, (number + 1) % 5 from "numbers")) cycle "modulo" set "is_cycle" using "path" select *'
+        ).toBe(getBuilder().withRecursiveExpressionAndCycleDetection('numbers', query, ['modulo']).toSql());
+
+        query = getBuilder()
+            .selectRaw('1')
+            .unionAll(getBuilder().selectRaw('number + 1').selectRaw('(number + 1) % 5').from('numbers'));
+
+        expect(
+            'with recursive "numbers" ("number", "modulo") as ((select 1) union all (select number + 1, (number + 1) % 5 from "numbers")) cycle "modulo" set "is_cycle" using "path" select *'
+        ).toBe(
+            getBuilder()
+                .withRecursiveExpressionAndCycleDetection('numbers', query, ['modulo'], 'is_cycle', 'path', [
+                    'number',
+                    'modulo'
+                ])
+                .toSql()
+        );
+
+        query = getMysqlBuilder()
+            .selectRaw('1')
+            .unionAll(getBuilder().selectRaw('number + 1').selectRaw('(number + 1) % 5').from('numbers'));
+
+        expect(
+            'with recursive `numbers` (`number`, `modulo`) as ((select 1) union all (select number + 1, (number + 1) % 5 from "numbers")) cycle `modulo` restrict select *'
+        ).toBe(
+            getMysqlBuilder()
+                .withRecursiveExpressionAndCycleDetection('numbers', query, ['modulo'], 'is_cycle', 'path', [
+                    'number',
+                    'modulo'
+                ])
+                .toSql()
+        );
+
+        query = getPostgresBuilder()
+            .selectRaw('1')
+            .unionAll(getBuilder().selectRaw('number + 1').selectRaw('(number + 1) % 5').from('numbers'));
+
+        expect(
+            'with recursive "numbers" ("number", "modulo") as ((select 1) union all (select number + 1, (number + 1) % 5 from "numbers")) cycle "modulo" set "is_cycle" using "path" select *'
+        ).toBe(
+            getPostgresBuilder()
+                .withRecursiveExpressionAndCycleDetection('numbers', query, ['modulo'], 'is_cycle', 'path', [
+                    'number',
+                    'modulo'
+                ])
+                .toSql()
+        );
+    });
+
+    it('Works Materialized Expression', () => {
+        expect('with "u" as materialized (select * from "users") select "u"."id" from "u"').toBe(
+            getBuilder().select('u.id').from('u').withMaterializedExpression('u', getBuilder().from('users')).toSql()
+        );
+
+        expect('with `u` as materialized (select * from `users`) select `u`.`id` from `u`').toBe(
+            getMysqlBuilder()
+                .select('u.id')
+                .from('u')
+                .withMaterializedExpression('u', getMysqlBuilder().from('users'))
+                .toSql()
+        );
+
+        expect('with "u" as materialized (select * from "users") select "u"."id" from "u"').toBe(
+            getPostgresBuilder()
+                .select('u.id')
+                .from('u')
+                .withMaterializedExpression('u', getPostgresBuilder().from('users'))
+                .toSql()
+        );
+
+        expect('with "u" as materialized (select * from "users") select "u"."id" from "u"').toBe(
+            getSqliteBuilder()
+                .select('u.id')
+                .from('u')
+                .withMaterializedExpression('u', getSqliteBuilder().from('users'))
+                .toSql()
+        );
+
+        expect('with [u] as materialized (select * from [users]) select [u].[id] from [u]').toBe(
+            getSqlserverBuilder()
+                .select('u.id')
+                .from('u')
+                .withMaterializedExpression('u', getSqlserverBuilder().from('users'))
+                .toSql()
+        );
+    });
+
+    it('Works Non Materialized Expression', () => {
+        expect('with "u" as not materialized (select * from "users") select "u"."id" from "u"').toBe(
+            getBuilder().select('u.id').from('u').withNonMaterializedExpression('u', getBuilder().from('users')).toSql()
+        );
+
+        expect('with `u` as not materialized (select * from `users`) select `u`.`id` from `u`').toBe(
+            getMysqlBuilder()
+                .select('u.id')
+                .from('u')
+                .withNonMaterializedExpression('u', getMysqlBuilder().from('users'))
+                .toSql()
+        );
+
+        expect('with "u" as not materialized (select * from "users") select "u"."id" from "u"').toBe(
+            getPostgresBuilder()
+                .select('u.id')
+                .from('u')
+                .withNonMaterializedExpression('u', getPostgresBuilder().from('users'))
+                .toSql()
+        );
+
+        expect('with "u" as not materialized (select * from "users") select "u"."id" from "u"').toBe(
+            getSqliteBuilder()
+                .select('u.id')
+                .from('u')
+                .withNonMaterializedExpression('u', getSqliteBuilder().from('users'))
+                .toSql()
+        );
+
+        expect('with [u] as not materialized (select * from [users]) select [u].[id] from [u]').toBe(
+            getSqlserverBuilder()
+                .select('u.id')
+                .from('u')
+                .withNonMaterializedExpression('u', getSqlserverBuilder().from('users'))
+                .toSql()
+        );
+    });
+
+    it('Works Outer Union', () => {
+        let builder = getBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getBuilder().from('u').where('id', 2))
+            .withExpression('u', getBuilder().from('users'));
+
+        expect(
+            'with "u" as (select * from "users") (select * from "u" where "id" = ?) union all (select * from "u" where "id" = ?)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getMysqlBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getMysqlBuilder().from('u').where('id', 2))
+            .withExpression('u', getMysqlBuilder().from('users'));
+
+        expect(
+            'with `u` as (select * from `users`) (select * from `u` where `id` = ?) union all (select * from `u` where `id` = ?)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getPostgresBuilder().from('u').where('id', 2))
+            .withExpression('u', getPostgresBuilder().from('users'));
+
+        expect(
+            'with "u" as (select * from "users") (select * from "u" where "id" = ?) union all (select * from "u" where "id" = ?)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getSqliteBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getSqliteBuilder().from('u').where('id', 2))
+            .withExpression('u', getSqliteBuilder().from('users'));
+
+        expect(
+            'with "u" as (select * from "users") select * from (select * from "u" where "id" = ?) union all select * from (select * from "u" where "id" = ?)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getSqlserverBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getSqlserverBuilder().from('u').where('id', 2))
+            .withExpression('u', getSqlserverBuilder().from('users'));
+
+        expect(
+            'with [u] as (select * from [users]) select * from (select * from [u] where [id] = ?) as [temp_table] union all select * from (select * from [u] where [id] = ?) as [temp_table]'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+    });
+
+    it('Works Outer Union With Recursion', () => {
+        let builder = getBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getBuilder().from('u').where('id', 2))
+            .withExpression('u', getBuilder().from('users'))
+            .recursionLimit(100);
+
+        expect(
+            'with "u" as (select * from "users") (select * from "u" where "id" = ?) union all (select * from "u" where "id" = ?) option (maxrecursion 100)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getMysqlBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getMysqlBuilder().from('u').where('id', 2))
+            .withExpression('u', getMysqlBuilder().from('users'))
+            .recursionLimit(100);
+
+        expect(
+            'with `u` as (select * from `users`) (select * from `u` where `id` = ?) union all (select * from `u` where `id` = ?) option (maxrecursion 100)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getPostgresBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getPostgresBuilder().from('u').where('id', 2))
+            .withExpression('u', getPostgresBuilder().from('users'))
+            .recursionLimit(100);
+
+        expect(
+            'with "u" as (select * from "users") (select * from "u" where "id" = ?) union all (select * from "u" where "id" = ?) option (maxrecursion 100)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getSqliteBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getSqliteBuilder().from('u').where('id', 2))
+            .withExpression('u', getSqliteBuilder().from('users'))
+            .recursionLimit(100);
+
+        expect(
+            'with "u" as (select * from "users") select * from (select * from "u" where "id" = ?) union all select * from (select * from "u" where "id" = ?) option (maxrecursion 100)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+
+        builder = getSqlserverBuilder()
+            .from('u')
+            .where('id', 1)
+            .unionAll(getSqlserverBuilder().from('u').where('id', 2))
+            .withExpression('u', getSqlserverBuilder().from('users'))
+            .recursionLimit(100);
+
+        expect(
+            'with [u] as (select * from [users]) select * from (select * from [u] where [id] = ?) as [temp_table] union all select * from (select * from [u] where [id] = ?) as [temp_table] option (maxrecursion 100)'
+        ).toBe(builder.toSql());
+        expect([1, 2]).toEqual(builder.getBindings());
+    });
+
     it('Works Recursion Limit', () => {
         expect('select * from "users" option (maxrecursion 100)').toBe(
             getBuilder().from('users').recursionLimit(100).toSql()
         );
+        expect('select * from "users"').toBe(getBuilder().from('users').recursionLimit().toSql());
         expect('select * from `users` option (maxrecursion 100)').toBe(
             getMysqlBuilder().from('users').recursionLimit(100).toSql()
         );

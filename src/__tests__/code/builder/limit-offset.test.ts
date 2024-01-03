@@ -1,5 +1,5 @@
 import Raw from '../../../query/expression';
-import { getBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getSqlserverBuilder, pdo } from '../fixtures/mocked';
 
 describe('QueryBuilder Joins', () => {
     afterAll(async () => {
@@ -50,6 +50,30 @@ describe('QueryBuilder Joins', () => {
         builder = getBuilder();
         builder.select('*').from('users').skip(5).take(null);
         expect('select * from "users" offset 5').toBe(builder.toSql());
+    });
+
+    it('Works For Offset with Expression', () => {
+        expect(
+            'with "p" as (select * from "posts") select * from "users" inner join "p" on "p"."user_id" = "users"."id" offset 5'
+        ).toBe(
+            getBuilder()
+                .from('users')
+                .withExpression('p', getBuilder().from('posts'))
+                .join('p', 'p.user_id', '=', 'users.id')
+                .offset(5)
+                .toSql()
+        );
+
+        expect(
+            'with [p] as (select * from [posts]) select * from [users] inner join [p] on [p].[user_id] = [users].[id] order by (SELECT 0) offset 5 rows'
+        ).toBe(
+            getSqlserverBuilder()
+                .from('users')
+                .withExpression('p', getSqlserverBuilder().from('posts'))
+                .join('p', 'p.user_id', '=', 'users.id')
+                .offset(5)
+                .toSql()
+        );
     });
 
     it('Works For Page', () => {

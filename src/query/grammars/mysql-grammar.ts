@@ -1,6 +1,6 @@
 import { Stringable } from '../../types/generics';
 import GrammarBuilderI, { RowValues } from '../../types/query/grammar-builder';
-import { BindingTypes, Cte, WhereNull, whereFulltext } from '../../types/query/registry';
+import { Cte, WhereNull, whereFulltext } from '../../types/query/registry';
 import { stringifyReplacer } from '../../utils';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
@@ -72,26 +72,7 @@ class MysqlGrammar extends Grammar {
      * Compile an insert statement using a subquery into SQL.
      */
     public compileInsertUsing(query: GrammarBuilderI, columns: Stringable[], sql: string): string {
-        const expressions = query.getRegistry().expressions;
-
-        const expressionSql =
-            expressions.length > 0 ? this.compileExpressions(query, query.getRegistry().expressions) + ' ' : '';
-
-        const recursionLimit = query.getRegistry().recursionLimit;
-
-        const recursionLimitSql =
-            recursionLimit !== null ? ' ' + this.compileRecursionLimit(query, recursionLimit) : '';
-
-        const table = this.wrapTable(query.getRegistry().from);
-
-        if (
-            columns.length === 0 ||
-            columns.filter(column => !['*'].includes(this.getValue(column).toString())).length === 0
-        ) {
-            return `${expressionSql}insert into ${table}${recursionLimitSql} ${sql}`;
-        }
-
-        return `${expressionSql}insert into ${table} (${this.columnize(columns)})${recursionLimitSql} ${sql}`;
+        return `${super.compileInsertUsing(query, columns, '').trim()} ${sql}`;
     }
 
     /**
@@ -255,25 +236,25 @@ class MysqlGrammar extends Grammar {
         let sql = super.compileUpdateWithoutJoins(query, table, columns, where);
 
         if (query.getRegistry().orders.length) {
-            sql += ` ${this.compileOrders(query, query.getRegistry().orders)}`;
+            sql = `${sql.trim()} ${this.compileOrders(query, query.getRegistry().orders)}`;
         }
 
         const limit = query.getRegistry().limit;
 
         if (limit !== null && limit > 0) {
-            sql += ` ${this.compileLimit(query, limit)}`;
+            sql = `${sql.trim()} ${this.compileLimit(query, limit)}`;
         }
 
         return sql;
     }
 
     /**
-     * Prepare the bindings for an update statement.
+     * Prepare values for merge
      */
-    public prepareBindingsForUpdate(_query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+    protected prepareValuesForMerge(_query: GrammarBuilderI, values: RowValues): any[] {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
-        const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+        return Object.keys(combinedValues).reduce((acc: any[], key: string) => {
             if (!jsonKeys.includes(key)) {
                 acc.push(
                     this.mustBeJsonStringified(combinedValues[key])
@@ -294,8 +275,6 @@ class MysqlGrammar extends Grammar {
 
             return acc;
         }, []);
-
-        return this.prepareBindingsForUpdateWithoutExpression(bindings, valuesOfValues);
     }
 
     /**

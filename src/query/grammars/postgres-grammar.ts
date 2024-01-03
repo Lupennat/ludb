@@ -435,9 +435,55 @@ class PostgresGrammar extends Grammar {
     }
 
     /**
-     * Prepare Values For Update
+     * Prepare the bindings for an update statement.
      */
-    protected prepareValuesForUpdate(values: RowValues): any[] {
+    public prepareBindingsForUpdateFrom(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+        const cleanBindings = Object.keys(bindings)
+            .filter(key => !['select', 'where', 'expressions'].includes(key))
+            .map(key => bindings[key as keyof BindingTypes]);
+
+        return this.mergeBindingsAndValue(
+            cleanBindings,
+            bindings.expressions.concat(this.prepareValuesForMerge(query, values), bindings.where)
+        );
+    }
+
+    /**
+     * Prepare the bindings for an update statement.
+     */
+    public prepareBindingsForUpdate(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+        if (query.getRegistry().joins.length || query.getRegistry().limit) {
+            return this.mergeBindingsAndValue(
+                this.prepareBindingsForMerge(query, bindings),
+                this.prepareValuesForMerge(query, values)
+            );
+        }
+
+        return this.mergeBindingsAndValue(
+            this.prepareBindingsForMerge(query, bindings),
+            bindings.expressions.concat(this.prepareValuesForMerge(query, values))
+        );
+    }
+
+    /**
+     * Prepare Bindings for merge
+     */
+    protected prepareBindingsForMerge(query: GrammarBuilderI, bindings: BindingTypes): Binding[][] {
+        if (query.getRegistry().joins.length || query.getRegistry().limit) {
+            return Object.keys(bindings)
+                .filter(key => !['select'].includes(key))
+                .map(key => bindings[key as keyof BindingTypes]);
+        }
+
+        return Object.keys(bindings)
+            .filter(key => !['select', 'expressions'].includes(key))
+            .map(key => bindings[key as keyof BindingTypes]);
+    }
+
+    /**
+     * Prepare values for merge
+     */
+    protected prepareValuesForMerge(_query: GrammarBuilderI, values: RowValues): any[] {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
         return Object.keys(combinedValues).reduce((acc: any[], key: string) => {
@@ -461,44 +507,6 @@ class PostgresGrammar extends Grammar {
 
             return acc;
         }, []);
-    }
-
-    /**
-     * Prepare the bindings for an update statement.
-     */
-    public prepareBindingsForUpdateFrom(_query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
-        const bindingsWithoutWhere = Object.keys(bindings)
-            .filter(key => !['select', 'where', 'expressions'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return bindings.expressions.concat(
-            this.prepareValuesForUpdate(values),
-            bindings.where,
-            bindingsWithoutWhere.flat(Infinity) as Binding[]
-        );
-    }
-
-    /**
-     * Prepare the bindings for an update statement.
-     */
-    public prepareBindingsForUpdate(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
-        const joins = query.getRegistry().joins;
-        const limit = query.getRegistry().limit;
-        if (joins.length || limit) {
-            const cleanBindings = Object.keys(bindings)
-                .filter(key => !['select'].includes(key))
-                .map(key => bindings[key as keyof BindingTypes]);
-            return this.prepareValuesForUpdate(values).concat(cleanBindings.flat(Infinity) as Binding[]);
-        }
-
-        const cleanBindings = Object.keys(bindings)
-            .filter(key => !['select', 'expressions'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return bindings.expressions.concat(
-            this.prepareValuesForUpdate(values),
-            cleanBindings.flat(Infinity) as Binding[]
-        );
     }
 
     /**

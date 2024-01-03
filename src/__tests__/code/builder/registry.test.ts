@@ -216,7 +216,7 @@ describe('QueryBuilder Registry', () => {
     });
 
     it('Works Clone Expressions', () => {
-        const registry = createRegistry();
+        let registry = createRegistry();
         registry.expressions = [
             {
                 columns: ['a', 'b', new Raw('test')],
@@ -231,7 +231,7 @@ describe('QueryBuilder Registry', () => {
                 }
             }
         ];
-        const cloned = cloneRegistry(registry);
+        let cloned = cloneRegistry(registry);
         expect(cloned.expressions).toEqual([
             {
                 columns: ['a', 'b', new Raw('test')],
@@ -287,6 +287,65 @@ describe('QueryBuilder Registry', () => {
                     pathColumn: 'a',
                     markColumn: 'b'
                 }
+            }
+        ]);
+        expect(cloned.expressions).not.toEqual(registry.expressions);
+
+        registry = createRegistry();
+        registry.expressions = [
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: null
+            }
+        ];
+        cloned = cloneRegistry(registry);
+        expect(cloned.expressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: null
+            }
+        ]);
+        registry.expressions[0].cycle = {
+            columns: ['c1', 'd1', new Raw('test21')],
+            pathColumn: 'a1',
+            markColumn: 'b1'
+        };
+        expect(cloned.expressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: null
+            }
+        ]);
+        registry.expressions = [
+            {
+                columns: ['a1', 'b1', new Raw('test1')],
+                name: new Raw('a1'),
+                query: 'query string1',
+                materialized: true,
+                recursive: false,
+                cycle: null
+            }
+        ];
+        expect(cloned.expressions).toEqual([
+            {
+                columns: ['a', 'b', new Raw('test')],
+                name: new Raw('a'),
+                query: 'query string',
+                materialized: false,
+                recursive: true,
+                cycle: null
             }
         ]);
         expect(cloned.expressions).not.toEqual(registry.expressions);

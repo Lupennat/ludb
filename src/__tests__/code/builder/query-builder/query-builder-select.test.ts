@@ -1,7 +1,7 @@
 import Raw from '../../../../query/expression';
 import { getBuilder, getSqlserverBuilder, pdo } from '../../fixtures/mocked';
 
-describe('QueryBuilder Pdo Methods Select', () => {
+describe('QueryBuilder Methods Select', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });

@@ -3036,7 +3036,7 @@ abstract class CommonGrammarBuilder<
     /**
      * Set the "recursion limit" of the query.
      */
-    public recursionLimit(value?: number | null): this {
+    public recursionLimit(value: number | null = null): this {
         this.registry[this.registry.unions.length > 0 ? 'unionRecursionLimit' : 'recursionLimit'] =
             value == null || value < 0 ? null : value;
 

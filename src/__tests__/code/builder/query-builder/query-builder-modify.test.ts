@@ -8,7 +8,7 @@ import {
     pdo
 } from '../../fixtures/mocked';
 
-describe('QueryBuilder Pdo Methods Modify', () => {
+describe('QueryBuilder Methods Modify', () => {
     afterAll(async () => {
         await pdo.disconnect();
     });
@@ -65,6 +65,54 @@ describe('QueryBuilder Pdo Methods Modify', () => {
             await builder.from('table1').insertUsing(['foo'], query => {
                 query.select(['bar']).from('table2').where('foreign_id', '=', 5);
             })
+        ).toBe(1);
+    });
+
+    it('Works Insert Using With Expression', async () => {
+        const builder = getBuilder();
+
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select "id" from "users" where "id" > ?) insert into "posts" ("user_id") select * from "u"'
+            );
+            expect(bindings).toEqual([1]);
+            return 1;
+        });
+
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getBuilder().from('users').select('id').where('id', '>', 1))
+                .insertUsing(['user_id'], getBuilder().from('u'))
+        ).toBe(1);
+    });
+
+    it('Works Insert Using With Recursion Limit', async () => {
+        let builder = getBuilder();
+
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe('insert into "posts" ("id") select "id" from "users" option (maxrecursion 100)');
+            expect(bindings).toEqual([]);
+            return 1;
+        });
+
+        expect(
+            await builder.from('posts').recursionLimit(100).insertUsing(['id'], getBuilder().from('users').select('id'))
+        ).toBe(1);
+
+        builder = getMysqlBuilder();
+
+        jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe('insert into `posts` (`id`) option (maxrecursion 100) select `id` from `users`');
+            expect(bindings).toEqual([]);
+            return 1;
+        });
+
+        expect(
+            await builder
+                .from('posts')
+                .recursionLimit(100)
+                .insertUsing(['id'], getMysqlBuilder().from('users').select('id'))
         ).toBe(1);
     });
 
@@ -282,6 +330,260 @@ describe('QueryBuilder Pdo Methods Modify', () => {
                 .orderBy('foo', 'desc')
                 .limit(5)
                 .update({ email: 'foo', name: 'bar' })
+        ).toBe(1);
+    });
+
+    it('Works Update Method With Expressions', async () => {
+        let builder = getBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" set "views" = (select count(*) from u), "update_at" = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getBuilder().from('users').where('id', '>', 1))
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getMysqlBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with `u` as (select * from `users` where `id` > ?) update `posts` set `views` = (select count(*) from u), `update_at` = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getMysqlBuilder().from('users').where('id', '>', 1))
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" set "views" = (select count(*) from u), "update_at" = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getPostgresBuilder().from('users').where('id', '>', 1))
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getSqliteBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" set "views" = (select count(*) from u), "update_at" = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getSqliteBuilder().from('users').where('id', '>', 1))
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getSqlserverBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with [u] as (select * from [users] where [id] > ?) update [posts] set [views] = (select count(*) from u), [update_at] = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getSqlserverBuilder().from('users').where('id', '>', 1))
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+    });
+
+    it('Works Update Method With Join and Expressions', async () => {
+        let builder = getBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" inner join "u" on "u"."id" = "posts"."user_id" and "u"."active" = ? set "views" = (select count(*) from u), "update_at" = ?'
+            );
+            expect(bindings).toEqual([1, true, '2024-01-03']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getBuilder().from('users').where('id', '>', 1))
+                .join('u', join => {
+                    return join.on('u.id', '=', 'posts.user_id').where('u.active', true);
+                })
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getMysqlBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with `u` as (select * from `users` where `id` > ?) update `posts` inner join `u` on `u`.`id` = `posts`.`user_id` and `u`.`active` = ? set `views` = (select count(*) from u), `update_at` = ?'
+            );
+            expect(bindings).toEqual([1, true, '2024-01-03']);
+            return 1;
+        });
+
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getMysqlBuilder().from('users').where('id', '>', 1))
+                .join('u', join => {
+                    return join.on('u.id', '=', 'posts.user_id').where('u.active', true);
+                })
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'update "posts" set "views" = (select count(*) from u), "update_at" = ? where "ctid" in (with "u" as (select * from "users" where "id" > ?) select "posts"."ctid" from "posts" inner join "u" on "u"."id" = "posts"."user_id" and "u"."active" = ?)'
+            );
+            expect(bindings).toEqual(['2024-01-03', 1, true]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getPostgresBuilder().from('users').where('id', '>', 1))
+                .join('u', join => {
+                    return join.on('u.id', '=', 'posts.user_id').where('u.active', true);
+                })
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getSqliteBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'update "posts" set "views" = (select count(*) from u), "update_at" = ? where "rowid" in (with "u" as (select * from "users" where "id" > ?) select "posts"."rowid" from "posts" inner join "u" on "u"."id" = "posts"."user_id" and "u"."active" = ?)'
+            );
+            expect(bindings).toEqual(['2024-01-03', 1, true]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getSqliteBuilder().from('users').where('id', '>', 1))
+                .join('u', join => {
+                    return join.on('u.id', '=', 'posts.user_id').where('u.active', true);
+                })
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getSqlserverBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with [u] as (select * from [users] where [id] > ?) update [posts] set [views] = (select count(*) from u), [update_at] = ? from [posts] inner join [u] on [u].[id] = [posts].[user_id] and [u].[active] = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03', true]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getSqlserverBuilder().from('users').where('id', '>', 1))
+                .join('u', join => {
+                    return join.on('u.id', '=', 'posts.user_id').where('u.active', true);
+                })
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+    });
+
+    it('Works Update Method With Limit and Expressions', async () => {
+        let builder = getBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" set "views" = (select count(*) from u), "update_at" = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getBuilder().from('users').where('id', '>', 1))
+                .limit(1)
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getMysqlBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with `u` as (select * from `users` where `id` > ?) update `posts` set `views` = (select count(*) from u), `update_at` = ? limit 1'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getMysqlBuilder().from('users').where('id', '>', 1))
+                .limit(1)
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'update "posts" set "views" = (select count(*) from u), "update_at" = ? where "ctid" in (with "u" as (select * from "users" where "id" > ?) select "posts"."ctid" from "posts" limit 1)'
+            );
+            expect(bindings).toEqual(['2024-01-03', 1]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getPostgresBuilder().from('users').where('id', '>', 1))
+                .limit(1)
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getSqliteBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'update "posts" set "views" = (select count(*) from u), "update_at" = ? where "rowid" in (with "u" as (select * from "users" where "id" > ?) select "posts"."rowid" from "posts" limit 1)'
+            );
+            expect(bindings).toEqual(['2024-01-03', 1]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getSqliteBuilder().from('users').where('id', '>', 1))
+                .limit(1)
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
+        ).toBe(1);
+
+        builder = getSqlserverBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with [u] as (select * from [users] where [id] > ?) update top (1) [posts] set [views] = (select count(*) from u), [update_at] = ?'
+            );
+            expect(bindings).toEqual([1, '2024-01-03']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getSqlserverBuilder().from('users').where('id', '>', 1))
+                .limit(1)
+                .update({ views: new Raw('(select count(*) from u)'), update_at: '2024-01-03' })
         ).toBe(1);
     });
 
@@ -975,6 +1277,60 @@ describe('QueryBuilder Pdo Methods Modify', () => {
                 .from('users')
                 .join('orders', join => {
                     join.on('users.id', '=', 'orders.user_id').where('users.id', '=', 1);
+                })
+                .where('name', 'baz')
+                .updateFrom({ 'options->language': ['english', 'italian'], 'options->size': new Raw("'full'") })
+        ).toBe(1);
+    });
+
+    it('Works Update From Method With Joins And Expressions On Postgres', async () => {
+        let builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" set "views" = "u"."followers" where "name" = ?'
+            );
+            expect(bindings).toEqual([1, 'baz']);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getPostgresBuilder().from('users').where('id', '>', 1))
+                .where('name', 'baz')
+                .updateFrom({ views: new Raw('"u"."followers"') })
+        ).toBe(1);
+
+        builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" set "email" = ?, "name" = ? from "u" where "u"."id" = ? and "u"."id" = "posts"."user_id"'
+            );
+            expect(bindings).toEqual([1, 'foo', 'bar', 1]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getPostgresBuilder().from('users').where('id', '>', 1))
+                .join('u', 'u.id', '=', 'posts.user_id')
+                .where('u.id', '=', 1)
+                .updateFrom({ email: 'foo', name: 'bar' })
+        ).toBe(1);
+
+        builder = getPostgresBuilder();
+        jest.spyOn(builder.getConnection(), 'update').mockImplementationOnce(async (query, bindings) => {
+            expect(query).toBe(
+                'with "u" as (select * from "users" where "id" > ?) update "posts" set "options" = jsonb_set(jsonb_set("options"::jsonb, \'{"language"}\', ?::jsonb), \'{"size"}\', \'\'full\'\') from "u" where "name" = ? and "u"."id" = "posts"."user_id" and "u"."id" = ?'
+            );
+            expect(bindings).toEqual([1, '["english","italian"]', 'baz', 1]);
+            return 1;
+        });
+        expect(
+            await builder
+                .from('posts')
+                .withExpression('u', getPostgresBuilder().from('users').where('id', '>', 1))
+                .join('u', join => {
+                    join.on('u.id', '=', 'posts.user_id').where('u.id', '=', 1);
                 })
                 .where('name', 'baz')
                 .updateFrom({ 'options->language': ['english', 'italian'], 'options->size': new Raw("'full'") })

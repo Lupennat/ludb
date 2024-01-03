@@ -87,34 +87,51 @@ class Grammar extends BaseGrammar {
      * Compile a select query into SQL.
      */
     public compileSelect(query: GrammarBuilderI): string {
-        const registry = query.getRegistry();
-        if ((registry.unions.length > 0 || registry.havings.length > 0) && registry.aggregate !== null) {
-            return this.compileUnionAggregate(query);
-        }
+        return this.wrapSelectExpression(query, () => {
+            const registry = query.getRegistry();
+            if ((registry.unions.length > 0 || registry.havings.length > 0) && registry.aggregate !== null) {
+                return this.compileUnionAggregate(query);
+            }
 
-        // If the query does not have any columns set, we'll set the columns to the
-        // * character to just get all of the columns from the database. Then we
-        // can build the query and concatenate all the pieces together as one.
-        const original = registry.columns;
+            // If the query does not have any columns set, we'll set the columns to the
+            // * character to just get all of the columns from the database. Then we
+            // can build the query and concatenate all the pieces together as one.
+            const original = registry.columns;
 
-        if (registry.columns === null) {
-            registry.columns = ['*'];
+            if (registry.columns === null) {
+                registry.columns = ['*'];
+                query.setRegistry(registry);
+            }
+
+            // To compile the query, we'll spin through each component of the query and
+            // see if that component exists. If it does we'll just call the compiler
+            // function for the component which is responsible for making the SQL.
+            let sql = this.concatenate(this.compileComponents(query)).trim();
+
+            if (registry.unions.length > 0) {
+                sql = `${this.wrapUnion(sql)} ${this.compileUnions(query)}`;
+            }
+
+            registry.columns = original;
             query.setRegistry(registry);
-        }
 
-        // To compile the query, we'll spin through each component of the query and
-        // see if that component exists. If it does we'll just call the compiler
-        // function for the component which is responsible for making the SQL.
-        let sql = this.concatenate(this.compileComponents(query)).trim();
+            return sql;
+        });
+    }
 
-        if (registry.unions.length > 0) {
-            sql = `${this.wrapUnion(sql)} ${this.compileUnions(query)}`;
-        }
+    /**
+     * Wrap select statement with expression
+     */
+    protected wrapSelectExpression(query: GrammarBuilderI, callback: () => string): string {
+        const registry = query.getRegistry();
+        const unionExpressionSql =
+            registry.unionExpressions.length > 0 ? this.compileExpressions(query, registry.unionExpressions) + ' ' : '';
+        const unionRecursionLimitSql =
+            registry.unionRecursionLimit !== null
+                ? ' ' + this.compileRecursionLimit(query, registry.unionRecursionLimit)
+                : '';
 
-        registry.columns = original;
-        query.setRegistry(registry);
-
-        return sql;
+        return `${unionExpressionSql}${callback().trim()}${unionRecursionLimitSql}`;
     }
 
     /**
@@ -876,22 +893,13 @@ class Grammar extends BaseGrammar {
     protected compileUnionAggregate(query: GrammarBuilderI): string {
         const registry = query.getRegistry();
 
-        const unionExpressionSql =
-            registry.unionExpressions.length > 0 ? this.compileExpressions(query, registry.unionExpressions) + ' ' : '';
-        const unionRecursionLimitSql =
-            registry.unionRecursionLimit !== null
-                ? ' ' + this.compileRecursionLimit(query, registry.unionRecursionLimit)
-                : '';
-
         const sql = this.compileAggregate(query, registry.aggregate as Aggregate);
 
         registry.aggregate = null;
 
         query.setRegistry(registry);
 
-        return `${unionExpressionSql}${sql} from (${this.compileSelect(query)}) as ${this.wrapTable(
-            'temp_table'
-        )}${unionRecursionLimitSql}`;
+        return `${sql} from (${this.compileSelect(query)}) as ${this.wrapTable('temp_table')}`;
     }
 
     /**
@@ -957,6 +965,28 @@ class Grammar extends BaseGrammar {
      * Compile an insert statement using a subquery into SQL.
      */
     public compileInsertUsing(query: GrammarBuilderI, columns: Stringable[], sql: string): string {
+        return this.wrapInsertUsingExpression(query, sql, sql => {
+            const table = this.wrapTable(query.getRegistry().from);
+
+            if (
+                columns.length === 0 ||
+                columns.filter(column => !['*'].includes(this.getValue(column).toString())).length === 0
+            ) {
+                return `insert into ${table} ${sql}`;
+            }
+
+            return `insert into ${table} (${this.columnize(columns)}) ${sql}`;
+        });
+    }
+
+    /**
+     * Wrap insert using statement with expression
+     */
+    protected wrapInsertUsingExpression(
+        query: GrammarBuilderI,
+        sql: string,
+        callback: (sql: string) => string
+    ): string {
         const expressions = query.getRegistry().expressions;
 
         const expressionSql =
@@ -967,40 +997,42 @@ class Grammar extends BaseGrammar {
         const recursionLimitSql =
             recursionLimit !== null ? ' ' + this.compileRecursionLimit(query, recursionLimit) : '';
 
-        const table = this.wrapTable(query.getRegistry().from);
-
-        if (
-            columns.length === 0 ||
-            columns.filter(column => !['*'].includes(this.getValue(column).toString())).length === 0
-        ) {
-            return `${expressionSql}insert into ${table} ${sql}${recursionLimitSql}`;
-        }
-
-        return `${expressionSql}insert into ${table} (${this.columnize(columns)}) ${sql}${recursionLimitSql}`;
+        return `${expressionSql}${callback(sql).trim()}${recursionLimitSql}`;
     }
 
     /**
      * Compile an update statement into SQL.
      */
     public compileUpdate(query: GrammarBuilderI, values: RowValues): string {
+        return this.wrapUpdateExpression(query, values, values => {
+            const table = this.wrapTable(query.getRegistry().from);
+
+            const columns = this.compileUpdateColumns(query, values);
+
+            const where = this.compileWheres(query);
+
+            return (
+                query.getRegistry().joins.length > 0
+                    ? this.compileUpdateWithJoins(query, table, columns, where)
+                    : this.compileUpdateWithoutJoins(query, table, columns, where)
+            ).trim();
+        });
+    }
+
+    /**
+     * Wrap update statement with expression
+     */
+    protected wrapUpdateExpression(
+        query: GrammarBuilderI,
+        values: RowValues,
+        callback: (values: RowValues) => string
+    ): string {
         const expressions = query.getRegistry().expressions;
 
         const expressionSql =
             expressions.length > 0 ? this.compileExpressions(query, query.getRegistry().expressions) + ' ' : '';
 
-        const table = this.wrapTable(query.getRegistry().from);
-
-        const columns = this.compileUpdateColumns(query, values);
-
-        const where = this.compileWheres(query);
-
-        return (
-            expressionSql +
-            (query.getRegistry().joins.length > 0
-                ? this.compileUpdateWithJoins(query, table, columns, where)
-                : this.compileUpdateWithoutJoins(query, table, columns, where)
-            ).trim()
-        );
+        return `${expressionSql}${callback(values).trim()}`;
     }
 
     public compileUpdateFrom(_query: GrammarBuilderI, _values: RowValues): string {
@@ -1052,32 +1084,40 @@ class Grammar extends BaseGrammar {
     }
 
     /**
-     * Prepare the bindings for an update statement.
+     * Merge the bindings with values for an update statement.
      */
-    protected prepareBindingsForUpdateWithExpression(bindings: BindingTypes, values: any[]): any[] {
-        const cleanBindings = Object.keys(bindings)
-            .filter(key => !['select', 'join'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return bindings.join.concat(values, cleanBindings.flat(Infinity) as Binding[]);
+    protected mergeBindingsAndValue(bindings: Binding[][], values: any[]): any[] {
+        return values.concat(bindings.flat(Infinity) as Binding[]);
     }
 
     /**
      * Prepare the bindings for an update statement.
      */
-    protected prepareBindingsForUpdateWithoutExpression(bindings: BindingTypes, values: any[]): any[] {
-        const cleanBindings = Object.keys(bindings)
+    public prepareBindingsForUpdate(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+        return bindings.expressions.concat(
+            bindings.join.concat(
+                this.mergeBindingsAndValue(
+                    this.prepareBindingsForMerge(query, bindings),
+                    this.prepareValuesForMerge(query, values)
+                )
+            )
+        );
+    }
+
+    /**
+     * Prepare Bindings for merge
+     */
+    protected prepareBindingsForMerge(_query: GrammarBuilderI, bindings: BindingTypes): Binding[][] {
+        return Object.keys(bindings)
             .filter(key => !['select', 'join', 'expressions'].includes(key))
             .map(key => bindings[key as keyof BindingTypes]);
-
-        return bindings.join.concat(bindings.expressions, values, cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**
-     * Prepare the bindings for an update statement.
+     * Prepare values for merge
      */
-    public prepareBindingsForUpdate(_query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
-        return this.prepareBindingsForUpdateWithoutExpression(bindings, Object.values(values));
+    protected prepareValuesForMerge(_query: GrammarBuilderI, values: RowValues): any[] {
+        return Object.values(values);
     }
 
     /**
@@ -1091,22 +1131,27 @@ class Grammar extends BaseGrammar {
      * Compile a delete statement into SQL.
      */
     public compileDelete(query: GrammarBuilderI): string {
+        return this.wrapDeleteExpression(query, () => {
+            const table = this.wrapTable(query.getRegistry().from);
+
+            const where = this.compileWheres(query);
+
+            return query.getRegistry().joins.length > 0
+                ? this.compileDeleteWithJoins(query, table, where)
+                : this.compileDeleteWithoutJoins(query, table, where);
+        });
+    }
+
+    /**
+     * Wrap delete statement with expression
+     */
+    protected wrapDeleteExpression(query: GrammarBuilderI, callback: () => string): string {
         const expressions = query.getRegistry().expressions;
 
         const expressionSql =
             expressions.length > 0 ? this.compileExpressions(query, query.getRegistry().expressions) + ' ' : '';
 
-        const table = this.wrapTable(query.getRegistry().from);
-
-        const where = this.compileWheres(query);
-
-        return (
-            expressionSql +
-            (query.getRegistry().joins.length > 0
-                ? this.compileDeleteWithJoins(query, table, where)
-                : this.compileDeleteWithoutJoins(query, table, where)
-            ).trim()
-        );
+        return `${expressionSql}${callback().trim()}`;
     }
 
     /**

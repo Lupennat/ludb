@@ -372,6 +372,18 @@ class SqlserverGrammar extends Grammar {
     }
 
     /**
+     * Compile an update statement without joins into SQL.
+     */
+    protected compileUpdateWithoutJoins(query: GrammarBuilderI, table: string, columns: string, where: string): string {
+        const sql = super.compileUpdateWithoutJoins(query, table, columns, where);
+        const limit = query.getRegistry().limit;
+
+        return limit !== null && limit > 0 && Number(query.getRegistry().offset) <= 0
+            ? sql.replace('update', `update top (${limit})`)
+            : sql;
+    }
+
+    /**
      * Compile an update statement with joins into SQL.
      */
     protected compileUpdateWithJoins(query: GrammarBuilderI, table: string, columns: string, where: string): string {
@@ -441,10 +453,29 @@ class SqlserverGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(_query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): Binding[] {
+    public prepareBindingsForUpdate(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+        return this.mergeBindingsAndValue(
+            this.prepareBindingsForMerge(query, bindings),
+            bindings.expressions.concat(this.prepareValuesForMerge(query, values))
+        );
+    }
+
+    /**
+     * Prepare Bindings for merge
+     */
+    protected prepareBindingsForMerge(_query: GrammarBuilderI, bindings: BindingTypes): Binding[][] {
+        return Object.keys(bindings)
+            .filter(key => !['select', 'expressions'].includes(key))
+            .map(key => bindings[key as keyof BindingTypes]);
+    }
+
+    /**
+     * Prepare values for merge
+     */
+    protected prepareValuesForMerge(_query: GrammarBuilderI, values: RowValues): any[] {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
-        const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+        return Object.keys(combinedValues).reduce((acc: any[], key: string) => {
             if (!jsonKeys.includes(key)) {
                 acc.push(
                     this.mustBeJsonStringified(combinedValues[key])
@@ -465,12 +496,6 @@ class SqlserverGrammar extends Grammar {
 
             return acc;
         }, []);
-
-        const cleanBindings = Object.keys(bindings)
-            .filter(key => !['select'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return valuesOfValues.concat(cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**

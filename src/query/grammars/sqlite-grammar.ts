@@ -223,9 +223,41 @@ class SqliteGrammar extends Grammar {
      * Prepare the bindings for an update statement.
      */
     public prepareBindingsForUpdate(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+        if (query.getRegistry().joins.length || query.getRegistry().limit) {
+            return this.mergeBindingsAndValue(
+                this.prepareBindingsForMerge(query, bindings),
+                this.prepareValuesForMerge(query, values)
+            );
+        }
+
+        return this.mergeBindingsAndValue(
+            this.prepareBindingsForMerge(query, bindings),
+            bindings.expressions.concat(this.prepareValuesForMerge(query, values))
+        );
+    }
+
+    /**
+     * Prepare Bindings for merge
+     */
+    protected prepareBindingsForMerge(query: GrammarBuilderI, bindings: BindingTypes): Binding[][] {
+        if (query.getRegistry().joins.length || query.getRegistry().limit) {
+            return Object.keys(bindings)
+                .filter(key => !['select'].includes(key))
+                .map(key => bindings[key as keyof BindingTypes]);
+        }
+
+        return Object.keys(bindings)
+            .filter(key => !['select', 'expressions'].includes(key))
+            .map(key => bindings[key as keyof BindingTypes]);
+    }
+
+    /**
+     * Prepare values for merge
+     */
+    protected prepareValuesForMerge(_query: GrammarBuilderI, values: RowValues): any[] {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
-        const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+        return Object.keys(combinedValues).reduce((acc: any[], key: string) => {
             if (!jsonKeys.includes(key)) {
                 acc.push(
                     this.mustBeJsonStringified(combinedValues[key])
@@ -246,21 +278,6 @@ class SqliteGrammar extends Grammar {
 
             return acc;
         }, []);
-
-        const joins = query.getRegistry().joins;
-        const limit = query.getRegistry().limit;
-        if (joins.length || limit) {
-            const cleanBindings = Object.keys(bindings)
-                .filter(key => !['select'].includes(key))
-                .map(key => bindings[key as keyof BindingTypes]);
-            return valuesOfValues.concat(cleanBindings.flat(Infinity) as Binding[]);
-        }
-
-        const cleanBindings = Object.keys(bindings)
-            .filter(key => !['select', 'expressions'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return bindings.expressions.concat(valuesOfValues.concat(cleanBindings.flat(Infinity) as Binding[]));
     }
 
     /**
