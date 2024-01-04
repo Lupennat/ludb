@@ -18,7 +18,11 @@ class JoinClause<Parent extends GrammarBuilderI = GrammarBuilderI>
     protected parentConnection: ConnectionSessionI;
     protected parentClass: GrammarBuilderConstructor<Parent>;
 
-    constructor(parentQuery: Parent, public type: string, public table: string | ExpressionContract) {
+    constructor(
+        parentQuery: Parent,
+        public type: string,
+        public table: string | ExpressionContract
+    ) {
         const connection = parentQuery.getConnection();
         super(connection);
         this.parentConnection = connection;

@@ -1,7 +1,7 @@
 import { ATTR_CASE, ATTR_DEBUG, ATTR_NULLS, CASE_NATURAL, DEBUG_DISABLED, NULL_NATURAL, Pdo } from 'lupdo';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
-import DatabaseConfig from '../types/config';
+import ConnectionConfig, { FlattedConnectionConfig } from '../types/config';
 import ConnectorI from '../types/connector';
 import { merge } from '../utils';
 
@@ -38,7 +38,7 @@ abstract class Connector implements ConnectorI {
     /**
      * Get the PDO attributes based on the configuration.
      */
-    protected getAttributes<T extends DatabaseConfig>(config: T): PdoAttributes {
+    protected getAttributes<T extends FlattedConnectionConfig<ConnectionConfig>>(config: T): PdoAttributes {
         const attributes = config.attributes ?? {};
 
         return merge(this.attributes, attributes);
@@ -47,13 +47,13 @@ abstract class Connector implements ConnectorI {
     /**
      * Get the PDO pool options based on the configuration.
      */
-    protected getPoolOptions<T extends DatabaseConfig>(config: T): PoolOptions {
+    protected getPoolOptions<T extends FlattedConnectionConfig<ConnectionConfig>>(config: T): PoolOptions {
         const poolOptions = config.pool ?? {};
 
         return merge(this.poolOptions, poolOptions);
     }
 
-    public abstract connect(config: DatabaseConfig): Pdo;
+    public abstract connect(config: FlattedConnectionConfig<ConnectionConfig>): Pdo;
 }
 
 export default Connector;

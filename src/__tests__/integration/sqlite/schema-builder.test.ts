@@ -1,9 +1,10 @@
-import { DB, currentDB, isSqlite } from '../fixtures/config';
+import { DB, currentGenericDB, currentSqliteDB, isSqlite } from '../fixtures/config';
 
 const maybe = isSqlite() ? describe : describe.skip;
 
 maybe('Postgres Schema QueryBuilder', () => {
-    const Schema = DB.connections[currentDB].getSchemaBuilder();
+    const currentDB = currentGenericDB as currentSqliteDB;
+    const Schema = DB.connection(currentDB).getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_schema_users', table => {
@@ -12,14 +13,14 @@ maybe('Postgres Schema QueryBuilder', () => {
             table.string('age');
             table.enum('color', ['red', 'blue']);
         });
-        await DB.connections[currentDB].statement(
+        await DB.connection(currentDB).statement(
             'CREATE view test_schema_users_view AS select name,age FROM test_schema_users'
         );
     });
 
     afterAll(async () => {
         await Schema.drop('test_schema_users');
-        await DB.connections[currentDB].disconnect();
+        await DB.connection(currentDB).disconnect();
     });
 
     it('Works Get Tables And Column Listing', async () => {
@@ -35,7 +36,7 @@ maybe('Postgres Schema QueryBuilder', () => {
 
     it('Works Get Views', async () => {
         expect(await Schema.getViews()).toEqual(['test_schema_users_view']);
-        await DB.connections[currentDB].statement('DROP VIEW IF EXISTS test_schema_users_view;');
+        await DB.connection(currentDB).statement('DROP VIEW IF EXISTS test_schema_users_view;');
         expect(await Schema.getViews()).toEqual([]);
     });
 });

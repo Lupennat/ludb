@@ -1,9 +1,10 @@
-import { DB, currentDB, isMysql } from '../fixtures/config';
+import { DB, currentGenericDB, currentMysqlDB, isMysql } from '../fixtures/config';
 
 const maybe = isMysql() ? describe : describe.skip;
 
 maybe('Column Types', () => {
-    const Schema = DB.connections[currentDB].getSchemaBuilder();
+    const currentDB = currentGenericDB as currentMysqlDB;
+    const Schema = DB.connection(currentDB).getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_column_type_table', table => {
@@ -76,7 +77,7 @@ maybe('Column Types', () => {
 
     afterAll(async () => {
         await Schema.drop('test_column_type_table');
-        await DB.connections[currentDB].disconnect();
+        await DB.connection(currentDB).disconnect();
     });
 
     it('Works Get Column Type', async () => {

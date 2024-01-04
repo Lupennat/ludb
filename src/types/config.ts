@@ -5,11 +5,15 @@ import { SqliteOptions } from 'lupdo-sqlite';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
 
-export interface DatabaseConnectionOptions {
+interface DatabaseConnectionOptions {
     /**
      * database
      */
-    database?: string;
+    database: string;
+    /**
+     * table prefix
+     */
+    prefix?: string;
     /**
      * host or list of host:port
      */
@@ -27,13 +31,17 @@ export interface DatabaseConnectionOptions {
      */
     password?: string;
     /**
-     * table prefix
-     */
-    prefix?: string;
-    /**
      * pool options
      */
     pool?: PoolOptions;
+    /**
+     * use prefix for schema builder
+     */
+    prefix_indexes?: boolean;
+    /**
+     * pdo attributes
+     */
+    attributes?: PdoAttributes;
 }
 
 interface MysqlConnectionOptions extends DatabaseConnectionOptions {
@@ -77,17 +85,6 @@ interface MysqlConnectionOptions extends DatabaseConnectionOptions {
      * lupdo-mysql options
      */
     lupdo_options?: MysqlOptions;
-}
-
-export interface MysqlConfig extends MysqlConnectionOptions {
-    /**
-     * write connection
-     */
-    write?: MysqlConnectionOptions | MysqlConnectionOptions[];
-    /**
-     * read connection
-     */
-    read?: MysqlConnectionOptions | MysqlConnectionOptions[];
     /**
      * use prefix for schema builder
      */
@@ -98,11 +95,24 @@ export interface MysqlConfig extends MysqlConnectionOptions {
     attributes?: PdoAttributes;
 }
 
+export interface MysqlReadAndWriteOptions extends ReadAndWriteConnectionOptions<MysqlConnectionOptions> {}
+
+export interface MysqlConfig extends MysqlConnectionOptions {
+    /**
+     * write connection
+     */
+    write?: MysqlReadAndWriteOptions;
+    /**
+     * read connection
+     */
+    read?: MysqlReadAndWriteOptions;
+}
+
 interface SqliteConnectionOptions {
     /**
      * database
      */
-    database?: string;
+    database: string;
     /**
      * table prefix
      */
@@ -139,17 +149,6 @@ interface SqliteConnectionOptions {
      * lupdo-sqlite options
      */
     lupdo_options?: SqliteOptions;
-}
-
-export interface SqliteConfig extends SqliteConnectionOptions {
-    /**
-     * write connection
-     */
-    write?: SqliteConnectionOptions | SqliteConnectionOptions[];
-    /**
-     * read connection
-     */
-    read?: SqliteConnectionOptions | SqliteConnectionOptions[];
     /**
      * use prefix for schema builder
      */
@@ -160,11 +159,20 @@ export interface SqliteConfig extends SqliteConnectionOptions {
     attributes?: PdoAttributes;
 }
 
-interface PostgresConnectionOptions extends DatabaseConnectionOptions {
+export interface SqliteReadAndWriteOptions extends ReadAndWriteConnectionOptions<SqliteConnectionOptions> {}
+
+export interface SqliteConfig extends SqliteConnectionOptions {
     /**
-     * database
+     * write connection
      */
-    database?: string;
+    write?: SqliteReadAndWriteOptions;
+    /**
+     * read connection
+     */
+    read?: SqliteReadAndWriteOptions;
+}
+
+interface PostgresConnectionOptions extends DatabaseConnectionOptions {
     /**
      * connection charset
      */
@@ -220,23 +228,17 @@ interface PostgresConnectionOptions extends DatabaseConnectionOptions {
     lupdo_options?: PostgresOptions;
 }
 
+export interface PostgresReadAndWriteOptions extends ReadAndWriteConnectionOptions<PostgresConnectionOptions> {}
+
 export interface PostgresConfig extends PostgresConnectionOptions {
     /**
      * write connection
      */
-    write?: PostgresConnectionOptions | PostgresConnectionOptions[];
+    write?: PostgresReadAndWriteOptions;
     /**
      * read connection
      */
-    read?: PostgresConnectionOptions | PostgresConnectionOptions[];
-    /**
-     * use prefix for schema builder
-     */
-    prefix_indexes?: boolean;
-    /**
-     * pdo attributes
-     */
-    attributes?: PdoAttributes;
+    read?: PostgresReadAndWriteOptions;
 }
 
 interface SqlserverConnectionOptions extends DatabaseConnectionOptions {
@@ -282,35 +284,23 @@ interface SqlserverConnectionOptions extends DatabaseConnectionOptions {
     lupdo_options?: MssqlOptions;
 }
 
+export interface SqlserverReadAndWriteOptions extends ReadAndWriteConnectionOptions<SqlserverConnectionOptions> {}
+
 export interface SqlserverConfig extends SqlserverConnectionOptions {
     /**
      * write connection
      */
-    write?: SqlserverConnectionOptions | SqlserverConnectionOptions[];
+    write?: SqlserverReadAndWriteOptions;
     /**
      * read connection
      */
-    read?: SqlserverConnectionOptions | SqlserverConnectionOptions[];
-    /**
-     * use prefix for schema builder
-     */
-    prefix_indexes?: boolean;
-    /**
-     * pdo attributes
-     */
-    attributes?: PdoAttributes;
+    read?: SqlserverReadAndWriteOptions;
 }
 
-export type ReadWriteType = 'write' | 'read';
+export type FlattedConnectionConfig<T> = Omit<T, 'read' | 'write'>;
 
-type DatabaseConfig = PostgresConfig | SqlserverConfig | MysqlConfig | SqliteConfig;
+export type ReadAndWriteConnectionOptions<T> = Omit<T, 'database' | 'prefix' | 'prefix_index' | 'attributes'>;
 
-export type ConfigWithDefault<T, D> = T extends undefined ? D : T extends null ? D : T;
+type ConnectionConfig = PostgresConfig | SqlserverConfig | MysqlConfig | SqliteConfig;
 
-export type ConfigOrConfigWithDefault<T, U, D> = U extends keyof T
-    ? D extends undefined
-        ? T[U]
-        : ConfigWithDefault<T[U], D>
-    : T;
-
-export default DatabaseConfig;
+export default ConnectionConfig;

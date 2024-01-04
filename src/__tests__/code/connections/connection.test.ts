@@ -25,11 +25,18 @@ import {
     getSqliteConnection,
     getSqlserverConnection
 } from '../fixtures/mocked';
+import { MockedConnection } from '../fixtures/mocked-connections';
 
 describe('Connection', () => {
     it('Works Disconnect Should Disconnect pdos', async () => {
-        const connection = getConnection();
-        const pdo = new Pdo('fake', {});
+        let connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            host: 'readhost',
+            pool: {
+                killResource: false
+            }
+        });
 
         let spiedPdo = jest.spyOn(connection, 'getPdo');
         let spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
@@ -39,7 +46,17 @@ describe('Connection', () => {
         expect(spiedReadPdo).not.toHaveBeenCalled();
         expect(spiedSchemaPdo).toHaveBeenCalled();
 
-        connection.setReadPdo(pdo);
+        connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            read: {
+                host: 'readhost1'
+            },
+            host: 'readhost',
+            pool: {
+                killResource: false
+            }
+        });
 
         spiedPdo = jest.spyOn(connection, 'getPdo');
         spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
@@ -51,8 +68,15 @@ describe('Connection', () => {
     });
 
     it('Works Reconnect Should Reconnect pdos', async () => {
-        const connection = getConnection();
-        const pdo = new Pdo('fake', {});
+        let connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            host: 'readhost',
+            pool: {
+                killResource: false
+            }
+        });
+
         let spiedPdo = jest.spyOn(connection, 'getPdo');
         let spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
         let spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
@@ -61,7 +85,17 @@ describe('Connection', () => {
         expect(spiedReadPdo).not.toHaveBeenCalled();
         expect(spiedSchemaPdo).toHaveBeenCalled();
 
-        connection.setReadPdo(pdo);
+        connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            read: {
+                host: 'readhost1'
+            },
+            host: 'readhost',
+            pool: {
+                killResource: false
+            }
+        });
 
         spiedPdo = jest.spyOn(connection, 'getPdo');
         spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
@@ -216,30 +250,46 @@ describe('Connection', () => {
     });
 
     it('Works Pdo', () => {
-        const connection = getConnection();
-        const pdo = new Pdo('fake', {}, {}, {});
-        connection.setPdo(pdo);
-        expect(connection.getPdo()).toEqual(pdo);
+        const connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            host: 'readhost',
+            pool: {
+                killResource: false
+            }
+        });
+        expect(connection.getPdo()).toBeInstanceOf(Pdo);
     });
 
     it('Works Read Pdo', () => {
-        const connection = getConnection();
-        const pdo = new Pdo('fake', {}, {}, {});
-        connection.setPdo(pdo);
-        expect(connection.getReadPdo()).toEqual(pdo);
-        const readPdo = new Pdo('fake', {}, {}, {});
-        connection.setReadPdo(readPdo);
-        expect(connection.getReadPdo()).toEqual(readPdo);
-        expect(connection.getReadPdo()).not.toEqual(pdo);
-        expect(connection.getPdo()).toEqual(pdo);
-        expect(connection.getPdo()).not.toEqual(readPdo);
+        const connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            read: {
+                host: 'readhost1'
+            },
+            host: 'readhost',
+            pool: {
+                killResource: false
+            }
+        });
+
+        expect(connection.getReadPdo()).toBeInstanceOf(Pdo);
+        expect(connection.getPdo()).toBeInstanceOf(Pdo);
+        expect(connection.getPdo()).not.toEqual(connection.getReadPdo());
     });
 
     it('Works Schema Pdo', () => {
-        const connection = getConnection();
-        const pdo = new Pdo('fake', {}, {}, {});
-        connection.setSchemaPdo(pdo);
-        expect(connection.getSchemaPdo()).toEqual(pdo);
+        const connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            host: 'readhost',
+            pool: {
+                killResource: false
+            }
+        });
+
+        expect(connection.getSchemaPdo()).toBeInstanceOf(Pdo);
     });
 
     it('Works Get Name', () => {

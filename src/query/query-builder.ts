@@ -339,9 +339,9 @@ class QueryBuilder extends CommonGrammarBuilder implements QueryBuilderI {
     ): Promise<T | U>;
     public async findOr<T = Dictionary, U = unknown>(
         id: number | string | bigint,
-        columnsCallback?: Stringable | Stringable[] | (() => U),
-        callback?: (() => U) | null
-    ): Promise<T | U | null>;
+        columns: Stringable | Stringable[],
+        callback: () => U
+    ): Promise<T | U>;
     public async findOr<T = Dictionary, U = unknown>(
         id: string | number | bigint,
         columnsCallback: Stringable | Stringable[] | (() => U) = ['*'],
@@ -573,8 +573,8 @@ class QueryBuilder extends CommonGrammarBuilder implements QueryBuilderI {
             typeof cursor === 'string'
                 ? Cursor.fromEncoded(cursor)
                 : cursor == null
-                ? CursorPaginator.resolveCurrentCursor(name, cursor)
-                : cursor;
+                  ? CursorPaginator.resolveCurrentCursor(name, cursor)
+                  : cursor;
 
         const orders = this.ensureOrderForCursorPagination(
             cursorInstance !== null && cursorInstance.pointsToPreviousItems()
@@ -725,9 +725,8 @@ class QueryBuilder extends CommonGrammarBuilder implements QueryBuilderI {
     /**
      * Get an object or an array instance containing the values of a given column.
      */
-    public async pluck<T>(column: Stringable, key?: null): Promise<T[]>;
+    public async pluck<T>(column: Stringable): Promise<T[]>;
     public async pluck<T>(column: Stringable, key: Stringable): Promise<{ [key: string]: T }>;
-    public async pluck<T>(column: Stringable, key?: Stringable | null): Promise<{ [key: string]: T } | T[]>;
     public async pluck<T>(column: Stringable, key: Stringable | null = null): Promise<{ [key: string]: T } | T[]> {
         // First, we will need to select the results of the query accounting for the
         // given columns / key. Once we have the results, we will be able to take

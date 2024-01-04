@@ -1,10 +1,10 @@
-import MysqlBuilder from '../../../schema/builders/mysql-builder';
-import { DB, currentDB, isMysql } from '../fixtures/config';
+import { DB, currentGenericDB, currentMysqlDB, isMysql } from '../fixtures/config';
 
 const maybe = isMysql() ? describe : describe.skip;
 
 maybe('Mysql Schema QueryBuilder', () => {
-    const Schema = DB.connections[currentDB].getSchemaBuilder() as MysqlBuilder;
+    const currentDB = currentGenericDB as currentMysqlDB;
+    const Schema = DB.connection(currentDB).getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.dropTableIfExists('test_schema_users');
@@ -25,7 +25,7 @@ maybe('Mysql Schema QueryBuilder', () => {
 
     afterAll(async () => {
         await Schema.drop('test_schema_users');
-        await DB.connections[currentDB].disconnect();
+        await DB.connection(currentDB).disconnect();
     });
 
     it('Works Add Comment To Table', async () => {

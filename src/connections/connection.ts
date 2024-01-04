@@ -9,7 +9,7 @@ import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
 import SchemaGrammar from '../schema/grammars/grammar';
 import BindToI from '../types/bind-to';
-import DatabaseConfig, { DatabaseConnectionOptions, ReadWriteType } from '../types/config';
+import ConnectionConfig, { FlattedConnectionConfig, ReadAndWriteConnectionOptions } from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
 import ConnectorI from '../types/connector';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
@@ -19,7 +19,7 @@ import SchemaBuilderI from '../types/schema/builder/schema-builder';
 import { merge, raw } from '../utils';
 import ConnectionSession from './connection-session';
 
-abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implements DriverConnectionI {
+abstract class Connection<const Config extends ConnectionConfig = ConnectionConfig> implements DriverConnectionI {
     /**
      * The active PDO connection used for reads.
      */
@@ -58,10 +58,11 @@ abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implem
     /**
      * Create a new database connection instance.
      */
-    public constructor(protected name: string, protected config: Config) {
-        this.config.prefix = this.config.prefix || '';
-        this.config.database = this.config.database || '';
-        this.tablePrefix = this.config.prefix;
+    public constructor(
+        protected name: string,
+        protected config: Config
+    ) {
+        this.tablePrefix = this.config.prefix || '';
         this.database = this.config.database;
         this.setDefaultQueryGrammar();
         this.setDefaultSchemaGrammar();
@@ -105,7 +106,7 @@ abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implem
     /**
      * Create a single database connection instance.
      */
-    protected createSingleConnection(config: DatabaseConfig): void {
+    protected createSingleConnection(config: FlattedConnectionConfig<Config>): void {
         this.pdo = this.createPdoResolver(config);
         this.schemaPdo = this.createPdoSchemaResolver(config);
     }
@@ -128,28 +129,26 @@ abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implem
     /**
      * Get the read configuration for a read / write connection.
      */
-    protected getReadConfig(): DatabaseConfig {
+    protected getReadConfig(): FlattedConnectionConfig<Config> {
         return this.mergeReadWriteConfig(this.getReadWriteConfig('read'));
     }
 
     /**
      * Get the write configuration for a read / write connection.
      */
-    protected getWriteConfig(): DatabaseConfig {
+    protected getWriteConfig(): FlattedConnectionConfig<Config> {
         return this.mergeReadWriteConfig(this.getReadWriteConfig('write'));
     }
 
     /**
      * Get a read / write level configuration.
      */
-    protected getReadWriteConfig(type: ReadWriteType): DatabaseConnectionOptions | undefined {
+    protected getReadWriteConfig(
+        type: 'read' | 'write'
+    ): FlattedConnectionConfig<ReadAndWriteConnectionOptions<Config>> | undefined {
         if (type in this.config) {
-            const options = { ...this.config[type] };
-            if (Array.isArray(options)) {
-                return options[Math.floor(Math.random() * options.length)];
-            } else {
-                return options;
-            }
+            const options = this.config[type];
+            return options as FlattedConnectionConfig<ReadAndWriteConnectionOptions<Config>>;
         }
         return undefined;
     }
@@ -157,8 +156,10 @@ abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implem
     /**
      * Merge a configuration for a read / write connection.
      */
-    protected mergeReadWriteConfig(toMerge?: DatabaseConnectionOptions): DatabaseConfig {
-        const merged = merge<DatabaseConfig>(this.config, toMerge ?? {});
+    protected mergeReadWriteConfig(
+        toMerge?: FlattedConnectionConfig<ReadAndWriteConnectionOptions<Config>>
+    ): FlattedConnectionConfig<Config> {
+        const merged = merge<Config>(this.config, (toMerge ?? {}) as Partial<Config>);
         delete merged.read;
         delete merged.write;
 
@@ -168,7 +169,7 @@ abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implem
     /**
      * Create a new PDO instance for Schema.
      */
-    protected createPdoSchemaResolver(config: DatabaseConfig): Pdo {
+    protected createPdoSchemaResolver(config: FlattedConnectionConfig<Config>): Pdo {
         return this.createConnector().connect(
             Object.assign({}, config, {
                 pool: { min: 0, max: 1 }
@@ -179,7 +180,7 @@ abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implem
     /**
      * Create a new PDO instance.
      */
-    protected createPdoResolver(config: DatabaseConfig): Pdo {
+    protected createPdoResolver(config: FlattedConnectionConfig<Config>): Pdo {
         return this.createConnector().connect(config);
     }
 
@@ -330,42 +331,12 @@ abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implem
     }
 
     /**
-     * Set the PDO connection.
-     */
-    public setPdo(pdo: Pdo): this {
-        this.pdo = pdo;
-
-        return this;
-    }
-
-    /**
-     * Set the Schema PDO connection.
-     */
-    public setSchemaPdo(pdo: Pdo): this {
-        this.schemaPdo = pdo;
-
-        return this;
-    }
-
-    /**
-     * Set the PDO connection used for reading.
-     */
-    public setReadPdo(pdo: Pdo): this {
-        this.readPdo = pdo;
-
-        return this;
-    }
-
-    /**
      * Get the database connection name.
      */
     public getName(): string {
         return this.name;
     }
 
-    /**
-     * Get an option from the configuration options.
-     */
     /**
      * Get an option from the configuration options.
      */

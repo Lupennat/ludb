@@ -109,7 +109,7 @@ describe('Sqlite Connector', () => {
     it('Works Missing Database Throw An Error', () => {
         const connector = new SqliteConnector();
         expect(() => {
-            connector.connect({});
+            connector.connect({ database: '' });
         }).toThrow('Database file path is required.');
     });
 

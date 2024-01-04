@@ -9,7 +9,11 @@ abstract class AbstractPaginator<T, U extends PaginatorOptions = PaginatorOption
      */
     protected static currentPathResolverCallback: (() => string) | undefined;
 
-    constructor(protected results: T[], protected perPageNumber: number, protected options: U) {}
+    constructor(
+        protected results: T[],
+        protected perPageNumber: number,
+        protected options: U
+    ) {}
 
     /**
      * Get all of the items being paginated.

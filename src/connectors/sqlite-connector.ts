@@ -1,7 +1,7 @@
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { SqliteOptions } from 'lupdo-sqlite';
 import { existsSync } from 'node:fs';
-import { SqliteConfig } from '../types/config';
+import { FlattedConnectionConfig, SqliteConfig } from '../types/config';
 import { merge } from '../utils';
 import Connector from './connector';
 
@@ -9,7 +9,7 @@ class SqliteConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect(config: SqliteConfig): Pdo {
+    public connect(config: FlattedConnectionConfig<SqliteConfig>): Pdo {
         const attributes = this.getAttributes<SqliteConfig>(config);
         const poolOptions = this.getPoolOptions<SqliteConfig>(config);
 

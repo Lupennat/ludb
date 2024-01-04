@@ -16,9 +16,9 @@ import {
     MockedConnectionSessionWithResults,
     MockedConnectionSessionWithResultsSets,
     getBuilder,
-    getConnection,
-    getReadConnection
+    getConnection
 } from '../fixtures/mocked';
+import { MockedConnection } from '../fixtures/mocked-connections';
 
 describe('Connection Session', () => {
     const sleep = function (timeout = 0): Promise<void> {
@@ -69,7 +69,16 @@ describe('Connection Session', () => {
     });
 
     it('Works Read Pdo', async () => {
-        const connection = getReadConnection();
+        const connection = new MockedConnection('fake', {
+            database: 'database',
+            prefix: 'prefix',
+            read: {
+                host: 'readhost'
+            },
+            pool: {
+                killResource: false
+            }
+        });
         const spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
         const spiedPdo = jest.spyOn(connection, 'getPdo');
         const session = new MockedConnectionSession(connection);
@@ -107,7 +116,6 @@ describe('Connection Session', () => {
 
     it('Works Read Pdo When Schema Session Always Return Schema Pdo', async () => {
         const connection = getConnection();
-        connection.setSchemaPdo(new Pdo('fake', {}, {}, {}));
         const spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
         const spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
         const spiedPdo = jest.spyOn(connection, 'getPdo');
@@ -582,18 +590,41 @@ describe('Connection Session', () => {
 
     it('Works Insert Get Id Return Id', async () => {
         const connection = getConnection();
-        const pdo = new Pdo('fake', {}, {}, {});
-        const originalPrepare = pdo.prepare;
+        let pdo = new Pdo('fake', {}, {}, {});
+        let originalPrepare = pdo.prepare;
         jest.spyOn(pdo, 'prepare').mockImplementationOnce(async sql => {
             const statement = await originalPrepare.call(pdo, sql);
-            jest.spyOn(statement, 'lastInsertId').mockImplementationOnce(async () => {
+            jest.spyOn(statement, 'lastInsertId').mockImplementationOnce(async sequence => {
+                expect(sequence).toBeUndefined();
                 return 'idValue';
             });
             return statement;
         });
-        const session = new MockedConnectionSession(connection);
+
+        let session = new MockedConnectionSession(connection);
+
         jest.spyOn(session, 'getPdo').mockReturnValueOnce(pdo);
         expect(await session.insertGetId('insert into "users" ("email") values (?)', ['foo'])).toBe('idValue');
+
+        await pdo.disconnect();
+
+        pdo = new Pdo('fake', {}, {}, {});
+        originalPrepare = pdo.prepare;
+        jest.spyOn(pdo, 'prepare').mockImplementationOnce(async sql => {
+            const statement = await originalPrepare.call(pdo, sql);
+            jest.spyOn(statement, 'lastInsertId').mockImplementationOnce(async sequence => {
+                expect(sequence).toBe('sequenceId');
+                return 'idValue';
+            });
+            return statement;
+        });
+
+        session = new MockedConnectionSession(connection);
+        jest.spyOn(session, 'getPdo').mockReturnValueOnce(pdo);
+        expect(await session.insertGetId('insert into "users" ("email") values (?)', ['foo'], 'sequenceId')).toBe(
+            'idValue'
+        );
+
         await pdo.disconnect();
     });
 

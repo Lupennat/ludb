@@ -87,6 +87,7 @@ describe('Sqlserver Connector', () => {
         const connector = new SqlserverConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
+            database: 'fake',
             username: 'sa'
         });
         expect(spiedConnection).toHaveBeenLastCalledWith(
@@ -97,7 +98,7 @@ describe('Sqlserver Connector', () => {
                     appName: undefined,
                     columnEncryptionSetting: undefined,
                     connectionIsolationLevel: undefined,
-                    database: undefined,
+                    database: 'fake',
                     encrypt: undefined,
                     multiSubnetFailover: undefined,
                     port: undefined,
@@ -111,6 +112,7 @@ describe('Sqlserver Connector', () => {
             { ATTR_CASE: 1, ATTR_DEBUG: 1, ATTR_NULLS: 1 }
         );
         connector.connect({
+            database: 'fake',
             password: 'secret'
         });
         expect(spiedConnection).toHaveBeenLastCalledWith(
@@ -121,7 +123,7 @@ describe('Sqlserver Connector', () => {
                     appName: undefined,
                     columnEncryptionSetting: undefined,
                     connectionIsolationLevel: undefined,
-                    database: undefined,
+                    database: 'fake',
                     encrypt: undefined,
                     multiSubnetFailover: undefined,
                     port: undefined,

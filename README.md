@@ -49,7 +49,7 @@ import { DatabaseManager } from 'ludb';
 -   [Database Transactions](#database-transactions)
 -   [Differences With Laravel](#differences-with-laravel)
 -   [Under The Hood](#under-the-hood)
--   [Api](https://ludb.lupennat.com)
+-   [Api](https://ludb.lupennat.com/api)
 
 ## Introduction
 
@@ -216,7 +216,7 @@ const DB = dbManager.connection('sqlite').select(/* ... */);
 You may access the raw, underlying Lupdo instance of a connection using the `getPdo` method on a connection instance:
 
 ```ts
-pdo = DB.connection().getPdo();
+pdo = DB.connection('connectionName').getPdo();
 ```
 
 ### Events
@@ -339,7 +339,7 @@ const beforeMiddleware = (req: Request, res: Response, next: NextFunction) => {
             }
         }
     };
-    dbManager.connection().listen(req.queryLogListener);
+    dbManager.connection('connectionName').listen(req.queryLogListener);
     next();
 };
 
@@ -350,7 +350,7 @@ const responseHandler = (req: Request, res: Response, next: NextFunction) => {
 };
 
 const afterMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    dbManager.connection().unlisten(req.queryLogListener);
+    dbManager.connection('connectionName').unlisten(req.queryLogListener);
     next();
 };
 

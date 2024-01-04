@@ -11,16 +11,17 @@ import SqliteConnector from '../../../connectors/sqlite-connector';
 import SqlserverConnector from '../../../connectors/sqlserver-connector';
 import { Grammar } from '../../../query';
 import { SchemaBuilder, SchemaGrammar } from '../../../schema';
+import ConnectionConfig from '../../../types/config';
 
 export class MockedConnector extends Connector {
-    public connect(): Pdo {
-        return new Pdo('fake', {});
+    public connect(config: ConnectionConfig): Pdo {
+        return new Pdo('fake', config);
     }
 }
 
 export class MockedSqliteConnector extends SqliteConnector {
-    public connect(): Pdo {
-        return new Pdo('fake', {});
+    public connect(config: ConnectionConfig): Pdo {
+        return new Pdo('fake', config);
     }
 }
 
@@ -31,8 +32,8 @@ export class MockedSqliteConnection extends SqliteConnection {
 }
 
 export class MockedMysqlConnector extends MysqlConnector {
-    public connect(): Pdo {
-        return new Pdo('fake', {});
+    public connect(config: ConnectionConfig): Pdo {
+        return new Pdo('fake', config);
     }
 }
 
@@ -43,8 +44,8 @@ export class MockedMysqlConnection extends MysqlConnection {
 }
 
 export class MockedPostgresConnector extends PostgresConnector {
-    public connect(): Pdo {
-        return new Pdo('fake', {});
+    public connect(config: ConnectionConfig): Pdo {
+        return new Pdo('fake', config);
     }
 }
 
@@ -55,8 +56,8 @@ export class MockedPostgresConnection extends PostgresConnection {
 }
 
 export class MockedSqlserverConnector extends SqlserverConnector {
-    public connect(): Pdo {
-        return new Pdo('fake', {});
+    public connect(config: ConnectionConfig): Pdo {
+        return new Pdo('fake', config);
     }
 }
 

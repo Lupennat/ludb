@@ -1,17 +1,13 @@
 import DatabaseManager from '../../../database-manager';
 
-type currentDB =
-    | 'mysql57'
-    | 'mysql8'
-    | 'maria1003'
-    | 'maria1011'
-    | 'sqlite'
-    | 'postgres12'
-    | 'postgres16'
-    | 'sqlsrv17'
-    | 'sqlsrv22';
+type currentGenericDB = currentPostgresDB | currentMysqlDB | currentSqliteDB | currentSqlserverDB;
 
-export const currentDB: currentDB = process.env.DB as currentDB;
+export type currentPostgresDB = 'postgres12' | 'postgres16';
+export type currentMysqlDB = 'mysql57' | 'mysql8' | 'maria1003' | 'maria1011';
+export type currentSqliteDB = 'sqlite';
+export type currentSqlserverDB = 'sqlsrv17' | 'sqlsrv22';
+
+export const currentGenericDB: currentGenericDB = process.env.DB as currentGenericDB;
 
 export const config = {
     mysql57: {
@@ -62,6 +58,7 @@ export const config = {
         driver: 'pgsql',
         username: 'lupdo',
         password: 'lupdos3cRet',
+        search_path: undefined,
         host: 'localhost',
         database: 'tempdb',
         port: 25431
@@ -70,6 +67,7 @@ export const config = {
         driver: 'pgsql',
         username: 'lupdo',
         password: 'lupdos3cRet',
+        search_path: undefined,
         host: 'localhost',
         database: 'tempdb',
         port: 25435
@@ -94,20 +92,20 @@ export const config = {
     }
 } as const;
 
-export const DB = new DatabaseManager(config);
+export const DB = new DatabaseManager({ connections: config });
 
 export function isMysql(): boolean {
-    return config[currentDB].driver === 'mysql';
+    return config[currentGenericDB].driver === 'mysql';
 }
 
 export function isSqlite(): boolean {
-    return config[currentDB].driver === 'sqlite';
+    return config[currentGenericDB].driver === 'sqlite';
 }
 
 export function isPostgres(): boolean {
-    return config[currentDB].driver === 'pgsql';
+    return config[currentGenericDB].driver === 'pgsql';
 }
 
 export function isSqlserver(): boolean {
-    return config[currentDB].driver === 'sqlsrv';
+    return config[currentGenericDB].driver === 'sqlsrv';
 }

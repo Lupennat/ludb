@@ -2,6 +2,7 @@ import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStat
 import PdoRowData from 'lupdo/dist/typings/types/pdo-raw-data';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import ConnectionSession, { RunCallback } from '../../../connections/connection-session';
+import DatabaseManager from '../../../database-manager';
 import { GrammarBuilder } from '../../../query';
 import JoinClause from '../../../query/join-clause';
 import QueryBuilder from '../../../query/query-builder';
@@ -15,6 +16,7 @@ import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
 import SqliteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
 import SqlserverSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
 import DriverConnectionI from '../../../types/connection';
+import { DBConfig } from '../../../types/database-manager';
 import { Binding } from '../../../types/generics';
 import GrammarBuilderI, { Arrayable } from '../../../types/query/grammar-builder';
 import JoinClauseI from '../../../types/query/join-clause';
@@ -78,20 +80,6 @@ export function getConnection(prefix = 'prefix_'): MockedConnection {
     return new MockedConnection('fake', {
         database: 'database',
         prefix: prefix,
-        pool: {
-            killResource: false
-        }
-    });
-}
-
-export function getReadConnection(prefix = 'prefix_'): MockedConnection {
-    return new MockedConnection('fake', {
-        database: 'database',
-        prefix: prefix,
-        read: {
-            prefix: prefix,
-            database: 'database'
-        },
         pool: {
             killResource: false
         }
@@ -501,5 +489,11 @@ export class MockedGrammar extends SchemaGrammar {
      */
     public compileModifyVirtualAs(blueprint: BlueprintI, column: ColumnDefinition): string {
         return super.compileModifyVirtualAs(blueprint, column);
+    }
+}
+
+export class MockedDatabaseManager<const Config extends DBConfig> extends DatabaseManager<Config> {
+    public createConnection<const T extends keyof Config['connections'] & string>(name: T): any {
+        return super.createConnection(name);
     }
 }

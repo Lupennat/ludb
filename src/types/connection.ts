@@ -7,7 +7,7 @@ import { Grammar } from '../query';
 import ExpressionContract from '../query/expression-contract';
 import { SchemaGrammar } from '../schema';
 import BindToI from './bind-to';
-import DatabaseConfig from './config';
+import ConnectionConfig from './config';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from './generics';
 import { QueryAbleCallback } from './query/grammar-builder';
 import QueryBuilderI from './query/query-builder';
@@ -169,7 +169,7 @@ interface BaseConnection {
     /**
      * Get an option from the configuration options.
      */
-    getConfig<T extends DatabaseConfig>(): T;
+    getConfig<T extends ConnectionConfig>(): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
 
@@ -249,21 +249,6 @@ export default interface DriverConnectionI extends BaseConnection {
      * Remove a database query listener with the connection.
      */
     unlisten(callback: (event: QueryExecuted) => void | Promise<void>): void;
-
-    /**
-     * Set the Schema PDO connection.
-     */
-    setSchemaPdo(pdo: Pdo): this;
-
-    /**
-     * Set the PDO connection.
-     */
-    setPdo(pdo: Pdo): this;
-
-    /**
-     * Set the PDO connection used for reading.
-     */
-    setReadPdo(pdo: Pdo): this;
 
     /**
      * Set the event dispatcher instance on the connection.

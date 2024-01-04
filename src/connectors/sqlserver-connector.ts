@@ -1,6 +1,6 @@
 import { Pdo } from 'lupdo';
 import { MssqlOptions } from 'lupdo-mssql';
-import { SqlserverConfig } from '../types/config';
+import { FlattedConnectionConfig, SqlserverConfig } from '../types/config';
 import { merge } from '../utils';
 import Connector from './connector';
 
@@ -8,7 +8,7 @@ class SqlserverConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect(config: SqlserverConfig): Pdo {
+    public connect(config: FlattedConnectionConfig<SqlserverConfig>): Pdo {
         const attributes = this.getAttributes(config);
         const poolOptions = this.getPoolOptions(config);
 

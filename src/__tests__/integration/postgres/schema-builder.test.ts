@@ -1,17 +1,16 @@
 import { PostgresConfig } from '../../../types/config';
-import { DB, config, currentDB, isPostgres } from '../fixtures/config';
+import { DB, config, currentGenericDB, currentPostgresDB, isPostgres } from '../fixtures/config';
 
 const maybe = isPostgres() ? describe : describe.skip;
 
-maybe('Postgres Schema QueryBuilder', () => {
-    const connection = DB.connections[currentDB];
-
+maybe('Postgres Schema Builder', () => {
+    const currentDB = currentGenericDB as currentPostgresDB;
     (config[currentDB] as PostgresConfig).search_path = 'public,test_schema_private';
 
-    const Schema = DB.connections[currentDB].getSchemaBuilder();
+    let Schema = DB.connection(currentGenericDB).getSchemaBuilder();
 
     const hasView = async (schema: string, table: string): Promise<boolean> => {
-        return await DB.connections[currentDB]
+        return await DB.connection(currentGenericDB)
             .table('information_schema.views')
             .where('table_catalog', (config[currentDB] as PostgresConfig).database)
             .where('table_schema', schema)
@@ -19,22 +18,27 @@ maybe('Postgres Schema QueryBuilder', () => {
             .exists();
     };
 
+    const purge = async (): Promise<void> => {
+        await DB.purge(currentGenericDB);
+        Schema = DB.connection(currentGenericDB).getSchemaBuilder();
+    };
+
     beforeAll(async () => {
-        await DB.connections[currentDB].statement('create schema if not exists test_schema_private');
+        await DB.connection(currentGenericDB).statement('create schema if not exists test_schema_private');
     });
 
     afterAll(async () => {
-        await DB.connections[currentDB].statement('drop table if exists public.test_schema_table');
-        await DB.connections[currentDB].statement('drop table if exists private.test_schema_table');
+        await DB.connection(currentGenericDB).statement('drop table if exists public.test_schema_table');
+        await DB.connection(currentGenericDB).statement('drop table if exists private.test_schema_table');
 
-        await DB.connections[currentDB].statement('drop view if exists public.test_schema_foo');
-        await DB.connections[currentDB].statement('drop view if exists private.test_schema_foo');
+        await DB.connection(currentGenericDB).statement('drop view if exists public.test_schema_foo');
+        await DB.connection(currentGenericDB).statement('drop view if exists private.test_schema_foo');
 
-        await DB.connections[currentDB].statement('drop schema test_schema_private cascade');
-        await DB.connections[currentDB].disconnect();
+        await DB.connection(currentGenericDB).statement('drop schema test_schema_private cascade');
+        await DB.disconnect(currentGenericDB);
     });
 
-    it('Works Drop Tables On All Schemas', async () => {
+    it('Works Drop All Tables On All Schemas', async () => {
         await Schema.create('public.test_schema_table', table => {
             table.increments('id');
         });
@@ -49,7 +53,7 @@ maybe('Postgres Schema QueryBuilder', () => {
         expect(await Schema.hasTable('test_schema_private.test_schema_table')).toBeFalsy();
     });
 
-    it('Works Drop Tables Uses Dont Drop Config On All Schemas', async () => {
+    it('Works Drop All Tables Uses Dont Drop Config On All Schemas', async () => {
         (config[currentDB] as PostgresConfig).dont_drop = ['spatial_ref_sys', 'test_schema_table'];
         await purge();
 
@@ -67,13 +71,13 @@ maybe('Postgres Schema QueryBuilder', () => {
         expect(await Schema.hasTable('test_schema_private.test_schema_table')).toBeTruthy();
 
         (config[currentDB] as PostgresConfig).dont_drop = undefined;
-        // await purge();
+        await purge();
         await Schema.dropTables();
     });
 
-    it('Works Drop Tables Uses Dont Drop Config On One Schemas', async () => {
+    it('Works Drop All Tables Uses Dont Drop Config On One Schemas', async () => {
         (config[currentDB] as PostgresConfig).dont_drop = ['spatial_ref_sys', 'test_schema_private.test_schema_table'];
-        // await purge();
+        await purge();
 
         await Schema.create('public.test_schema_table', table => {
             table.increments('id');
@@ -93,9 +97,11 @@ maybe('Postgres Schema QueryBuilder', () => {
         await Schema.dropTables();
     });
 
-    it('Works Drop Views On All Schemas', async () => {
-        await DB.connections[currentDB].statement('create view public.test_schema_foo (id) as select 1');
-        await DB.connections[currentDB].statement('create view test_schema_private.test_schema_foo (id) as select 1');
+    it('Works Drop All Views On All Schemas', async () => {
+        await DB.connection(currentGenericDB).statement('create view public.test_schema_foo (id) as select 1');
+        await DB.connection(currentGenericDB).statement(
+            'create view test_schema_private.test_schema_foo (id) as select 1'
+        );
 
         await Schema.dropViews();
 
@@ -109,7 +115,7 @@ maybe('Postgres Schema QueryBuilder', () => {
         });
 
         expect('This is a comment').toBe(
-            (await DB.connections[currentDB].selectOne(
+            (await DB.connection(currentGenericDB).selectOne(
                 "select obj_description('public.test_schema_posts'::regclass, 'pg_class')"
             ))!.obj_description
         );
@@ -128,14 +134,14 @@ maybe('Postgres Schema QueryBuilder', () => {
         });
 
         expect('This is a new comment').toBe(
-            (await DB.connections[currentDB].selectOne(
+            (await DB.connection(currentGenericDB).selectOne(
                 "select obj_description('public.test_schema_posts'::regclass, 'pg_class')"
             ))!.obj_description
         );
         await Schema.drop('public.test_schema_posts');
     });
 
-    it('Works Get Tables And Column Listing', async () => {
+    it('Works Get All Tables And Column Listing', async () => {
         await Schema.create('test_schema_users', table => {
             table.integer('id');
             table.string('name');
@@ -143,7 +149,7 @@ maybe('Postgres Schema QueryBuilder', () => {
             table.enum('color', ['red', 'blue']);
         });
 
-        await DB.connections[currentDB].statement(
+        await DB.connection(currentGenericDB).statement(
             'create view test_schema_users_view AS select name,age FROM test_schema_users'
         );
 
@@ -159,11 +165,11 @@ maybe('Postgres Schema QueryBuilder', () => {
             expect.arrayContaining(['"public"."test_schema_users"', '"public"."test_schema_posts"'])
         );
         await Schema.drop('test_schema_posts');
-        await DB.connections[currentDB].statement('drop view if exists test_schema_users_view;');
+        await DB.connection(currentGenericDB).statement('drop view if exists test_schema_users_view;');
         await Schema.drop('test_schema_users');
     });
 
-    it('Works Get Views', async () => {
+    it('Works Get All Views', async () => {
         await Schema.create('test_schema_users', table => {
             table.integer('id');
             table.string('name');
@@ -171,7 +177,7 @@ maybe('Postgres Schema QueryBuilder', () => {
             table.enum('color', ['red', 'blue']);
         });
 
-        await DB.connections[currentDB].statement(
+        await DB.connection(currentGenericDB).statement(
             'create view test_schema_users_view AS select name,age FROM test_schema_users'
         );
 
@@ -182,7 +188,7 @@ maybe('Postgres Schema QueryBuilder', () => {
                 '"public"."test_schema_users_view"'
             ])
         );
-        await DB.connections[currentDB].statement('drop view if exists test_schema_users_view;');
+        await DB.connection(currentGenericDB).statement('drop view if exists test_schema_users_view;');
         expect(await Schema.getViews()).toEqual(
             expect.arrayContaining(['"public"."geography_columns"', '"public"."geometry_columns"'])
         );

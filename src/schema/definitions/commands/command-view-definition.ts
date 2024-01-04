@@ -6,7 +6,10 @@ import CommandDefinition from './command-definition';
 type ViewAsCallback = (query: GrammarBuilderI) => GrammarBuilderI;
 
 class CommandViewDefinition<Registry extends ViewRegistryI = ViewRegistryI> extends CommandDefinition<Registry> {
-    constructor(public readonly name: CommandType, protected registry: Registry) {
+    constructor(
+        public readonly name: CommandType,
+        protected registry: Registry
+    ) {
         super(name, registry);
     }
     /**

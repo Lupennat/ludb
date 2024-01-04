@@ -401,9 +401,12 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureIsolationLevel(fakeConnection, {});
+        await connector.configureIsolationLevel(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureIsolationLevel(fakeConnection, { isolation_level: 'READ COMMITTED' });
+        await connector.configureIsolationLevel(fakeConnection, {
+            database: 'fake',
+            isolation_level: 'READ COMMITTED'
+        });
         expect(spiedPdoFake).toHaveBeenLastCalledWith(
             'set session characteristics as transaction isolation level READ COMMITTED'
         );
@@ -413,9 +416,9 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureEncoding(fakeConnection, {});
+        await connector.configureEncoding(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureEncoding(fakeConnection, { charset: 'UTF8' });
+        await connector.configureEncoding(fakeConnection, { database: 'fake', charset: 'UTF8' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set names 'UTF8'");
     });
 
@@ -423,9 +426,9 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureTimezone(fakeConnection, {});
+        await connector.configureTimezone(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureTimezone(fakeConnection, { timezone: 'Europe/Rome' });
+        await connector.configureTimezone(fakeConnection, { database: 'fake', timezone: 'Europe/Rome' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set time zone 'Europe/Rome'");
     });
 
@@ -433,9 +436,10 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureSynchronousCommit(fakeConnection, {});
+        await connector.configureSynchronousCommit(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.configureSynchronousCommit(fakeConnection, {
+            database: 'fake',
             synchronous_commit: 'remote_write'
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set synchronous_commit to 'remote_write'");
@@ -445,69 +449,43 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureSearchPath(fakeConnection, {});
+        await connector.configureSearchPath(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: 'public'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: 'Public'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'Public' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "Public"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: '¡foo_bar-Baz!.Áüõß'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '¡foo_bar-Baz!.Áüõß' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "¡foo_bar-Baz!.Áüõß"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: "'public'"
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: "'public'" });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: '"public"'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '"public"' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: '$user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '$user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "$user"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: 'public user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
         await connector.configureSearchPath(fakeConnection, {
+            database: 'fake',
             search_path: 'public\nuser\r\n\ttest'
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user", "test"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: 'public,user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public,user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: 'public, user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public, user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: "'public', 'user'"
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: "'public', 'user'" });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: '"public", "user"'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '"public", "user"' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: '"public user"'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '"public user"' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: ['public', 'user']
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: ['public', 'user'] });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            search_path: ['public', '$user']
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: ['public', '$user'] });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "$user"');
         await connector.configureSearchPath(fakeConnection, {
+            database: 'fake',
             search_path: ['public', '"user"', "'test'", 'spaced schema']
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user", "test", "spaced schema"');

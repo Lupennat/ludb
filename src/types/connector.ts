@@ -1,6 +1,6 @@
 import { Pdo } from 'lupdo';
-import DatabaseConfig from './config';
+import ConnectionConfig, { FlattedConnectionConfig } from './config';
 
 export default interface ConnectorI {
-    connect(config: DatabaseConfig): Pdo;
+    connect(config: FlattedConnectionConfig<ConnectionConfig>): Pdo;
 }

@@ -98,9 +98,9 @@ export default interface QueryBuilderI extends GrammarBuilderI {
     ): Promise<T | U>;
     findOr<T = Dictionary, U = unknown>(
         id: number | string | bigint,
-        columnsCallback?: Stringable | Stringable[] | (() => U),
-        callback?: (() => U) | null
-    ): Promise<T | U | null>;
+        columns: Stringable | Stringable[],
+        callback: () => U
+    ): Promise<T | U>;
 
     /**
      * Get a single column's value from the first result of a query.
@@ -169,9 +169,8 @@ export default interface QueryBuilderI extends GrammarBuilderI {
     /**
      * Get an object or an array containing the values of a given column.
      */
-    pluck<T>(column: Stringable, key?: null): Promise<T[]>;
+    pluck<T>(column: Stringable): Promise<T[]>;
     pluck<T>(column: Stringable, key: Stringable): Promise<{ [key: string]: T }>;
-    pluck<T>(column: Stringable, key?: Stringable | null): Promise<{ [key: string]: T } | T[]>;
 
     /**
      * Concatenate values of a given column as a string.

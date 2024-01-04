@@ -20,7 +20,7 @@ import TransactionRolledBack from '../events/transaction-rolledback';
 import ExpressionContract from '../query/expression-contract';
 import QueryBuilder from '../query/query-builder';
 import BindToI from '../types/bind-to';
-import DatabaseConfig from '../types/config';
+import ConnectionConfig from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
 import { QueryAbleCallback } from '../types/query/grammar-builder';
@@ -78,7 +78,10 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     /**
      * Create a new connection session instance.
      */
-    constructor(protected driverConnection: DriverConnection, protected isSchemaConnection = false) {}
+    constructor(
+        protected driverConnection: DriverConnection,
+        protected isSchemaConnection = false
+    ) {}
 
     /**
      * Begin a fluent query against a database table.
@@ -998,7 +1001,7 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     /**
      * Get an option from the configuration options.
      */
-    getConfig<T extends DatabaseConfig>(): T;
+    getConfig<T extends ConnectionConfig>(): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
     getConfig<T>(option?: string, defaultValue?: T): T {
         return this.getDriverConnection().getConfig<T>(option, defaultValue);

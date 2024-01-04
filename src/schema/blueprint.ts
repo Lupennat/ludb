@@ -32,7 +32,12 @@ class Blueprint {
     /**
      * Create a new schema blueprint.
      */
-    public constructor(table: Stringable, protected grammar: Grammar, callback?: BlueprintCallback, prefix?: string) {
+    public constructor(
+        table: Stringable,
+        protected grammar: Grammar,
+        callback?: BlueprintCallback,
+        prefix?: string
+    ) {
         this.registry = createRegistry();
         this.registry.table = table;
         this.registry.prefix = prefix ?? '';

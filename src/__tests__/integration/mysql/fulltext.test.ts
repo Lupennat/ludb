@@ -1,9 +1,10 @@
-import { DB, currentDB, isMysql } from '../fixtures/config';
+import { DB, currentGenericDB, currentMysqlDB, isMysql } from '../fixtures/config';
 
 const maybe = isMysql() ? describe : describe.skip;
 
 maybe('Mysql FullText', () => {
-    const Schema = DB.connections[currentDB].getSchemaBuilder();
+    const currentDB = currentGenericDB as currentMysqlDB;
+    const Schema = DB.connection(currentDB).getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_fulltext_articles', table => {
@@ -13,24 +14,26 @@ maybe('Mysql FullText', () => {
             table.fulltext(['title', 'body']);
         });
 
-        await DB.connections[currentDB].table('test_fulltext_articles').insert([
-            { title: 'MySQL Tutorial', body: 'DBMS stands for DataBase ...' },
-            { title: 'How To Use MySQL Well', body: 'After you went through a ...' },
-            { title: 'Optimizing MySQL', body: 'In this tutorial, we show ...' },
-            { title: '1001 MySQL Tricks', body: '1. Never run mysqld as root. 2. ...' },
-            { title: 'MySQL vs. YourSQL', body: 'In the following database comparison ...' },
-            { title: 'MySQL Security', body: 'When configured properly, MySQL ...' }
-        ]);
+        await DB.connection(currentDB)
+            .table('test_fulltext_articles')
+            .insert([
+                { title: 'MySQL Tutorial', body: 'DBMS stands for DataBase ...' },
+                { title: 'How To Use MySQL Well', body: 'After you went through a ...' },
+                { title: 'Optimizing MySQL', body: 'In this tutorial, we show ...' },
+                { title: '1001 MySQL Tricks', body: '1. Never run mysqld as root. 2. ...' },
+                { title: 'MySQL vs. YourSQL', body: 'In the following database comparison ...' },
+                { title: 'MySQL Security', body: 'When configured properly, MySQL ...' }
+            ]);
     });
 
     afterAll(async () => {
         await Schema.drop('test_fulltext_articles');
-        await DB.connections[currentDB].disconnect();
+        await DB.connection(currentDB).disconnect();
     });
 
     /** @link https://dev.mysql.com/doc/refman/8.0/en/fulltext-natural-language.html */
     it('Works Where Fulltext', async () => {
-        const articles = await DB.connections[currentDB]
+        const articles = await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'database')
             .get();
@@ -42,7 +45,7 @@ maybe('Mysql FullText', () => {
 
     /** @link https://dev.mysql.com/doc/refman/8.0/en/fulltext-boolean.html */
     it('Works Where Fulltext With Boolean Mode', async () => {
-        const articles = await DB.connections[currentDB]
+        const articles = await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], '+MySQL -YourSQL', { mode: 'boolean' })
             .get();
@@ -52,7 +55,7 @@ maybe('Mysql FullText', () => {
 
     /** @link https://dev.mysql.com/doc/refman/8.0/en/fulltext-query-expansion.html */
     it('Works Where Fulltext With Expanded Query', async () => {
-        const articles = await DB.connections[currentDB]
+        const articles = await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'database', { expanded: true })
             .get();

@@ -1,7 +1,7 @@
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
-import { PostgresConfig } from '../types/config';
+import { FlattedConnectionConfig, PostgresConfig } from '../types/config';
 import { merge, parseSearchPath } from '../utils';
 import Connector from './connector';
 
@@ -9,7 +9,7 @@ class PostgresConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect(config: PostgresConfig): Pdo {
+    public connect(config: FlattedConnectionConfig<PostgresConfig>): Pdo {
         const attributes = this.getAttributes(config);
         const poolOptions = this.getPoolOptions(config);
 

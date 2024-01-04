@@ -1,9 +1,10 @@
-import { DB, currentDB, isMysql } from '../fixtures/config';
+import { DB, currentGenericDB, currentMysqlDB, isMysql } from '../fixtures/config';
 
 const maybe = isMysql() ? describe : describe.skip;
 
 maybe('Mysql Enum', () => {
-    const Schema = DB.connections[currentDB].getSchemaBuilder();
+    const currentDB = currentGenericDB as currentMysqlDB;
+    const Schema = DB.connection(currentDB).getSchemaBuilder();
 
     const isOld = (): boolean => {
         return currentDB === 'mysql57' || currentDB === 'maria1003';
@@ -20,7 +21,7 @@ maybe('Mysql Enum', () => {
 
     afterAll(async () => {
         await Schema.drop('test_enum_users');
-        await DB.connections[currentDB].disconnect();
+        await DB.connection(currentDB).disconnect();
     });
 
     it('Works Rename Column On Table With Enum', async () => {

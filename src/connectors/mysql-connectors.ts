@@ -1,7 +1,7 @@
 import { compareVersions } from 'compare-versions';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { MysqlOptions } from 'lupdo-mysql';
-import { MysqlConfig } from '../types/config';
+import { FlattedConnectionConfig, MysqlConfig } from '../types/config';
 import { merge } from '../utils';
 import Connector from './connector';
 
@@ -9,7 +9,7 @@ class MysqlConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect(config: MysqlConfig): Pdo {
+    public connect(config: FlattedConnectionConfig<MysqlConfig>): Pdo {
         const attributes = this.getAttributes(config);
         const poolOptions = this.getPoolOptions(config);
 

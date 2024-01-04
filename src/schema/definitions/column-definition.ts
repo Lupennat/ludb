@@ -5,7 +5,11 @@ import { createColumnRegistry } from '../registries';
 class ColumnDefinition {
     protected registry: ColumnRegistryI;
 
-    constructor(type: ColumnType, public name: Stringable, parameters: Partial<ColumnRegistryI>) {
+    constructor(
+        type: ColumnType,
+        public name: Stringable,
+        parameters: Partial<ColumnRegistryI>
+    ) {
         this.registry = createColumnRegistry(type);
         Object.assign(this.registry, parameters);
     }

@@ -49,7 +49,12 @@ class FakeRawConnection extends PdoRawConnection {
 }
 
 class FakePdoDriver extends PdoDriver {
-    constructor(driver: string, protected options: any, poolOptions: PoolOptions, attributes: PdoAttributes) {
+    constructor(
+        driver: string,
+        protected options: any,
+        poolOptions: PoolOptions,
+        attributes: PdoAttributes
+    ) {
         super(driver, poolOptions, attributes);
     }
     protected async createConnection(): Promise<PoolConnection> {

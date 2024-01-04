@@ -1,4 +1,5 @@
 export * from './connections';
+export { default as DatabaseManager } from './database-manager';
 export * from './errors';
 export * from './events';
 export * from './query';

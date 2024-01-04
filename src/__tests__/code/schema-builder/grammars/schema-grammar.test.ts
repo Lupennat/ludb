@@ -1,5 +1,6 @@
 import ColumnDefinition from '../../../../schema/definitions/column-definition';
 import CommandDefinition from '../../../../schema/definitions/commands/command-definition';
+import CommandForeignKeyDefinition from '../../../../schema/definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../../../../schema/definitions/commands/command-index-definition';
 import Grammar from '../../../../schema/grammars/grammar';
 import {
@@ -162,6 +163,17 @@ describe('Mysql Schema Grammar', () => {
         expect(() => {
             grammar.compileDropDomains();
         }).toThrow('This database driver does not support drop domains.');
+    });
+
+    it('Works Compile Drop Foreign', () => {
+        const grammar = new Grammar();
+        expect(() => {
+            grammar.compileDropForeign(
+                getMysqlBlueprint('test'),
+                getCommand() as CommandForeignKeyDefinition,
+                getConnection().sessionSchema()
+            );
+        }).toThrow('This database driver does not support foreign index removal.');
     });
 
     it('Works Compile Drop Foreign Keys', () => {

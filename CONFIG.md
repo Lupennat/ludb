@@ -26,11 +26,13 @@ import { DatabaseConfig } from 'ludb';
 import { ATTR_CASE, CASE_LOWER } from 'lupdo';
 
 const config: DatabaseConfig = {
-    default: 'mysql',
+    attributes:  {
+        [ATTR_CASE]: CASE_LOWER
+    },
     connections: {
         sqlite: {
             driver: 'sqlite',
-            database: 'DB_DATABASE',
+            database: 'path or memorty',
             prefix: '',
             prefix_indexes: true,
             foreign_key_constraints: false,
@@ -127,9 +129,7 @@ To see how read / write connections should be configured, let's look at this exa
             ],
         },
         write: {
-            host: [
-                '196.168.1.3',
-            ],
+            host: '196.168.1.3',
         },
         driver: 'mysql',
         database: 'database',
