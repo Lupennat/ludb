@@ -5,14 +5,9 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../fixtures/mocked';
 describe('QueryBuilder Select-From', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Basic Select', () => {
         let builder = getBuilder();
         builder.select('*').from('users');
@@ -63,13 +58,13 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Basic Select User Write Pdo', async () => {
         let builder = getMysqlBuilder();
-        let spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        let spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async () => []);
 
         await builder.useWritePdo().select('*').from('users').get();
         expect(spyConnection).toHaveBeenCalledWith('select * from `users`', [], false);
 
         builder = getMysqlBuilder();
-        spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async () => []);
 
         await builder.select('*').from('users').get();
         expect(spyConnection).toHaveBeenCalledWith('select * from `users`', [], true);

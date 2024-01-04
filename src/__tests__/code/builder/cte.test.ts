@@ -4,15 +4,10 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../fixtures/mocked';
 
 describe('QueryBuilder Cte', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works With Expressions', async () => {
         const posts = (query: GrammarBuilderI): GrammarBuilderI => {
             return query.from('posts');

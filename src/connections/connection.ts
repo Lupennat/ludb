@@ -9,21 +9,31 @@ import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
 import SchemaGrammar from '../schema/grammars/grammar';
 import BindToI from '../types/bind-to';
+import DatabaseConfig, { DatabaseConnectionOptions, ReadWriteType } from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
-
-import DatabaseConnections, { DatabaseConfig } from '../types/config';
+import ConnectorI from '../types/connector';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
 import { QueryAbleCallback } from '../types/query/grammar-builder';
 import QueryBuilderI from '../types/query/query-builder';
 import SchemaBuilderI from '../types/schema/builder/schema-builder';
-import { raw } from '../utils';
+import { merge, raw } from '../utils';
 import ConnectionSession from './connection-session';
 
-abstract class Connection implements DriverConnectionI {
+abstract class Connection<Config extends DatabaseConfig = DatabaseConfig> implements DriverConnectionI {
     /**
      * The active PDO connection used for reads.
      */
     protected readPdo: Pdo | null = null;
+
+    /**
+     * The active PDO connection used.
+     */
+    protected pdo!: Pdo;
+
+    /**
+     * The active Schema PDO connection used.
+     */
+    protected schemaPdo!: Pdo;
 
     /**
      * The event dispatcher instance.
@@ -36,22 +46,36 @@ abstract class Connection implements DriverConnectionI {
     protected beforeExecutingCallbacks: BeforeExecutingCallback[] = [];
 
     /**
+     * the connection table prefix
+     */
+    protected tablePrefix: string;
+
+    /**
+     * the connection database
+     */
+    protected database: string;
+
+    /**
      * Create a new database connection instance.
      */
-    public constructor(
-        protected name: string,
-        protected pdo: Pdo,
-        protected schemaPdo: Pdo,
-        protected config: DatabaseConfig,
-        protected database: string,
-        protected tablePrefix: string
-    ) {
-        // We need to initialize a query grammar and the schema grammar
-        // which are both very important parts of the database abstractions
-        // so we initialize these to their default values while starting.
+    public constructor(protected name: string, protected config: Config) {
+        this.config.prefix = this.config.prefix || '';
+        this.config.database = this.config.database || '';
+        this.tablePrefix = this.config.prefix;
+        this.database = this.config.database;
         this.setDefaultQueryGrammar();
         this.setDefaultSchemaGrammar();
+        if ('read' in this.config || 'write' in this.config) {
+            this.createReadWriteConnection();
+        } else {
+            this.createSingleConnection(this.config);
+        }
     }
+
+    /**
+     * create Connector
+     */
+    protected abstract createConnector(): ConnectorI;
 
     /**
      * set Default Query Grammar
@@ -66,7 +90,7 @@ abstract class Connection implements DriverConnectionI {
     /**
      * Get a schema builder instance for the connection.
      */
-    public abstract getSchemaBuilder(): SchemaBuilderI<ConnectionSessionI<this>>;
+    public abstract getSchemaBuilder(): SchemaBuilderI<ConnectionSessionI<DriverConnectionI>>;
 
     /**
      * Get the schema grammar used by the connection.
@@ -77,6 +101,87 @@ abstract class Connection implements DriverConnectionI {
      * Get the query grammar used by the connection.
      */
     public abstract getQueryGrammar(): Grammar;
+
+    /**
+     * Create a single database connection instance.
+     */
+    protected createSingleConnection(config: DatabaseConfig): void {
+        this.pdo = this.createPdoResolver(config);
+        this.schemaPdo = this.createPdoSchemaResolver(config);
+    }
+
+    /**
+     * Create a read / write database connection instance.
+     */
+    protected createReadWriteConnection(): void {
+        this.createSingleConnection(this.getWriteConfig());
+        this.readPdo = this.createReadPdo();
+    }
+
+    /**
+     * Create a new PDO instance for reading.
+     */
+    protected createReadPdo(): Pdo {
+        return this.createPdoResolver(this.getReadConfig());
+    }
+
+    /**
+     * Get the read configuration for a read / write connection.
+     */
+    protected getReadConfig(): DatabaseConfig {
+        return this.mergeReadWriteConfig(this.getReadWriteConfig('read'));
+    }
+
+    /**
+     * Get the write configuration for a read / write connection.
+     */
+    protected getWriteConfig(): DatabaseConfig {
+        return this.mergeReadWriteConfig(this.getReadWriteConfig('write'));
+    }
+
+    /**
+     * Get a read / write level configuration.
+     */
+    protected getReadWriteConfig(type: ReadWriteType): DatabaseConnectionOptions | undefined {
+        if (type in this.config) {
+            const options = { ...this.config[type] };
+            if (Array.isArray(options)) {
+                return options[Math.floor(Math.random() * options.length)];
+            } else {
+                return options;
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Merge a configuration for a read / write connection.
+     */
+    protected mergeReadWriteConfig(toMerge?: DatabaseConnectionOptions): DatabaseConfig {
+        const merged = merge<DatabaseConfig>(this.config, toMerge ?? {});
+        delete merged.read;
+        delete merged.write;
+
+        return merged;
+    }
+
+    /**
+     * Create a new PDO instance for Schema.
+     */
+    protected createPdoSchemaResolver(config: DatabaseConfig): Pdo {
+        return this.createConnector().connect(
+            Object.assign({}, config, {
+                pool: { min: 0, max: 1 }
+            })
+        );
+    }
+
+    /**
+     * Create a new PDO instance.
+     */
+    protected createPdoResolver(config: DatabaseConfig): Pdo {
+        return this.createConnector().connect(config);
+    }
 
     /**
      * Start Connection session for QueryBuilder
@@ -264,21 +369,14 @@ abstract class Connection implements DriverConnectionI {
     /**
      * Get an option from the configuration options.
      */
-    public getConfig<T extends DatabaseConnections>(): T;
+    public getConfig(): Config;
     public getConfig<T>(option?: string, defaultValue?: T): T;
-    public getConfig<T>(option?: string, defaultValue?: T): T {
+    public getConfig<T>(option?: string, defaultValue?: T): Config {
         if (option == null) {
-            return this.config as T;
+            return this.config;
         }
 
         return get(this.config, option as string) ?? defaultValue;
-    }
-
-    /**
-     * Get the PDO driver name.
-     */
-    public getDriverName(): string {
-        return this.getConfig<string>('driver');
     }
 
     /**
@@ -314,30 +412,10 @@ abstract class Connection implements DriverConnectionI {
     }
 
     /**
-     * Set the name of the connected database.
-     */
-    public setDatabaseName(database: string): this {
-        this.database = database;
-
-        return this;
-    }
-
-    /**
      * Get the table prefix for the connection.
      */
     public getTablePrefix(): string {
         return this.tablePrefix;
-    }
-
-    /**
-     * Set the table prefix in use by the connection.
-     */
-    public setTablePrefix(prefix: string): this {
-        this.tablePrefix = prefix;
-
-        this.getQueryGrammar().setTablePrefix(prefix);
-
-        return this;
     }
 
     /**

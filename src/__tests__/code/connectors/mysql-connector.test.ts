@@ -1,19 +1,27 @@
 import { Pdo } from 'lupdo';
+import MysqlConnection from '../../../connections/mysql-connection';
 import MysqlConnector from '../../../connectors/mysql-connectors';
-import { FakeConnection, pdo } from '../fixtures/mocked';
+import { FakeConnection } from '../fixtures/lupdo-fake';
 
 describe('Mysql Connector', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
+    const pdo = new Pdo('fake', {});
 
     it('Works Mysql Connector', async () => {
+        new MysqlConnection('fake', {
+            username: 'username',
+            password: 'secret',
+            host: 'foo',
+            database: 'bar',
+            port: 111,
+            unix_socket: 'baz',
+            charset: 'utf8'
+        });
+
         const connector = new MysqlConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'mysql',
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -52,7 +60,6 @@ describe('Mysql Connector', () => {
         let pdo = connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'mysql',
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -79,7 +86,6 @@ describe('Mysql Connector', () => {
         pdo = connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'mysql',
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -95,9 +101,9 @@ describe('Mysql Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new MysqlConnector();
-        await connector.configureIsolationLevel(fakeConnection, { driver: 'mysql' });
+        await connector.configureIsolationLevel(fakeConnection, {});
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureIsolationLevel(fakeConnection, { driver: 'mysql', isolation_level: 'READ COMMITTED' });
+        await connector.configureIsolationLevel(fakeConnection, { isolation_level: 'READ COMMITTED' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set session transaction isolation level READ COMMITTED');
     });
 
@@ -105,12 +111,11 @@ describe('Mysql Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new MysqlConnector();
-        await connector.configureEncoding(fakeConnection, { driver: 'mysql', collation: 'utf8_unicode_ci' });
+        await connector.configureEncoding(fakeConnection, { collation: 'utf8_unicode_ci' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureEncoding(fakeConnection, { driver: 'mysql', charset: 'utf8' });
+        await connector.configureEncoding(fakeConnection, { charset: 'utf8' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set names 'utf8'");
         await connector.configureEncoding(fakeConnection, {
-            driver: 'mysql',
             charset: 'utf8',
             collation: 'utf8_unicode_ci'
         });
@@ -121,9 +126,9 @@ describe('Mysql Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new MysqlConnector();
-        await connector.configureTimezone(fakeConnection, { driver: 'mysql' });
+        await connector.configureTimezone(fakeConnection, {});
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureTimezone(fakeConnection, { driver: 'mysql', timezone: 'Europe/Rome' });
+        await connector.configureTimezone(fakeConnection, { timezone: 'Europe/Rome' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set time_zone="Europe/Rome"');
     });
 
@@ -131,20 +136,17 @@ describe('Mysql Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new MysqlConnector();
-        await connector.setModes(fakeConnection, { driver: 'mysql' });
+        await connector.setModes(fakeConnection, {});
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.setModes(fakeConnection, {
-            driver: 'mysql',
             modes: ['ONLY_FULL_GROUP_BY', 'STRICT_TRANS_TABLES']
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES'");
         await connector.setModes(fakeConnection, {
-            driver: 'mysql',
             strict: false
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set session sql_mode='NO_ENGINE_SUBSTITUTION'");
         await connector.setModes(fakeConnection, {
-            driver: 'mysql',
             strict: true,
             version: '8.0.11'
         });
@@ -152,7 +154,6 @@ describe('Mysql Connector', () => {
             "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'"
         );
         await connector.setModes(fakeConnection, {
-            driver: 'mysql',
             strict: true
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith(

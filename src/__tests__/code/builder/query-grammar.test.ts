@@ -5,15 +5,10 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../fixtures/mocked';
 
 describe('QueryBuilder Select-From', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Basic Table Wrapping Protects Quotation Marks', () => {
         const builder = getBuilder();
         builder.select('*').from('some"table');
@@ -52,7 +47,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Mysql Can Combine Json On Update', async () => {
         const builder = getMysqlBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         const date = new Date('2019-08-06');
 
         builder
@@ -85,7 +80,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Mysql Update Wrapping Json', async () => {
         let builder = getMysqlBuilder();
-        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -97,7 +92,7 @@ describe('QueryBuilder Select-From', () => {
         );
 
         builder = getMysqlBuilder();
-        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -111,7 +106,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Mysql Update Wrapping Nested Json', async () => {
         const builder = getMysqlBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -125,7 +120,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Mysql Update Wrapping Json Array', async () => {
         const builder = getMysqlBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         const date = new Date('2019-08-06');
         await builder
@@ -155,7 +150,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Mysql Update Wrapping Json Path Array Index', async () => {
         const builder = getMysqlBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder.from('users').where('active', 1).update({
             'options->[1]->2fa': false,
@@ -171,7 +166,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Mysql Update With Json Prepares Bindings Correctly', async () => {
         let builder = getMysqlBuilder();
-        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder
             .from('users')
@@ -184,7 +179,7 @@ describe('QueryBuilder Select-From', () => {
         );
 
         builder = getMysqlBuilder();
-        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder
             .from('users')
@@ -197,7 +192,7 @@ describe('QueryBuilder Select-From', () => {
         );
 
         builder = getMysqlBuilder();
-        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder.from('users').update({ 'options->size': null });
         expect(spiedUpdate).toHaveBeenCalledTimes(1);
@@ -207,7 +202,7 @@ describe('QueryBuilder Select-From', () => {
         );
 
         builder = getMysqlBuilder();
-        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder.from('users').update({ 'options->size': new Raw('45') });
         expect(spiedUpdate).toHaveBeenCalledTimes(1);
@@ -226,7 +221,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Postgres Can Combine Json On Update', async () => {
         const builder = getPostgresBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         const date = new Date('2019-08-06');
 
         builder
@@ -259,7 +254,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Postgres Update Wrapping Json', async () => {
         let builder = getPostgresBuilder();
-        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -271,7 +266,7 @@ describe('QueryBuilder Select-From', () => {
         );
 
         builder = getPostgresBuilder();
-        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -285,7 +280,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Postgres Update Wrapping Nested Json', async () => {
         const builder = getPostgresBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -299,7 +294,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Postgres Update Wrapping Json Array', async () => {
         const builder = getPostgresBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         const date = new Date('2019-08-06');
         await builder
@@ -334,7 +329,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Postgres Update Wrapping Json Path Array Index', async () => {
         const builder = getPostgresBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder.from('users').where('active', 1).update({
             'options->[1]->2fa': false,
@@ -350,7 +345,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlite Can Combine Json On Update', async () => {
         const builder = getSqliteBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         const date = new Date('2019-08-06');
 
         builder
@@ -383,7 +378,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlite Update Wrapping Json', async () => {
         let builder = getSqliteBuilder();
-        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -395,7 +390,7 @@ describe('QueryBuilder Select-From', () => {
         );
 
         builder = getSqliteBuilder();
-        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -409,7 +404,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlite Update Wrapping Nested Json', async () => {
         const builder = getSqliteBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -423,7 +418,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlite Update Wrapping Json Array', async () => {
         const builder = getSqliteBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         const date = new Date('2019-08-06');
         await builder
@@ -455,7 +450,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlite Update Wrapping Json Path Array Index', async () => {
         const builder = getSqliteBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder.from('users').where('active', 1).update({
             'options->[1]->2fa': false,
@@ -471,7 +466,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlserver Can Combine Json On Update', async () => {
         const builder = getSqlserverBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         const date = new Date('2019-08-06');
 
         builder
@@ -504,7 +499,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlserver Update Wrapping Json', async () => {
         let builder = getSqlserverBuilder();
-        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        let spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -516,7 +511,7 @@ describe('QueryBuilder Select-From', () => {
         );
 
         builder = getSqlserverBuilder();
-        spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -530,7 +525,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlserver Update Wrapping Nested Json', async () => {
         const builder = getSqlserverBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         await builder
             .from('users')
             .where('active', '=', 1)
@@ -544,7 +539,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlserver Update Wrapping Json Array', async () => {
         const builder = getSqlserverBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         const date = new Date('2019-08-06');
         await builder
@@ -577,7 +572,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlserver Update Wrapping Json Path Array Index', async () => {
         const builder = getSqlserverBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder.from('users').where('active', 1).update({
             'options->[1]->2fa': false,
@@ -593,7 +588,7 @@ describe('QueryBuilder Select-From', () => {
 
     it('Works Sqlserver Update Json With Nullable', async () => {
         const builder = getSqlserverBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
 
         await builder.from('users').where('active', 1).update({
             'options->[1]': null,

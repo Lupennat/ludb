@@ -7,10 +7,11 @@ import { Grammar } from '../query';
 import ExpressionContract from '../query/expression-contract';
 import { SchemaGrammar } from '../schema';
 import BindToI from './bind-to';
-import { DatabaseConfig } from './config';
+import DatabaseConfig from './config';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from './generics';
 import { QueryAbleCallback } from './query/grammar-builder';
 import QueryBuilderI from './query/query-builder';
+import SchemaBuilderI from './schema/builder/schema-builder';
 
 export type BeforeExecutingCallback = (
     query: string,
@@ -173,11 +174,6 @@ interface BaseConnection {
     getConfig<T>(option?: string, defaultValue?: T): T;
 
     /**
-     * Get the PDO driver name.
-     */
-    getDriverName(): string;
-
-    /**
      * Get the event dispatcher used by the connection.
      */
     getEventDispatcher(): EventEmitter | undefined;
@@ -237,7 +233,7 @@ export default interface DriverConnectionI extends BaseConnection {
     /**
      * Get a schema builder instance for the connection.
      */
-    // getSchemaBuilder(): SchemaBuilderI<ConnectionSessionI<DriverConnectionI>>;
+    getSchemaBuilder(): SchemaBuilderI<ConnectionSessionI<DriverConnectionI>>;
 
     /**
      * Register a hook to be run just before a database query is executed.
@@ -280,16 +276,6 @@ export default interface DriverConnectionI extends BaseConnection {
     unsetEventDispatcher(): this;
 
     /**
-     * Set the name of the connected database.
-     */
-    setDatabaseName(database: string): this;
-
-    /**
-     * Set the table prefix in use by the connection.
-     */
-    setTablePrefix(prefix: string): this;
-
-    /**
      * Get the schema grammar used by the connection.
      */
     getSchemaGrammar(): SchemaGrammar;
@@ -325,6 +311,10 @@ export default interface DriverConnectionI extends BaseConnection {
 
 export interface ConnectionSessionI<DriverConnection extends DriverConnectionI = DriverConnectionI>
     extends BaseConnection {
+    /**
+     * Get the Driver Connection of current session
+     */
+    getDriverConnection(): DriverConnection;
     /**
      * Detect if session is for Schema QueryBuilder
      */

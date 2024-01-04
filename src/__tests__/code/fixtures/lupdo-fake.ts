@@ -1,4 +1,4 @@
-import { PdoConnection, PdoConnectionI, PdoDriver, PdoRawConnection, PdoRawConnectionI } from 'lupdo';
+import { Pdo, PdoConnection, PdoConnectionI, PdoDriver, PdoRawConnection, PdoRawConnectionI } from 'lupdo';
 import PdoAffectingData from 'lupdo/dist/typings/types/pdo-affecting-data';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import PdoColumnData from 'lupdo/dist/typings/types/pdo-column-data';
@@ -48,7 +48,7 @@ class FakeRawConnection extends PdoRawConnection {
     }
 }
 
-class FakePdo extends PdoDriver {
+class FakePdoDriver extends PdoDriver {
     constructor(driver: string, protected options: any, poolOptions: PoolOptions, attributes: PdoAttributes) {
         super(driver, poolOptions, attributes);
     }
@@ -75,4 +75,4 @@ class FakePdo extends PdoDriver {
     }
 }
 
-export default FakePdo;
+Pdo.addDriver('fake', FakePdoDriver);

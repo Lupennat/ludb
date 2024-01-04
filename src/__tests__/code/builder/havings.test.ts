@@ -1,17 +1,13 @@
 import Raw from '../../../query/expression';
-import { ObjectArrayable, getBuilder, getMysqlBuilder, pdo } from '../fixtures/mocked';
+import { ObjectArrayable, getBuilder, getMysqlBuilder } from '../fixtures/mocked';
 
 describe('QueryBuilder Havings', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Having Aggregate', async () => {
         const expected =
             'select count(*) as aggregate from (select (select `count(*)` from `videos` where `posts`.`id` = `videos`.`post_id`) as `videos_count` from `posts` having `videos_count` > ?) as `temp_table`';
         const builder = getMysqlBuilder();
 
-        const spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        const spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementationOnce(async () => []);
         const spyConnectionDatabase = jest.spyOn(builder.getConnection(), 'getDatabaseName');
 
         builder

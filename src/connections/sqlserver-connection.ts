@@ -1,9 +1,11 @@
+import SqlserverConnector from '../connectors/sqlserver-connector';
 import SqlserverGrammar from '../query/grammars/sqlserver-grammar';
 import SchemaBuilder from '../schema/builders/sqlserver-builder';
 import SchemaGrammar from '../schema/grammars/sqlserver-grammar';
+import { SqlserverConfig } from '../types/config';
 import Connection from './connection';
 
-class SqlserverConnection extends Connection {
+class SqlserverConnection extends Connection<SqlserverConfig> {
     /**
      * The query grammar implementation.
      */
@@ -13,6 +15,13 @@ class SqlserverConnection extends Connection {
      * The schema grammar implementation.
      */
     protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * create Connector
+     */
+    protected createConnector(): SqlserverConnector {
+        return new SqlserverConnector();
+    }
 
     /**
      * set Default Query Grammar

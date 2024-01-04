@@ -13,13 +13,9 @@ import {
     WhereMultiColumn,
     whereFulltext
 } from '../../../types/query/registry';
-import { getBuilder, getJoin, pdo } from '../fixtures/mocked';
+import { getBuilder, getJoin } from '../fixtures/mocked';
 
 describe('QueryBuilder Registry', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Registry', () => {
         expect(createRegistry()).toEqual({
             useWritePdo: false,

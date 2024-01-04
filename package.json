@@ -46,7 +46,7 @@
         "build:types": "tsc -p ./typescript/tsconfig.types.json",
         "clean": "rimraf ./dist",
         "docs": "npx typedoc --logLevel Error --excludeExternals --excludeProtected --excludePrivate --readme none src/index.ts",
-        "test:code": "npm run lint && jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --config test/jest.config.js ",
+        "test:code": "jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --config test/jest.config.js ",
         "test:coverage": "npm run lint && jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --coverage --config test/jest.config.js",
         "test:integration": "npm run lint && jest --runInBand --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
         "test:integration:mysql57": "npm run lint && cross-env DB=mysql57 jest --runInBand --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",

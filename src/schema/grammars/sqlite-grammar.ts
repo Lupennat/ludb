@@ -34,6 +34,13 @@ class SqliteGrammar extends Grammar {
     protected commands: CommandType[] = [];
 
     /**
+     * check if this Grammar supports drop foreign for table changes.
+     */
+    public supportsDropForeign(): boolean {
+        return false;
+    }
+
+    /**
      * Compile the query to determine if the dbstat table is available.
      */
     public compileDbstatExists(): string {

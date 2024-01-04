@@ -1160,10 +1160,10 @@ class Grammar extends BaseGrammar {
     }
 
     /**
-     * Check if this Grammar supports schema changes wrapped in a transaction.
+     * check if this Grammar supports drop foreign for table changes.
      */
-    public supportsSchemaTransactions(): boolean {
-        return this.transactions;
+    public supportsDropForeign(): boolean {
+        return true;
     }
 }
 

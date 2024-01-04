@@ -1,9 +1,11 @@
+import SqliteConnector from '../connectors/sqlite-connector';
 import SqliteGrammar from '../query/grammars/sqlite-grammar';
 import SchemaBuilder from '../schema/builders/sqlite-builder';
 import SchemaGrammar from '../schema/grammars/sqlite-grammar';
+import { SqliteConfig } from '../types/config';
 import Connection from './connection';
 
-class SqliteConnection extends Connection {
+class SqliteConnection extends Connection<SqliteConfig> {
     /**
      * The query grammar implementation.
      */
@@ -13,6 +15,13 @@ class SqliteConnection extends Connection {
      * The schema grammar implementation.
      */
     protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * create Connector
+     */
+    protected createConnector(): SqliteConnector {
+        return new SqliteConnector();
+    }
 
     /**
      * set Default Query Grammar

@@ -3,15 +3,10 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../fixtures/mocked';
 
 describe('QueryBuilder Unions', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Unions', () => {
         let builder = getBuilder();
 
@@ -182,35 +177,35 @@ describe('QueryBuilder Unions', () => {
         let expected =
             'select count(*) as aggregate from ((select * from `posts`) union (select * from `videos`)) as `temp_table`';
         let builder = getMysqlBuilder();
-        let spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        let spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementation(async () => []);
         await builder.from('posts').union(getMysqlBuilder().from('videos')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from ((select `id` from `posts`) union (select `id` from `videos`)) as `temp_table`';
         builder = getMysqlBuilder();
-        spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementation(async () => []);
         await builder.from('posts').select('id').union(getMysqlBuilder().from('videos').select('id')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from ((select * from "posts") union (select * from "videos")) as "temp_table"';
         builder = getPostgresBuilder();
-        spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementation(async () => []);
         await builder.from('posts').union(getPostgresBuilder().from('videos')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from (select * from (select * from "posts") union select * from (select * from "videos")) as "temp_table"';
         builder = getSqliteBuilder();
-        spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementation(async () => []);
         await builder.from('posts').union(getSqliteBuilder().from('videos')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
 
         expected =
             'select count(*) as aggregate from (select * from (select * from [posts]) as [temp_table] union select * from (select * from [videos]) as [temp_table]) as [temp_table]';
         builder = getSqlserverBuilder();
-        spyConnection = jest.spyOn(builder.getConnection(), 'select');
+        spyConnection = jest.spyOn(builder.getConnection(), 'select').mockImplementation(async () => []);
         await builder.from('posts').union(getSqlserverBuilder().from('videos')).count();
         expect(spyConnection).toHaveBeenCalledWith(expected, [], true);
     });

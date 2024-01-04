@@ -1,15 +1,15 @@
+import { Pdo } from 'lupdo';
+import SqlserverConnection from '../../../connections/sqlserver-connection';
 import SqlserverConnector from '../../../connectors/sqlserver-connector';
-import { pdo } from '../fixtures/mocked';
 
 describe('Sqlserver Connector', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
+    const pdo = new Pdo('fake', {});
 
     it('Works Sqlserver Connect Calls Create Connection With Proper Arguments', () => {
+        new SqlserverConnection('fake', { host: 'foo', database: 'bar', port: 111 });
         const connector = new SqlserverConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
-        connector.connect({ driver: 'sqlsrv', host: 'foo', database: 'bar', port: 111 });
+        connector.connect({ host: 'foo', database: 'bar', port: 111 });
         expect(spiedConnection).toHaveBeenLastCalledWith(
             'mssql',
             {
@@ -36,7 +36,6 @@ describe('Sqlserver Connector', () => {
         const connector = new SqlserverConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
-            driver: 'sqlsrv',
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -88,7 +87,6 @@ describe('Sqlserver Connector', () => {
         const connector = new SqlserverConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
-            driver: 'sqlsrv',
             username: 'sa'
         });
         expect(spiedConnection).toHaveBeenLastCalledWith(
@@ -113,7 +111,6 @@ describe('Sqlserver Connector', () => {
             { ATTR_CASE: 1, ATTR_DEBUG: 1, ATTR_NULLS: 1 }
         );
         connector.connect({
-            driver: 'sqlsrv',
             password: 'secret'
         });
         expect(spiedConnection).toHaveBeenLastCalledWith(

@@ -23,17 +23,13 @@ import {
     getMysqlConnection,
     getPostgresConnection,
     getSqliteConnection,
-    getSqlserverConnection,
-    pdo
+    getSqlserverConnection
 } from '../fixtures/mocked';
 
 describe('Connection', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Disconnect Should Disconnect pdos', async () => {
         const connection = getConnection();
+        const pdo = new Pdo('fake', {});
 
         let spiedPdo = jest.spyOn(connection, 'getPdo');
         let spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
@@ -56,7 +52,7 @@ describe('Connection', () => {
 
     it('Works Reconnect Should Reconnect pdos', async () => {
         const connection = getConnection();
-
+        const pdo = new Pdo('fake', {});
         let spiedPdo = jest.spyOn(connection, 'getPdo');
         let spiedSchemaPdo = jest.spyOn(connection, 'getSchemaPdo');
         let spiedReadPdo = jest.spyOn(connection, 'getReadPdo');
@@ -113,16 +109,11 @@ describe('Connection', () => {
     });
 
     it('Works Schema QueryBuilder', () => {
-        let connection = getConnection();
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
-        connection = getMysqlConnection();
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(MysqlBuilder);
-        connection = getPostgresConnection();
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(PostgresBuilder);
-        connection = getSqliteConnection();
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(SqliteBuilder);
-        connection = getSqlserverConnection();
-        expect(connection.getSchemaBuilder()).toBeInstanceOf(SqlserverBuilder);
+        expect(getConnection().getSchemaBuilder()).toBeInstanceOf(SchemaBuilder);
+        expect(getMysqlConnection().getSchemaBuilder()).toBeInstanceOf(MysqlBuilder);
+        expect(getPostgresConnection().getSchemaBuilder()).toBeInstanceOf(PostgresBuilder);
+        expect(getSqliteConnection().getSchemaBuilder()).toBeInstanceOf(SqliteBuilder);
+        expect(getSqlserverConnection().getSchemaBuilder()).toBeInstanceOf(SqlserverBuilder);
     });
 
     it('Works Event Dispatcher', () => {
@@ -136,6 +127,7 @@ describe('Connection', () => {
     });
 
     it('Works Bind Values', async () => {
+        const pdo = new Pdo('fake', {});
         const connection = getConnection();
         let statement = await pdo.prepare('select * from users where name = ?');
         let spiedBindValue = jest.spyOn(statement, 'bindValue');
@@ -151,9 +143,11 @@ describe('Connection', () => {
         expect(spiedBindValue).toHaveBeenNthCalledWith(1, 'name', null);
         expect(spiedBindValue).toHaveBeenNthCalledWith(2, 'date', date);
         await statement.close();
+        await pdo.disconnect();
     });
 
     it('Works Bind Expression Value Throw An Error', async () => {
+        const pdo = new Pdo('fake', {});
         const connection = getConnection();
         let statement = await pdo.prepare('select * from users where name = ?');
         expect(() => {
@@ -170,6 +164,7 @@ describe('Connection', () => {
         }).toThrow('Expression binding can not be binded directly to statement.');
 
         await statement.close();
+        await pdo.disconnect();
     });
 
     it('Works Prepare Bindings', () => {
@@ -256,7 +251,6 @@ describe('Connection', () => {
         const connection = getConnection('prefix_');
         expect(connection.getConfig()).toEqual({
             database: 'database',
-            driver: 'fake',
             pool: { killResource: false },
             prefix: 'prefix_'
         });
@@ -267,19 +261,11 @@ describe('Connection', () => {
     it('Works Database Name', () => {
         const connection = getConnection();
         expect(connection.getDatabaseName()).toBe('database');
-        connection.setDatabaseName('test-db');
-        expect(connection.getDatabaseName()).toBe('test-db');
     });
 
     it('Works Table Prefix', () => {
-        class TestGrammar extends Grammar {}
-        const grammar = new TestGrammar();
-        const spiedTablePrefix = jest.spyOn(grammar, 'setTablePrefix');
         const connection = getConnection();
         expect(connection.getTablePrefix()).toBe('prefix_');
-        connection.setTablePrefix('test-prefix');
-        expect(connection.getTablePrefix()).toBe('test-prefix');
-        expect(spiedTablePrefix).not.toHaveBeenCalled();
     });
 
     it('Works Table', () => {
@@ -304,7 +290,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'selectOne');
+        const spiedSession = jest.spyOn(session, 'selectOne').mockImplementation();
         await connection.selectOne('select * from users', [], false);
         expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
@@ -313,7 +299,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'scalar');
+        const spiedSession = jest.spyOn(session, 'scalar').mockImplementation();
         await connection.scalar('select * from users', [], false);
         expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
@@ -322,7 +308,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'select');
+        const spiedSession = jest.spyOn(session, 'select').mockImplementation();
         await connection.select('select * from users', [], false);
         expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
@@ -331,7 +317,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'selectColumn');
+        const spiedSession = jest.spyOn(session, 'selectColumn').mockImplementation();
         await connection.selectColumn(0, 'select * from users', [], false);
         expect(spiedSession).toHaveBeenCalledWith(0, 'select * from users', [], false);
     });
@@ -340,7 +326,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'selectResultSets');
+        const spiedSession = jest.spyOn(session, 'selectResultSets').mockImplementation();
         await connection.selectResultSets('CALL a_procedure(?)', [], false);
         expect(spiedSession).toHaveBeenCalledWith('CALL a_procedure(?)', [], false);
     });
@@ -349,7 +335,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'selectFromWriteConnection');
+        const spiedSession = jest.spyOn(session, 'selectFromWriteConnection').mockImplementation();
         await connection.selectFromWriteConnection('select * from users', []);
         expect(spiedSession).toHaveBeenCalledWith('select * from users', []);
     });
@@ -358,7 +344,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'cursor');
+        const spiedSession = jest.spyOn(session, 'cursor').mockImplementation();
         await connection.cursor('select * from users', [], false);
         expect(spiedSession).toHaveBeenCalledWith('select * from users', [], false);
     });
@@ -367,7 +353,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'insert');
+        const spiedSession = jest.spyOn(session, 'insert').mockImplementation(async () => true);
         await connection.insert('insert into "users" ("email") values (?)', ['foo']);
         expect(spiedSession).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo']);
     });
@@ -376,7 +362,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'insertGetId');
+        const spiedSession = jest.spyOn(session, 'insertGetId').mockImplementation(async () => 1);
         await connection.insertGetId('insert into "users" ("email") values (?)', ['foo'], 'id');
         expect(spiedSession).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo'], 'id');
     });
@@ -385,7 +371,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'update');
+        const spiedSession = jest.spyOn(session, 'update').mockImplementation(async () => 1);
         await connection.update('update "users" set "email" = ?, "name" = ? where "id" = ?', ['foo', 'bar', 1]);
         expect(spiedSession).toHaveBeenCalledWith('update "users" set "email" = ?, "name" = ? where "id" = ?', [
             'foo',
@@ -398,7 +384,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'delete');
+        const spiedSession = jest.spyOn(session, 'delete').mockImplementation(async () => 1);
         await connection.delete('delete from "users" where "email" = ?', ['foo']);
         expect(spiedSession).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
     });
@@ -407,7 +393,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'statement');
+        const spiedSession = jest.spyOn(session, 'statement').mockImplementation(async () => true);
         await connection.statement('insert into "users" ("email") values (?)', ['foo']);
         expect(spiedSession).toHaveBeenCalledWith('insert into "users" ("email") values (?)', ['foo']);
     });
@@ -416,7 +402,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'affectingStatement');
+        const spiedSession = jest.spyOn(session, 'affectingStatement').mockImplementation(async () => 1);
         await connection.affectingStatement('delete from "users" where "email" = ?', ['foo']);
         expect(spiedSession).toHaveBeenCalledWith('delete from "users" where "email" = ?', ['foo']);
     });
@@ -425,7 +411,7 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'unprepared');
+        const spiedSession = jest.spyOn(session, 'unprepared').mockImplementation(async () => true);
         await connection.unprepared('delete from "users" where "email" = "foo"');
         expect(spiedSession).toHaveBeenCalledWith('delete from "users" where "email" = "foo"');
     });
@@ -448,6 +434,7 @@ describe('Connection', () => {
         const callback = (): void => {};
         await connection.transaction(callback, 2);
         expect(spiedSession).toHaveBeenCalledWith(callback, 2);
+        await connection.disconnect();
     });
 
     it('Works Begin Transaction', async () => {
@@ -459,6 +446,7 @@ describe('Connection', () => {
         expect(sess).toEqual(session);
         expect(spiedSession).toHaveBeenCalled();
         await sess.rollBack();
+        await connection.disconnect();
     });
 
     it('Works Use Write Connection When Reading', () => {

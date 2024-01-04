@@ -1,11 +1,7 @@
 import Raw from '../../../query/expression';
-import { getBuilder, getSqlserverBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getSqlserverBuilder } from '../fixtures/mocked';
 
 describe('QueryBuilder Joins', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Limits And Offsets', () => {
         let builder = getBuilder();
         builder.select('*').from('users').offset(5).limit(10);

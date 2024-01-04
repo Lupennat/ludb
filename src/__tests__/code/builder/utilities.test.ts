@@ -9,15 +9,10 @@ import {
     getConnection,
     getGrammarBuilder,
     getJoin,
-    getMysqlBuilder,
-    pdo
+    getMysqlBuilder
 } from '../fixtures/mocked';
 
 describe('QueryBuilder Utilities', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works QueryBuilder Get Grammar From Connection Session', () => {
         const session = getConnection().session();
         const spiedGrammar = jest.spyOn(session, 'getQueryGrammar');
@@ -222,7 +217,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Insert', async () => {
         const builder = getBuilder();
-        const spiedInsert = jest.spyOn(builder.getConnection(), 'insert');
+        const spiedInsert = jest.spyOn(builder.getConnection(), 'insert').mockImplementation();
         builder.beforeQuery(function (builder) {
             builder.from('users');
         });
@@ -233,7 +228,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Insert Get Id', async () => {
         const builder = getBuilder();
-        const spiedInsert = jest.spyOn(builder.getConnection(), 'insertGetId');
+        const spiedInsert = jest.spyOn(builder.getConnection(), 'insertGetId').mockImplementation();
         builder.beforeQuery(function (builder) {
             builder.from('users');
         });
@@ -244,7 +239,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Insert Using', async () => {
         const builder = getBuilder();
-        const spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
+        const spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementation();
         builder.beforeQuery(function (builder) {
             builder.from('users');
         });
@@ -255,7 +250,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Upsert', async () => {
         let builder = getMysqlBuilder();
-        let spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
+        let spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementation();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(() => false);
         builder.beforeQuery(function (builder) {
             builder.from('users');
@@ -268,7 +263,7 @@ describe('QueryBuilder Utilities', () => {
         );
 
         builder = getMysqlBuilder();
-        spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement');
+        spiedAffecting = jest.spyOn(builder.getConnection(), 'affectingStatement').mockImplementation();
         jest.spyOn(builder.getConnection(), 'getConfig').mockImplementationOnce(() => true);
         builder.beforeQuery(function (builder) {
             builder.from('users');
@@ -283,7 +278,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Update', async () => {
         const builder = getBuilder();
-        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update');
+        const spiedUpdate = jest.spyOn(builder.getConnection(), 'update').mockImplementation();
         builder.from('users').beforeQuery(function (builder) {
             builder.where('id', 1);
         });
@@ -294,7 +289,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Delete', async () => {
         const builder = getBuilder();
-        const spiedDelete = jest.spyOn(builder.getConnection(), 'delete');
+        const spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementation();
         builder.beforeQuery(function (builder) {
             builder.from('users');
         });
@@ -305,7 +300,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Truncate', async () => {
         const builder = getBuilder();
-        const spiedStatement = jest.spyOn(builder.getConnection(), 'statement');
+        const spiedStatement = jest.spyOn(builder.getConnection(), 'statement').mockImplementation();
         builder.beforeQuery(function (builder) {
             builder.from('users');
         });
@@ -316,7 +311,7 @@ describe('QueryBuilder Utilities', () => {
 
     it('Works Preserved Are Applied By Exists', async () => {
         const builder = getBuilder();
-        const spiedSelect = jest.spyOn(builder.getConnection(), 'select');
+        const spiedSelect = jest.spyOn(builder.getConnection(), 'select').mockReturnValue(Promise.resolve([]));
         builder.beforeQuery(function (builder) {
             builder.from('users');
         });

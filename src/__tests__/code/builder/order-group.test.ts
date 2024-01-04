@@ -6,15 +6,10 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../fixtures/mocked';
 
 describe('QueryBuilder Order-Group', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Group Bys', () => {
         let builder = getBuilder();
         builder.select('*').from('users').groupBy('email');

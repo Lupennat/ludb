@@ -7,6 +7,7 @@ import {
     getMysqlBlueprint,
     getPostgresBlueprint,
     getSqliteBlueprint,
+    getSqliteConnection,
     getSqlserverBlueprint
 } from '../fixtures/mocked';
 
@@ -662,7 +663,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrow('This database driver does not support foreign index removal.');
+        }).toThrow("Sqlite doesn't support dropping foreign keys (you would need to re-create the table).");
         blueprint = getSqlserverBlueprint('posts', table => {
             table.dropForeignIdFor(new User());
         });
@@ -670,8 +671,7 @@ describe('Blueprint', () => {
     });
 
     it('Works Drop Foreign not valid on sqlite', () => {
-        const connection = getConnection().sessionSchema();
-        jest.spyOn(connection, 'getDriverName').mockReturnValueOnce('sqlite');
+        const connection = getSqliteConnection().sessionSchema();
         const blueprint = getSqliteBlueprint('users', table => {
             table.dropForeign('test');
         });
@@ -707,7 +707,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrow('This database driver does not support foreign index removal.');
+        }).toThrow("Sqlite doesn't support dropping foreign keys (you would need to re-create the table).");
         blueprint = getSqlserverBlueprint('posts', table => {
             table.dropForeignIdFor(new User());
         });
@@ -746,7 +746,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrow('This database driver does not support foreign index removal.');
+        }).toThrow("Sqlite doesn't support dropping foreign keys (you would need to re-create the table).");
         blueprint = getSqlserverBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(new User());
         });
@@ -788,7 +788,7 @@ describe('Blueprint', () => {
         });
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrow('This database driver does not support foreign index removal.');
+        }).toThrow("Sqlite doesn't support dropping foreign keys (you would need to re-create the table).");
         blueprint = getSqlserverBlueprint('posts', table => {
             table.dropConstrainedForeignIdFor(new User());
         });

@@ -4,15 +4,10 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../../fixtures/mocked';
 
 describe('QueryBuilder Methods Modify', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Insert Method', async () => {
         const builder = getBuilder();
 
@@ -750,7 +745,7 @@ describe('QueryBuilder Methods Modify', () => {
 
     it('Works Upsert Without Update Columns Call Insert', async () => {
         const builder = getMysqlBuilder();
-        const spiedInsert = jest.spyOn(builder, 'insert');
+        const spiedInsert = jest.spyOn(builder, 'insert').mockImplementation(async () => true);
         expect(
             await builder.upsert(
                 [
@@ -1386,6 +1381,7 @@ describe('QueryBuilder Methods Modify', () => {
 
     it('Works Increment', async () => {
         const builder = getBuilder();
+        jest.spyOn(builder, 'update').mockImplementation(async () => 1);
         const spiedEach = jest.spyOn(builder, 'incrementEach');
         await builder.increment('votes');
         expect(spiedEach).toHaveBeenLastCalledWith({ votes: 1 }, {});
@@ -1402,7 +1398,7 @@ describe('QueryBuilder Methods Modify', () => {
 
     it('Works Increment Each', async () => {
         const builder = getBuilder();
-        const spiedUpdate = jest.spyOn(builder, 'update');
+        const spiedUpdate = jest.spyOn(builder, 'update').mockImplementation(async () => 2);
 
         await builder.incrementEach({
             votes: 2,
@@ -1436,6 +1432,7 @@ describe('QueryBuilder Methods Modify', () => {
 
     it('Works Decrement', async () => {
         const builder = getBuilder();
+        jest.spyOn(builder, 'update').mockImplementation(async () => 2);
         const spiedEach = jest.spyOn(builder, 'decrementEach');
         await builder.decrement('votes');
         expect(spiedEach).toHaveBeenLastCalledWith({ votes: 1 }, {});
@@ -1452,7 +1449,7 @@ describe('QueryBuilder Methods Modify', () => {
 
     it('Works Decrement Each', async () => {
         const builder = getBuilder();
-        const spiedUpdate = jest.spyOn(builder, 'update');
+        const spiedUpdate = jest.spyOn(builder, 'update').mockImplementation(async () => 2);
 
         await builder.decrementEach({
             votes: 2,

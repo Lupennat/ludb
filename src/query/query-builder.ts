@@ -787,7 +787,7 @@ class QueryBuilder extends CommonGrammarBuilder implements QueryBuilderI {
     public async exists(): Promise<boolean> {
         this.applyBeforeQueryCallbacks();
 
-        const results = await this.getConnection().select(
+        const results = await this.getConnection().select<{ exists: boolean }>(
             this.getGrammar().compileExists(this),
             this.getBindings(),
             !this.registry.useWritePdo

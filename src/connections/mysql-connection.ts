@@ -1,9 +1,11 @@
+import MysqlConnector from '../connectors/mysql-connectors';
 import MysqlGrammar from '../query/grammars/mysql-grammar';
 import SchemaBuilder from '../schema/builders/mysql-builder';
 import SchemaGrammar from '../schema/grammars/mysql-grammar';
+import { MysqlConfig } from '../types/config';
 import Connection from './connection';
 
-class MysqlConnection extends Connection {
+class MysqlConnection extends Connection<MysqlConfig> {
     /**
      * The query grammar implementation.
      */
@@ -13,6 +15,13 @@ class MysqlConnection extends Connection {
      * The schema grammar implementation.
      */
     protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * create Connector
+     */
+    protected createConnector(): MysqlConnector {
+        return new MysqlConnector();
+    }
 
     /**
      * set Default Query Grammar

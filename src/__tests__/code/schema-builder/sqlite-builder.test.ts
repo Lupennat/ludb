@@ -1,5 +1,4 @@
 import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
-
 import SqliteGrammar from '../../../query/grammars/sqlite-grammar';
 import { MockedSqliteSchemaBuilder, getSqliteConnection } from '../fixtures/mocked';
 

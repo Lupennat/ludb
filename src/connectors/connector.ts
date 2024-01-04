@@ -1,10 +1,11 @@
 import { ATTR_CASE, ATTR_DEBUG, ATTR_NULLS, CASE_NATURAL, DEBUG_DISABLED, NULL_NATURAL, Pdo } from 'lupdo';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
-import { DatabaseConfig } from '../types/config';
+import DatabaseConfig from '../types/config';
+import ConnectorI from '../types/connector';
 import { merge } from '../utils';
 
-abstract class Connector {
+abstract class Connector implements ConnectorI {
     /**
      * The default PDO connection attributes.
      */

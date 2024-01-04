@@ -525,9 +525,4 @@ describe('Mysql Schema Grammar', () => {
             grammar.compileModifyVirtualAs(getMysqlBlueprint('test'), new ColumnDefinition('string', 'test', {}));
         }).toThrow('this database driver does not support virtual as column modifier.');
     });
-
-    it('Works Supports Schema Transactions', () => {
-        const grammar = new Grammar();
-        expect(grammar.supportsSchemaTransactions()).toBeFalsy();
-    });
 });

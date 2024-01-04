@@ -2,7 +2,7 @@ import Cursor from '../../../paginations/cursor';
 import CursorPaginator from '../../../paginations/cursor-paginator';
 import LengthAwarePaginator from '../../../paginations/length-aware-paginator';
 import Paginator from '../../../paginations/paginator';
-import { MockedBuilder, getBuilder, pdo } from '../fixtures/mocked';
+import { MockedBuilder, getBuilder } from '../fixtures/mocked';
 
 describe('QueryBuilder Paginate', () => {
     const path = 'http://foo.bar?page=3';
@@ -11,10 +11,6 @@ describe('QueryBuilder Paginate', () => {
         Paginator.currentPathResolver(() => {
             return path;
         });
-    });
-
-    afterAll(async () => {
-        await pdo.disconnect();
     });
 
     it('Works Get Count For Pagination', async () => {

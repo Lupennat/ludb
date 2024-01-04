@@ -1,22 +1,12 @@
 import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStatementI } from 'lupdo';
 import PdoRowData from 'lupdo/dist/typings/types/pdo-raw-data';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
-import Connection from '../../../connections/connection';
 import ConnectionSession, { RunCallback } from '../../../connections/connection-session';
-import MysqlConnection from '../../../connections/mysql-connection';
-import PostgresConnection from '../../../connections/postgres-connection';
-import SqliteConnection from '../../../connections/sqlite-connection';
-import SqlserverConnection from '../../../connections/sqlserver-connection';
-import ConnectionFactory from '../../../connectors/connection-factory';
-import Connector from '../../../connectors/connector';
-import DatabaseManager from '../../../database-manager';
 import { GrammarBuilder } from '../../../query';
-import Grammar from '../../../query/grammars/grammar';
 import JoinClause from '../../../query/join-clause';
 import QueryBuilder from '../../../query/query-builder';
 import Blueprint from '../../../schema/blueprint';
 import SchemaBuilder from '../../../schema/builders/builder';
-import PostgresBuilder from '../../../schema/builders/postgres-builder';
 import { default as SqliteSchemaBuilder } from '../../../schema/builders/sqlite-builder';
 import ColumnDefinition from '../../../schema/definitions/column-definition';
 import SchemaGrammar from '../../../schema/grammars/grammar';
@@ -24,73 +14,19 @@ import MysqlSchemaGrammar from '../../../schema/grammars/mysql-grammar';
 import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
 import SqliteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
 import SqlserverSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
-import { DatabaseConfig } from '../../../types/config';
 import DriverConnectionI from '../../../types/connection';
 import { Binding } from '../../../types/generics';
 import GrammarBuilderI, { Arrayable } from '../../../types/query/grammar-builder';
 import JoinClauseI from '../../../types/query/join-clause';
 import BlueprintI from '../../../types/schema/blueprint';
 import { BlueprintCallback } from '../../../types/schema/builder/schema-builder';
-import FakePdo from './fake-pdo';
-export { FakeConnection } from './fake-pdo';
-
-export class MockedConnection extends Connection {
-    /**
-     * The query grammar implementation.
-     */
-    protected queryGrammar!: Grammar;
-
-    /**
-     * The schema grammar implementation.
-     */
-    protected schemaGrammar!: SchemaGrammar;
-
-    /**
-     * set Default Query Grammar
-     */
-    protected setDefaultQueryGrammar(): void {
-        this.queryGrammar = new Grammar().setTablePrefix(this.tablePrefix);
-    }
-
-    /**
-     * set Default Schema Grammar
-     */
-    protected setDefaultSchemaGrammar(): void {
-        this.schemaGrammar = new SchemaGrammar().setTablePrefix(this.tablePrefix);
-    }
-
-    /**
-     * Get a schema builder instance for the connection.
-     */
-    public getSchemaBuilder(): SchemaBuilder {
-        return new SchemaBuilder(this.sessionSchema());
-    }
-
-    /**
-     * Get the schema grammar used by the connection.
-     */
-    public getSchemaGrammar(): SchemaGrammar {
-        return this.schemaGrammar;
-    }
-
-    /**
-     * Get the query grammar used by the connection.
-     */
-    public getQueryGrammar(): Grammar {
-        return this.queryGrammar;
-    }
-}
-
-export class MockedConnector extends Connector {
-    public connect(): Pdo {
-        return pdo;
-    }
-}
-
-Pdo.addDriver('fake', FakePdo);
-
-export const pdo = new Pdo('fake', {});
-export const schemaPdo = new Pdo('fake', {});
+import {
+    MockedConnection,
+    MockedMysqlConnection,
+    MockedPostgresConnection,
+    MockedSqliteConnection,
+    MockedSqlserverConnection
+} from './mocked-connections';
 
 export class MockedBuilder extends QueryBuilder {
     public getBeforeQueryCallbacks(): any[] {
@@ -98,114 +34,78 @@ export class MockedBuilder extends QueryBuilder {
     }
 }
 
-export function getSqliteConnection(prefix = 'prefix_'): SqliteConnection {
-    return new SqliteConnection(
-        'fake',
-        pdo,
-        schemaPdo,
-        {
-            driver: 'sqlite',
-            database: 'database',
-            prefix: prefix,
-            pool: {
-                killResource: false
-            }
-        },
-        'database',
-        prefix
-    );
+export function getSqliteConnection(prefix = 'prefix_'): MockedSqliteConnection {
+    return new MockedSqliteConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
 }
 
-export function getPostgresConnection(prefix = 'prefix_'): PostgresConnection {
-    return new PostgresConnection(
-        'fake',
-        pdo,
-        schemaPdo,
-        {
-            driver: 'pgsql',
-            database: 'database',
-            prefix: prefix,
-            pool: {
-                killResource: false
-            }
-        },
-        'database',
-        prefix
-    );
+export function getPostgresConnection(prefix = 'prefix_'): MockedPostgresConnection {
+    return new MockedPostgresConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
 }
 
-export function getSqlserverConnection(prefix = 'prefix_'): SqlserverConnection {
-    return new SqlserverConnection(
-        'fake',
-        pdo,
-        schemaPdo,
-        {
-            driver: 'sqlsrv',
-            database: 'database',
-            prefix: prefix,
-            pool: {
-                killResource: false
-            }
-        },
-        'database',
-        prefix
-    );
+export function getSqlserverConnection(prefix = 'prefix_'): MockedSqlserverConnection {
+    return new MockedSqlserverConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
 }
 
-export function getMysqlConnection(prefix = 'prefix_'): MysqlConnection {
-    return new MysqlConnection(
-        'fake',
-        pdo,
-        schemaPdo,
-        {
-            driver: 'mysql',
-            database: 'database',
-            prefix: prefix,
-            pool: {
-                killResource: false
-            }
-        },
-        'database',
-        prefix
-    );
+export function getMysqlConnection(prefix = 'prefix_'): MockedMysqlConnection {
+    return new MockedMysqlConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
 }
 
-export function getConnection(prefix = 'prefix_'): Connection {
-    return new MockedConnection(
-        'fake',
-        pdo,
-        schemaPdo,
-        {
-            // @ts-expect-error fake driver
-            driver: 'fake',
-            database: 'database',
-            prefix: prefix,
-            pool: {
-                killResource: false
-            }
-        },
-        'database',
-        prefix
-    );
+export function getConnection(prefix = 'prefix_'): MockedConnection {
+    return new MockedConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
 }
 
-export function getConnection2(): Connection {
-    return new MockedConnection(
-        'fake2',
-        pdo,
-        schemaPdo,
-        {
-            // @ts-expect-error fake driver
-            driver: 'fake',
-            database: 'database2',
-            prefix: 'prefix2_',
-            pool: {
-                killResource: false
-            }
+export function getReadConnection(prefix = 'prefix_'): MockedConnection {
+    return new MockedConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        read: {
+            prefix: prefix,
+            database: 'database'
         },
-        'database2',
-        'prefix2_'
-    );
+        pool: {
+            killResource: false
+        }
+    });
+}
+
+export function getConnection2(): MockedConnection {
+    return new MockedConnection('fake2', {
+        database: 'database2',
+        prefix: 'prefix2_',
+        pool: {
+            killResource: false
+        }
+    });
 }
 
 export function getGrammarBuilder(): GrammarBuilderI {
@@ -221,22 +121,13 @@ export function getJoin(table?: string): JoinClauseI {
 }
 
 export function getBuilderAlternative(): MockedBuilder {
-    const connection = new MockedConnection(
-        'fake',
-        pdo,
-        schemaPdo,
-        {
-            // @ts-expect-error fake driver
-            driver: 'fake',
-            database: 'alternative',
-            prefix: 'prefix2_',
-            pool: {
-                killResource: false
-            }
-        },
-        'alternative',
-        'prefix2_'
-    );
+    const connection = new MockedConnection('fake', {
+        database: 'alternative',
+        prefix: 'prefix2_',
+        pool: {
+            killResource: false
+        }
+    });
     return new MockedBuilder(connection.session());
 }
 
@@ -270,32 +161,6 @@ export function getMysqlBlueprint(table: string, callback?: BlueprintCallback, p
 
 export function getSqliteBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
     return new Blueprint(table, new SqliteSchemaGrammar(), callback, prefix);
-}
-
-export class MockedFactory extends ConnectionFactory {
-    protected createConnector(config: DatabaseConfig): Connector {
-        return super.createConnector(config);
-    }
-
-    public createPdoResolver(config: DatabaseConfig): Pdo {
-        return super.createPdoResolver(config);
-    }
-
-    public createPdoSchemaResolver(config: DatabaseConfig): Pdo {
-        return super.createPdoSchemaResolver(config);
-    }
-
-    public createConnection(
-        name: string,
-        driver: string,
-        connection: Pdo,
-        schemaConnection: Pdo,
-        config: DatabaseConfig,
-        database: string,
-        prefix: string
-    ): DriverConnectionI {
-        return super.createConnection(name, driver, connection, schemaConnection, config, database, prefix);
-    }
 }
 
 export class MockedSchemaBuilder extends SchemaBuilder {
@@ -638,11 +503,3 @@ export class MockedGrammar extends SchemaGrammar {
         return super.compileModifyVirtualAs(blueprint, column);
     }
 }
-
-export class MockedDatabaseManager extends DatabaseManager {
-    public configure(connection: DriverConnectionI): DriverConnectionI {
-        return super.configure(connection);
-    }
-}
-
-export class MockedPostgresBuilder extends PostgresBuilder {}

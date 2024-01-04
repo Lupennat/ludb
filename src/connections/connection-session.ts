@@ -20,7 +20,7 @@ import TransactionRolledBack from '../events/transaction-rolledback';
 import ExpressionContract from '../query/expression-contract';
 import QueryBuilder from '../query/query-builder';
 import BindToI from '../types/bind-to';
-import { DatabaseConfig } from '../types/config';
+import DatabaseConfig from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
 import { QueryAbleCallback } from '../types/query/grammar-builder';
@@ -926,7 +926,7 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
         bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
     ): void {
-        this.driverConnection.bindValues(statement, bindings);
+        this.getDriverConnection().bindValues(statement, bindings);
     }
 
     /**
@@ -935,7 +935,7 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     public prepareBindings(
         bindings: Binding[] | BindingObject
     ): BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract> {
-        return this.driverConnection.prepareBindings(bindings);
+        return this.getDriverConnection().prepareBindings(bindings);
     }
 
     /**
@@ -953,14 +953,14 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
      * Ensure using Pdo
      */
     protected getEnsuredPdo(): Pdo {
-        return this.isSchemaConnection ? this.getSchemaPdo() : this.driverConnection.getPdo();
+        return this.isSchemaConnection ? this.getSchemaPdo() : this.getDriverConnection().getPdo();
     }
 
     /**
      * Get the current Schema PDO connection.
      */
     public getSchemaPdo(): Pdo {
-        return this.driverConnection.getSchemaPdo();
+        return this.getDriverConnection().getSchemaPdo();
     }
 
     /**
@@ -978,21 +978,21 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
             return this.getPdo();
         }
 
-        return this.isSchemaConnection ? this.getSchemaPdo() : this.driverConnection.getReadPdo();
+        return this.isSchemaConnection ? this.getSchemaPdo() : this.getDriverConnection().getReadPdo();
     }
 
     /**
      * Get the database connection name.
      */
     public getName(): string {
-        return this.driverConnection.getName();
+        return this.getDriverConnection().getName();
     }
 
     /**
      * Return all hook to be run just before a database query is executed.
      */
     public getBeforeExecuting(): BeforeExecutingCallback[] {
-        return this.driverConnection.getBeforeExecuting();
+        return this.getDriverConnection().getBeforeExecuting();
     }
 
     /**
@@ -1001,14 +1001,7 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     getConfig<T extends DatabaseConfig>(): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
     getConfig<T>(option?: string, defaultValue?: T): T {
-        return this.driverConnection.getConfig<T>(option, defaultValue);
-    }
-
-    /**
-     * Get the PDO driver name.
-     */
-    public getDriverName(): string {
-        return this.driverConnection.getDriverName();
+        return this.getDriverConnection().getConfig<T>(option, defaultValue);
     }
 
     /**
@@ -1022,35 +1015,35 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
      * Get the schema grammar used by the connection.
      */
     public getSchemaGrammar(): ReturnType<DriverConnection['getSchemaGrammar']> {
-        return this.driverConnection.getSchemaGrammar() as ReturnType<DriverConnection['getSchemaGrammar']>;
+        return this.getDriverConnection().getSchemaGrammar() as ReturnType<DriverConnection['getSchemaGrammar']>;
     }
 
     /**
      * Get the query grammar used by the connection.
      */
     public getQueryGrammar(): ReturnType<DriverConnection['getQueryGrammar']> {
-        return this.driverConnection.getQueryGrammar() as ReturnType<DriverConnection['getQueryGrammar']>;
+        return this.getDriverConnection().getQueryGrammar() as ReturnType<DriverConnection['getQueryGrammar']>;
     }
 
     /**
      * Get the event dispatcher used by the connection.
      */
     public getEventDispatcher(): EventEmitter | undefined {
-        return this.driverConnection.getEventDispatcher();
+        return this.getDriverConnection().getEventDispatcher();
     }
 
     /**
      * Get the name of the connected database.
      */
     public getDatabaseName(): string {
-        return this.driverConnection.getDatabaseName();
+        return this.getDriverConnection().getDatabaseName();
     }
 
     /**
      * Get the table prefix for the connection.
      */
     public getTablePrefix(): string {
-        return this.driverConnection.getTablePrefix();
+        return this.getDriverConnection().getTablePrefix();
     }
 
     /**
@@ -1064,14 +1057,14 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
      * Get a new raw query expression.
      */
     public raw(value: string | bigint | number): ExpressionContract {
-        return this.driverConnection.raw(value);
+        return this.getDriverConnection().raw(value);
     }
 
     /**
      * Get the bind to object.
      */
     public get bindTo(): BindToI {
-        return this.driverConnection.bindTo;
+        return this.getDriverConnection().bindTo;
     }
 }
 

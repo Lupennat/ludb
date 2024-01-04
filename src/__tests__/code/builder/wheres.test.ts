@@ -8,15 +8,10 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../fixtures/mocked';
 
 describe('QueryBuilder Wheres', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Basic Where', () => {
         let builder = getBuilder();
         builder.select('*').from('users').where('id', '=', 1);

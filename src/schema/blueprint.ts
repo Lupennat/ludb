@@ -100,7 +100,7 @@ class Blueprint {
         // Each type of command has a corresponding compiler function on the schema
         // grammar which is used to build the necessary SQL statements to build
         // the blueprint element, so we'll just call that compilers function.
-        this.ensureCommandsAreValid(connection);
+        this.ensureCommandsAreValid();
 
         for (const command of this.registry.commands) {
             if (command.shouldBeSkipped) {
@@ -249,8 +249,8 @@ class Blueprint {
     /**
      * Ensure the commands on the blueprint are valid for the connection type.
      */
-    protected ensureCommandsAreValid(connection: ConnectionSessionI): void {
-        if (connection.getDriverName() === 'sqlite') {
+    protected ensureCommandsAreValid(): void {
+        if (!this.grammar.supportsDropForeign()) {
             if (this.commandsNamed(['dropForeign']).length > 0) {
                 throw new Error(
                     "Sqlite doesn't support dropping foreign keys (you would need to re-create the table)."

@@ -3,15 +3,10 @@ import {
     getMysqlBuilder,
     getPostgresBuilder,
     getSqliteBuilder,
-    getSqlserverBuilder,
-    pdo
+    getSqlserverBuilder
 } from '../../fixtures/mocked';
 
 describe('QueryBuilder Methods Delete', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Delete Method', async () => {
         let builder = getBuilder();
         let spiedDelete = jest.spyOn(builder.getConnection(), 'delete').mockImplementationOnce(async () => 1);
@@ -485,18 +480,19 @@ describe('QueryBuilder Methods Delete', () => {
 
     it('Works Truncate Method', async () => {
         let builder = getBuilder();
-        let spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
+        let spiedTruncate = jest.spyOn(builder.getConnection(), 'statement').mockImplementation(async () => true);
+
         await builder.from('users').truncate();
         expect(spiedTruncate).toHaveBeenCalledWith('truncate table "users"', []);
 
         builder = getSqliteBuilder();
-        spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
+        spiedTruncate = jest.spyOn(builder.getConnection(), 'statement').mockImplementation(async () => true);
         await builder.from('users').truncate();
         expect(spiedTruncate).toHaveBeenNthCalledWith(1, 'delete from sqlite_sequence where name = ?', ['users']);
         expect(spiedTruncate).toHaveBeenNthCalledWith(2, 'delete from "users"', []);
 
         builder = getPostgresBuilder();
-        spiedTruncate = jest.spyOn(builder.getConnection(), 'statement');
+        spiedTruncate = jest.spyOn(builder.getConnection(), 'statement').mockImplementation(async () => true);
         await builder.from('users').truncate();
         expect(spiedTruncate).toHaveBeenCalledWith('truncate "users" restart identity cascade', []);
     });

@@ -1,9 +1,11 @@
+import PostgresConnector from '../connectors/postgres-connector';
 import PostgresGrammar from '../query/grammars/postgres-grammar';
 import SchemaBuilder from '../schema/builders/postgres-builder';
 import SchemaGrammar from '../schema/grammars/postgres-grammar';
+import { PostgresConfig } from '../types/config';
 import Connection from './connection';
 
-class PostgresConnection extends Connection {
+class PostgresConnection extends Connection<PostgresConfig> {
     /**
      * The query grammar implementation.
      */
@@ -13,6 +15,13 @@ class PostgresConnection extends Connection {
      * The schema grammar implementation.
      */
     protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * create Connector
+     */
+    protected createConnector(): PostgresConnector {
+        return new PostgresConnector();
+    }
 
     /**
      * set Default Query Grammar

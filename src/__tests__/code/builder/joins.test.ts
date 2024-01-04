@@ -1,10 +1,6 @@
-import { getBuilder, getGrammarBuilder, pdo } from '../fixtures/mocked';
+import { getBuilder, getGrammarBuilder } from '../fixtures/mocked';
 
 describe('QueryBuilder Joins', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Join Aliases With Prefix', () => {
         const builder = getBuilder();
         builder.getGrammar().setTablePrefix('prefix_');

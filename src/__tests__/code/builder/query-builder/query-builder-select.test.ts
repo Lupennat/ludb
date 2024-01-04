@@ -1,11 +1,7 @@
 import Raw from '../../../../query/expression';
-import { getBuilder, getSqlserverBuilder, pdo } from '../../fixtures/mocked';
+import { getBuilder, getSqlserverBuilder } from '../../fixtures/mocked';
 
 describe('QueryBuilder Methods Select', () => {
-    afterAll(async () => {
-        await pdo.disconnect();
-    });
-
     it('Works Find Returns First Result By ID', async () => {
         const builder = getBuilder();
 

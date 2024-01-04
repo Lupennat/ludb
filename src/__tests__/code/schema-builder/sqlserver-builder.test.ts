@@ -1,7 +1,10 @@
+import { Pdo } from 'lupdo';
 import SqlserverBuilder from '../../../schema/builders/sqlserver-builder';
-import { pdo as fakePdo, getSqlserverConnection } from '../fixtures/mocked';
+import { getSqlserverConnection } from '../fixtures/mocked';
 
 describe('Sqlserver Schema QueryBuilder Test', () => {
+    const fakePdo = new Pdo('fake', {});
+
     afterAll(async () => {
         await fakePdo.disconnect();
     });

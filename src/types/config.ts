@@ -4,10 +4,6 @@ import { PostgresOptions } from 'lupdo-postgres';
 import { SqliteOptions } from 'lupdo-sqlite';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
-import MysqlConnection from '../connections/mysql-connection';
-import PostgresConnection from '../connections/postgres-connection';
-import SqliteConnection from '../connections/sqlite-connection';
-import SqlserverConnection from '../connections/sqlserver-connection';
 
 export interface DatabaseConnectionOptions {
     /**
@@ -85,10 +81,6 @@ interface MysqlConnectionOptions extends DatabaseConnectionOptions {
 
 export interface MysqlConfig extends MysqlConnectionOptions {
     /**
-     * driver name
-     */
-    driver: 'mysql';
-    /**
      * write connection
      */
     write?: MysqlConnectionOptions | MysqlConnectionOptions[];
@@ -150,10 +142,6 @@ interface SqliteConnectionOptions {
 }
 
 export interface SqliteConfig extends SqliteConnectionOptions {
-    /**
-     * driver name
-     */
-    driver: 'sqlite';
     /**
      * write connection
      */
@@ -234,10 +222,6 @@ interface PostgresConnectionOptions extends DatabaseConnectionOptions {
 
 export interface PostgresConfig extends PostgresConnectionOptions {
     /**
-     * driver name
-     */
-    driver: 'pgsql';
-    /**
      * write connection
      */
     write?: PostgresConnectionOptions | PostgresConnectionOptions[];
@@ -300,10 +284,6 @@ interface SqlserverConnectionOptions extends DatabaseConnectionOptions {
 
 export interface SqlserverConfig extends SqlserverConnectionOptions {
     /**
-     * driver name
-     */
-    driver: 'sqlsrv';
-    /**
      * write connection
      */
     write?: SqlserverConnectionOptions | SqlserverConnectionOptions[];
@@ -323,15 +303,14 @@ export interface SqlserverConfig extends SqlserverConnectionOptions {
 
 export type ReadWriteType = 'write' | 'read';
 
-export type DatabaseConfig = PostgresConfig | SqlserverConfig | MysqlConfig | SqliteConfig;
+type DatabaseConfig = PostgresConfig | SqlserverConfig | MysqlConfig | SqliteConfig;
 
-export type DatabaseConnectionsDrivers = {
-    mysql: MysqlConnection;
-    sqlite: SqliteConnection;
-    pgsql: PostgresConnection;
-    sqlsrv: SqlserverConnection;
-};
+export type ConfigWithDefault<T, D> = T extends undefined ? D : T extends null ? D : T;
 
-type DatabaseConnections = Record<string, DatabaseConfig>;
+export type ConfigOrConfigWithDefault<T, U, D> = U extends keyof T
+    ? D extends undefined
+        ? T[U]
+        : ConfigWithDefault<T[U], D>
+    : T;
 
-export default DatabaseConnections;
+export default DatabaseConfig;
