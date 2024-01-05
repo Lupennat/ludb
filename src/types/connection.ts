@@ -211,6 +211,11 @@ export default interface DriverConnectionI extends BaseConnection {
     getReadPdo(): Pdo;
 
     /**
+     * Set Reference for current session
+     */
+    reference(reference: string): ConnectionSessionI<DriverConnectionI>;
+
+    /**
      * Start Connection session for QueryBuilder
      */
     session(): ConnectionSessionI<DriverConnectionI>;
@@ -297,13 +302,25 @@ export default interface DriverConnectionI extends BaseConnection {
 export interface ConnectionSessionI<DriverConnection extends DriverConnectionI = DriverConnectionI>
     extends BaseConnection {
     /**
+     * Set Reference for current session
+     */
+    reference(reference: string): this;
+
+    /**
+     * Get Reference for current session
+     */
+    getReference(): string;
+
+    /**
      * Get the Driver Connection of current session
      */
     getDriverConnection(): DriverConnection;
+
     /**
      * Detect if session is for Schema QueryBuilder
      */
     isSchema(): boolean;
+
     /**
      * Execute the given callback in "dry run" mode.
      */

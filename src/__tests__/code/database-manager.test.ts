@@ -26,12 +26,22 @@ describe('Database Manager', () => {
     });
 
     it('Works Raw Return Expression', () => {
-        const raw = DatabaseManager.raw('rawValue');
+        const db = new DatabaseManager({
+            connections: {
+                sqlite: { driver: 'sqlite', database: ':memory:' }
+            }
+        });
+        const raw = db.raw('rawValue');
         expect(raw).toBeInstanceOf(Expression);
     });
 
     it('Works Bind To', () => {
-        const typed = DatabaseManager.bindTo.bigInteger('934342342342343232');
+        const db = new DatabaseManager({
+            connections: {
+                sqlite: { driver: 'sqlite', database: ':memory:' }
+            }
+        });
+        const typed = db.bindTo.bigInteger('934342342342343232');
         expect(typed).toBeInstanceOf(TypedBinding);
     });
 
@@ -194,13 +204,23 @@ describe('Database Manager', () => {
     });
 
     it('Works Supported Drivers', () => {
-        expect(DatabaseManager.supportedDrivers()).toEqual(['mysql', 'pgsql', 'sqlite', 'sqlsrv']);
+        const db = new DatabaseManager({
+            connections: {
+                sqlite: { driver: 'sqlite', database: ':memory:' }
+            }
+        });
+        expect(db.supportedDrivers()).toEqual(['mysql', 'pgsql', 'sqlite', 'sqlsrv']);
     });
 
     it('Works Available Drivers', () => {
         jest.spyOn(Pdo, 'getAvailableDrivers').mockReturnValueOnce(['mysql', 'pgsql']);
-        expect(DatabaseManager.availableDrivers()).toEqual(['mysql', 'pgsql']);
-        expect(DatabaseManager.availableDrivers()).toEqual(['mysql', 'pgsql', 'sqlite', 'sqlsrv']);
+        const db = new DatabaseManager({
+            connections: {
+                sqlite: { driver: 'sqlite', database: ':memory:' }
+            }
+        });
+        expect(db.availableDrivers()).toEqual(['mysql', 'pgsql']);
+        expect(db.availableDrivers()).toEqual(['mysql', 'pgsql', 'sqlite', 'sqlsrv']);
     });
 
     it('Works Not Available Drivers throw Error', () => {

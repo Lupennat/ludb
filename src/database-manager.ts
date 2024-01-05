@@ -42,9 +42,7 @@ class DatabaseManager<const Config extends DBConfig> {
         const config = this.config.connections[name];
         const driver = config.driver;
 
-        const availableDrivers = DatabaseManager.availableDrivers();
-
-        if (!availableDrivers.includes(driver)) {
+        if (!this.availableDrivers().includes(driver)) {
             throw new Error(`Lupdo driver is missing, please install driver for "${driver}"`);
         }
 
@@ -102,14 +100,14 @@ class DatabaseManager<const Config extends DBConfig> {
     /**
      * Get all of the support drivers.
      */
-    public static supportedDrivers(): string[] {
+    public supportedDrivers(): string[] {
         return ['mysql', 'pgsql', 'sqlite', 'sqlsrv'];
     }
 
     /**
      * Get all of the drivers that are actually available.
      */
-    public static availableDrivers(): string[] {
+    public availableDrivers(): string[] {
         const pdoDrivers = Pdo.getAvailableDrivers();
         return this.supportedDrivers().filter(value => pdoDrivers.includes(value));
     }
@@ -117,14 +115,14 @@ class DatabaseManager<const Config extends DBConfig> {
     /**
      * Get a new raw query expression.
      */
-    public static raw(value: string | bigint | number): ExpressionContract {
+    public raw(value: string | bigint | number): ExpressionContract {
         return raw(value);
     }
 
     /**
      * Get the bind to object.
      */
-    public static get bindTo(): BindToI {
+    public get bindTo(): BindToI {
         return bindTo;
     }
 

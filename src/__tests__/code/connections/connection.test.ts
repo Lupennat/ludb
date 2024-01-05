@@ -508,6 +508,16 @@ describe('Connection', () => {
         expect(spiedSession).toHaveBeenCalledWith(true);
     });
 
+    it('Works Reference', () => {
+        const connection = getConnection();
+        const session = new ConnectionSession(connection);
+        jest.spyOn(connection, 'session').mockReturnValue(session);
+        const spiedSession = jest.spyOn(session, 'reference');
+        expect(connection.reference('newid')).toEqual(session);
+        expect(spiedSession).toHaveBeenCalledWith('newid');
+        expect(session.getReference()).toBe('newid');
+    });
+
     it('Works Raw Return Expression', () => {
         const connection = getConnection();
         const raw = connection.raw('rawValue');

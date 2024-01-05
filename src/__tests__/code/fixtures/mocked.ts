@@ -167,6 +167,8 @@ export function blueprintResolver(
 }
 
 export class MockedConnectionSession extends ConnectionSession {
+    public referenceId: string = '';
+
     public hasPdoTransaction(): boolean {
         return this.pdoTransaction != null;
     }

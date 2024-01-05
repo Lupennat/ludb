@@ -44,6 +44,22 @@ describe('Connection Session', () => {
         expect(spiedConnection).toHaveBeenCalled();
     });
 
+    it('Works Set Reference', () => {
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        expect(session.referenceId).toEqual('');
+        expect(session.reference('newid')).toEqual(session);
+        expect(session.referenceId).toEqual('newid');
+    });
+
+    it('Works Get Reference', () => {
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        expect(session.getReference()).toBe('');
+        session.referenceId = 'newId';
+        expect(session.getReference()).toBe('newId');
+    });
+
     it('Works Event Dispatcher', () => {
         const connection = getConnection();
         const spiedConnection = jest.spyOn(connection, 'getEventDispatcher');

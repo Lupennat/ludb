@@ -185,6 +185,13 @@ abstract class Connection<const Config extends ConnectionConfig = ConnectionConf
     }
 
     /**
+     * Set Reference for current session
+     */
+    public reference(reference: string): ConnectionSessionI<this> {
+        return this.session().reference(reference);
+    }
+
+    /**
      * Start Connection session for QueryBuilder
      */
     public session(): ConnectionSessionI<this> {

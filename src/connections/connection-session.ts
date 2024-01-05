@@ -76,12 +76,33 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     protected afterCommit: AfterCommitEvent[] = [];
 
     /**
+     * The Query Executed Reference
+     */
+    protected referenceId: string = '';
+
+    /**
      * Create a new connection session instance.
      */
     constructor(
         protected driverConnection: DriverConnection,
         protected isSchemaConnection = false
     ) {}
+
+    /**
+     * Set Reference for current session
+     */
+    public reference(reference: string): this {
+        this.referenceId = reference;
+
+        return this;
+    }
+
+    /**
+     * Get Reference for current session
+     */
+    public getReference(): string {
+        return this.referenceId;
+    }
 
     /**
      * Begin a fluent query against a database table.
