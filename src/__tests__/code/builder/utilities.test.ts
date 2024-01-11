@@ -21,6 +21,15 @@ describe('QueryBuilder Utilities', () => {
         expect(spiedGrammar).toHaveBeenCalledTimes(1);
     });
 
+    it('Works QueryBuilder Cache Set Cache to Connection Session', () => {
+        const session = getConnection().session();
+        const spiedCache = jest.spyOn(session, 'cache');
+        const builder = new QueryBuilder(session);
+        expect(builder.cache({ cache: 1000, key: 'test', options: { a: true } })).toBeInstanceOf(QueryBuilder);
+        expect(spiedCache).toHaveBeenCalledTimes(1);
+        expect(spiedCache).toHaveBeenCalledWith({ cache: 1000, key: 'test', options: { a: true } });
+    });
+
     it('Works When Callback', () => {
         const callback = (query: QueryBuilderI, condition: boolean): void => {
             expect(condition).toBeTruthy();

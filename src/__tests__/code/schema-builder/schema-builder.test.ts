@@ -49,6 +49,9 @@ describe('Schema QueryBuilder Test', () => {
                 view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
             )
         ).rejects.toThrow('This database driver does not support creating views.');
+        await expect(builder.createView('create view foo')).rejects.toThrow(
+            'This database driver does not support creating views.'
+        );
     });
 
     it('Works Create Type', async () => {

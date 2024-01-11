@@ -4,10 +4,12 @@ import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import { bindTo } from '../bindings';
+import CacheManager from '../cache-manager';
 import QueryExecuted from '../events/query-executed';
 import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
 import SchemaGrammar from '../schema/grammars/grammar';
+import { CacheSessionOptions } from '../types';
 import BindToI from '../types/bind-to';
 import ConnectionConfig, { FlattedConnectionConfig, ReadAndWriteConnectionOptions } from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
@@ -39,6 +41,11 @@ abstract class Connection<const Config extends ConnectionConfig = ConnectionConf
      * The event dispatcher instance.
      */
     protected dispatcher?: EventEmitter;
+
+    /**
+     * the cache manager instance.
+     */
+    protected cacheManager?: CacheManager;
 
     /**
      * All of the callbacks that should be invoked before a query is executed.
@@ -283,7 +290,7 @@ abstract class Connection<const Config extends ConnectionConfig = ConnectionConf
         if (this.readPdo !== null) {
             promises.push(this.getReadPdo().disconnect());
         }
-        await Promise.all(promises);
+        await Promise.allSettled(promises);
     }
 
     /**
@@ -358,6 +365,13 @@ abstract class Connection<const Config extends ConnectionConfig = ConnectionConf
     }
 
     /**
+     * Define Cache Strategy for current session
+     */
+    public cache(cache: CacheSessionOptions): ConnectionSessionI<this> {
+        return this.session().cache(cache);
+    }
+
+    /**
      * Get the event dispatcher used by the connection.
      */
     public getEventDispatcher(): EventEmitter | undefined {
@@ -378,6 +392,31 @@ abstract class Connection<const Config extends ConnectionConfig = ConnectionConf
      */
     public unsetEventDispatcher(): this {
         this.dispatcher = undefined;
+
+        return this;
+    }
+
+    /**
+     * Get the cache manager used by the connection.
+     */
+    public getCacheManager(): CacheManager | undefined {
+        return this.cacheManager;
+    }
+
+    /**
+     * Set the cache manager instance on the connection.
+     */
+    public setCacheManager(cacheManager: CacheManager): this {
+        this.cacheManager = cacheManager;
+
+        return this;
+    }
+
+    /**
+     * Unset the cache manager for this connection.
+     */
+    public unsetCacheManager(): this {
+        this.cacheManager = undefined;
 
         return this;
     }

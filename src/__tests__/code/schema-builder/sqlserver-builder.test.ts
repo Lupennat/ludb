@@ -131,6 +131,11 @@ describe('Sqlserver Schema QueryBuilder Test', () => {
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create view foo');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
                     "create view [schema].[prefix_foo] as select [id], [name] from [schema2].[prefix_baz] where [type] in ('bar', 'bax')"
                 );
@@ -159,6 +164,8 @@ describe('Sqlserver Schema QueryBuilder Test', () => {
                 return true;
             });
         const builder = new SqlserverBuilder(session);
+
+        expect(await builder.createView('create view foo')).toBeTruthy();
         expect(
             await builder.createView('schema.foo', view =>
                 view.as(query => {

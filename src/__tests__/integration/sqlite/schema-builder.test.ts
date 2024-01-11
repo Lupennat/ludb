@@ -13,8 +13,8 @@ maybe('Postgres Schema QueryBuilder', () => {
             table.string('age');
             table.enum('color', ['red', 'blue']);
         });
-        await DB.connection(currentDB).statement(
-            'CREATE view test_schema_users_view AS select name,age FROM test_schema_users'
+        await Schema.createView('test_schema_users_view', view =>
+            view.as(query => query.select('name', 'age').from('test_schema_users'))
         );
     });
 
@@ -24,19 +24,31 @@ maybe('Postgres Schema QueryBuilder', () => {
     });
 
     it('Works Get Tables And Column Listing', async () => {
-        expect(await Schema.getTables()).toEqual(['test_schema_users']);
-        expect(await Schema.getColumns('test_schema_users')).toEqual(['id', 'name', 'age', 'color']);
+        expect(await Schema.getTables()).toEqual([{ name: 'test_schema_users' }]);
+        expect((await Schema.getColumns('test_schema_users')).map(column => column.name)).toEqual([
+            'id',
+            'name',
+            'age',
+            'color'
+        ]);
         await Schema.create('test_schema_posts', table => {
             table.integer('id');
             table.string('title');
         });
-        expect(await Schema.getTables()).toEqual(expect.arrayContaining(['test_schema_users', 'test_schema_posts']));
+        expect(await Schema.getTables()).toEqual([{ name: 'test_schema_posts' }, { name: 'test_schema_users' }]);
         await Schema.drop('test_schema_posts');
     });
 
     it('Works Get Views', async () => {
-        expect(await Schema.getViews()).toEqual(['test_schema_users_view']);
-        await DB.connection(currentDB).statement('DROP VIEW IF EXISTS test_schema_users_view;');
-        expect(await Schema.getViews()).toEqual([]);
+        let views = await Schema.getViews();
+        expect(views.length).toBe(1);
+        expect(views[0].name).toBe('test_schema_users_view');
+        expect(views[0].definition).toBe(
+            'CREATE VIEW "test_schema_users_view" as select "name", "age" from "test_schema_users"'
+        );
+
+        await Schema.dropView('test_schema_users_view');
+        views = await Schema.getViews();
+        expect(views.length).toBe(0);
     });
 });

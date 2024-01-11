@@ -8,6 +8,7 @@ import {
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { EventEmitter } from 'stream';
+import CacheManager from '../cache-manager';
 import DeadlockError from '../errors/deadlock-error';
 import QueryError from '../errors/query-error';
 import ConnectionEvent from '../events/connection-event';
@@ -20,6 +21,7 @@ import TransactionRolledBack from '../events/transaction-rolledback';
 import ExpressionContract from '../query/expression-contract';
 import QueryBuilder from '../query/query-builder';
 import BindToI from '../types/bind-to';
+import { CacheSessionOptions } from '../types/cache';
 import ConnectionConfig from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
@@ -81,12 +83,30 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     protected referenceId: string = '';
 
     /**
+     * Cache session Object
+     */
+    protected cacheSessionOptions: CacheSessionOptions = {
+        key: undefined,
+        cache: undefined,
+        options: undefined
+    };
+
+    /**
      * Create a new connection session instance.
      */
     constructor(
         protected driverConnection: DriverConnection,
         protected isSchemaConnection = false
     ) {}
+
+    /**
+     * Define Cache Strategy for current session
+     */
+    public cache(cache: CacheSessionOptions): this {
+        this.cacheSessionOptions = cache;
+
+        return this;
+    }
 
     /**
      * Set Reference for current session
@@ -176,12 +196,33 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
                 return [];
             }
 
+            const preparedBindings = this.prepareBindings(bindings);
+
+            const cache = await this.getCacheManager()?.get<T[]>(this.getDriverConnection().getName(), {
+                ...this.cacheSessionOptions,
+                query,
+                bindings: preparedBindings
+            });
+
+            if (
+                cache &&
+                cache.result !== undefined &&
+                !(await this.getCacheManager()?.isExpired(
+                    this.getDriverConnection().getName(),
+                    cache.time,
+                    cache.duration,
+                    cache.options
+                ))
+            ) {
+                return cache.result;
+            }
+
             // For select statements, we'll simply execute the query and return an array
             // of the database result set. Each element in the array will be a single
             // row from the database table, and will either be an array or objects.
             const statement = this.prepared(await this.getPdoForSelect(useReadPdo).prepare(query));
 
-            this.bindValues(statement, this.prepareBindings(bindings));
+            this.bindValues(statement, preparedBindings);
 
             await statement.execute();
 
@@ -189,7 +230,16 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
                 await statement.close();
             }
 
-            return statement.fetchDictionary<T>().all();
+            const result = statement.fetchDictionary<T>().all();
+
+            if (cache) {
+                await this.getCacheManager()?.store<T[]>(this.getDriverConnection().getName(), {
+                    ...cache,
+                    result
+                });
+            }
+
+            return result;
         });
     }
 
@@ -1054,6 +1104,13 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
      */
     public getEventDispatcher(): EventEmitter | undefined {
         return this.getDriverConnection().getEventDispatcher();
+    }
+
+    /**
+     * Get the cache manager used by the connection.
+     */
+    public getCacheManager(): CacheManager | undefined {
+        return this.getDriverConnection().getCacheManager();
     }
 
     /**

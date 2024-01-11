@@ -94,12 +94,6 @@ describe('QueryBuilder Joins', () => {
         expect('select * from "sizes" cross join "colors"').toBe(builder.toSql());
 
         builder = getBuilder();
-        builder.select('*').from('tableB').join('tableA', 'tableA.column1', '=', 'tableB.column2', 'cross');
-        expect('select * from "tableB" cross join "tableA" on "tableA"."column1" = "tableB"."column2"').toBe(
-            builder.toSql()
-        );
-
-        builder = getBuilder();
         builder.select('*').from('tableB').crossJoin('tableA', 'tableA.column1', '=', 'tableB.column2');
         expect('select * from "tableB" cross join "tableA" on "tableA"."column1" = "tableB"."column2"').toBe(
             builder.toSql()
@@ -523,7 +517,7 @@ describe('QueryBuilder Joins', () => {
         let sub2 = getBuilder().from('contacts').where('name', 'bar');
         builder
             .from('users')
-            .joinWhereSub(sub1, 'sub1', 'users.id', '=', 1, 'inner')
+            .joinWhereSub(sub1, 'sub1', 'users.id', '=', 1)
             .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
         let expected = 'select * from "users" ';
         expected += 'inner join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';

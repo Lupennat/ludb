@@ -12,6 +12,7 @@ import QueryBuilder from '../../../query/query-builder';
 
 import Expression from '../../../query/expression';
 import {
+    MockedCacheManager,
     MockedConnectionSession,
     MockedConnectionSessionWithResults,
     MockedConnectionSessionWithResultsSets,
@@ -1603,6 +1604,125 @@ describe('Connection Session', () => {
         expect(spiedBeginTransaction).toHaveBeenCalledTimes(2);
         expect(spiedRollback).toHaveBeenCalledTimes(2);
         await pdo.disconnect();
+    });
+
+    it('Works Select Use Cache', async () => {
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        const spiedManager = jest.spyOn(session, 'getCacheManager').mockReturnValueOnce(undefined);
+        await session.select('select * from users', []);
+        expect(spiedManager).toHaveBeenCalledTimes(1);
+        await connection.disconnect();
+    });
+
+    it('Works Select Get From Cache', async () => {
+        const cacheManager = new MockedCacheManager({ connections: {} });
+        const spiedGet = jest.spyOn(cacheManager, 'get').mockReturnValue(Promise.resolve(undefined));
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        const spiedManager = jest.spyOn(session, 'getCacheManager').mockReturnValue(cacheManager);
+        await session.select('select * from users', [1, 2, 4]);
+        await session
+            .cache({ cache: 1000, key: 'test', options: { a: true } })
+            .select('select * from users', [1, 2, 4]);
+        expect(spiedManager).toHaveBeenCalledTimes(2);
+        expect(spiedGet).toHaveBeenNthCalledWith(1, 'fake', {
+            bindings: [1, 2, 4],
+            query: 'select * from users'
+        });
+        expect(spiedGet).toHaveBeenNthCalledWith(2, 'fake', {
+            bindings: [1, 2, 4],
+            cache: 1000,
+            key: 'test',
+            options: { a: true },
+            query: 'select * from users'
+        });
+        await connection.disconnect();
+    });
+
+    it('Works Select From Cache Check Expire', async () => {
+        const cacheManager = new MockedCacheManager({ connections: {} });
+        const spiedGet = jest
+            .spyOn(cacheManager, 'get')
+            .mockReturnValueOnce(
+                Promise.resolve({
+                    duration: 1000,
+                    time: 100,
+                    key: 'key',
+                    options: {}
+                })
+            )
+            .mockReturnValueOnce(
+                Promise.resolve({
+                    duration: 1000,
+                    time: 100,
+                    key: 'key',
+                    options: {},
+                    result: [{ id: 1 }, { id: 2 }]
+                })
+            )
+            .mockReturnValueOnce(
+                Promise.resolve({
+                    duration: 1000,
+                    time: 100,
+                    key: 'key',
+                    options: {},
+                    result: [{ id: 1 }, { id: 2 }]
+                })
+            );
+
+        const spiedStore = jest.spyOn(cacheManager, 'store');
+        const spiedExpire = jest
+            .spyOn(cacheManager, 'isExpired')
+            .mockReturnValueOnce(Promise.resolve(true))
+            .mockReturnValueOnce(Promise.resolve(false));
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        const spiedManager = jest.spyOn(session, 'getCacheManager').mockReturnValue(cacheManager);
+        await session.select('select * from users', [1, 2, 4]);
+        await session.select('select * from users', [1, 2, 4]);
+        expect(await session.select('select * from users', [1, 2, 4])).toEqual([{ id: 1 }, { id: 2 }]);
+        expect(spiedManager).toHaveBeenCalledTimes(7);
+        expect(spiedGet).toHaveBeenCalledTimes(3);
+        expect(spiedExpire).toHaveBeenCalledTimes(2);
+        expect(spiedExpire).toHaveBeenNthCalledWith(1, 'fake', 100, 1000, {});
+        expect(spiedExpire).toHaveBeenNthCalledWith(2, 'fake', 100, 1000, {});
+        expect(spiedStore).toHaveBeenCalledTimes(2);
+        await connection.disconnect();
+    });
+
+    it('Works Select Store Data On Cache', async () => {
+        const cacheManager = new MockedCacheManager({ connections: {} });
+        const spiedGet = jest
+            .spyOn(cacheManager, 'get')
+            .mockReturnValueOnce(Promise.resolve(undefined))
+            .mockReturnValueOnce(
+                Promise.resolve({
+                    duration: 1000,
+                    time: 100,
+                    key: 'key',
+                    options: {},
+                    result: undefined
+                })
+            );
+        const spiedStore = jest.spyOn(cacheManager, 'store').mockReturnValue(Promise.resolve(undefined));
+        const connection = getConnection();
+        const session = new MockedConnectionSession(connection);
+        const spiedManager = jest.spyOn(session, 'getCacheManager').mockReturnValue(cacheManager);
+        await session.select('select * from users', [1, 2, 4]);
+        await session.select('select * from users', [1, 2, 4]);
+
+        expect(spiedManager).toHaveBeenCalledTimes(3);
+        expect(spiedGet).toHaveBeenCalledTimes(2);
+        expect(spiedStore).toHaveBeenCalledTimes(1);
+        expect(spiedStore).toHaveBeenNthCalledWith(1, 'fake', {
+            duration: 1000,
+            key: 'key',
+            options: {},
+            result: [],
+            time: 100
+        });
+        await connection.disconnect();
     });
 
     it('Works Raw Return Expression', () => {

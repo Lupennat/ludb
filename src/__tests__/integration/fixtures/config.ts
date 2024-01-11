@@ -50,7 +50,7 @@ export const config = {
     },
     sqlite: {
         driver: 'sqlite',
-        database: __dirname + '/../../../../.sqlite3.db',
+        database: __dirname + '/../../../../sqlite3.db',
         foreign_key_constraints: true,
         journal_mode_wal: true
     },
@@ -93,6 +93,14 @@ export const config = {
 } as const;
 
 export const DB = new DatabaseManager({ connections: config });
+
+export function isMysql8() {
+    return currentGenericDB === 'mysql8';
+}
+
+export function isPostgres16() {
+    return currentGenericDB === 'postgres16';
+}
 
 export function isMysql(): boolean {
     return config[currentGenericDB].driver === 'mysql';

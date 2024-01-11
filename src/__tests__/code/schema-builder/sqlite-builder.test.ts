@@ -57,6 +57,11 @@ describe('Sqlite Schema QueryBuilder Test', () => {
         jest.spyOn(session, 'getQueryGrammar').mockReturnValue(new SqliteGrammar());
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create view foo');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
                     'create view "prefix_foo" as select "id", "name" from "baz" where "type" in (\'bar\', \'bax\')'
                 );
@@ -72,6 +77,8 @@ describe('Sqlite Schema QueryBuilder Test', () => {
             });
 
         const builder = new MockedSqliteSchemaBuilder(session);
+
+        expect(await builder.createView('create view foo')).toBeTruthy();
         expect(
             await builder.createView('foo', view =>
                 view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
@@ -138,7 +145,7 @@ describe('Sqlite Schema QueryBuilder Test', () => {
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
-                'select name, type, not "notnull" as "nullable", dflt_value as "default", pk as "primary" from pragma_table_info("prefix_table") order by cid asc'
+                'select name, type, not "notnull" as "nullable", dflt_value as "default", pk as "primary" from pragma_table_info(\'prefix_table\') order by cid asc'
             );
             expect(bindings).toBeUndefined();
             return [{ name: 'column', type: 'int', nullable: 0, default: null, primary: 1 }];
@@ -164,7 +171,7 @@ describe('Sqlite Schema QueryBuilder Test', () => {
         jest.spyOn(session, 'selectFromWriteConnection')
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select "primary" as name, group_concat(col) as columns, 1 as "unique", 1 as "primary" from (select name as col from pragma_table_info("prefix_table") where pk > 0 order by pk, cid) group by name union select name, group_concat(col) as columns, "unique", origin = "pk" as "primary" from (select il.*, ii.name as col from pragma_index_list(prefix_table) il, pragma_index_info(il.name) ii order by il.seq, ii.seqno) group by name, "unique", "primary"'
+                    'select "primary" as name, group_concat(col) as columns, 1 as "unique", 1 as "primary" from (select name as col from pragma_table_info(\'prefix_table\') where pk > 0 order by pk, cid) group by name union select name, group_concat(col) as columns, "unique", origin = "pk" as "primary" from (select il.*, ii.name as col from pragma_index_list(\'prefix_table\') il, pragma_index_info(il.name) ii order by il.seq, ii.seqno) group by name, "unique", "primary"'
                 );
                 expect(bindings).toBeUndefined();
                 return [
@@ -178,7 +185,7 @@ describe('Sqlite Schema QueryBuilder Test', () => {
             })
             .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
-                    'select "primary" as name, group_concat(col) as columns, 1 as "unique", 1 as "primary" from (select name as col from pragma_table_info("prefix_table") where pk > 0 order by pk, cid) group by name union select name, group_concat(col) as columns, "unique", origin = "pk" as "primary" from (select il.*, ii.name as col from pragma_index_list(prefix_table) il, pragma_index_info(il.name) ii order by il.seq, ii.seqno) group by name, "unique", "primary"'
+                    'select "primary" as name, group_concat(col) as columns, 1 as "unique", 1 as "primary" from (select name as col from pragma_table_info(\'prefix_table\') where pk > 0 order by pk, cid) group by name union select name, group_concat(col) as columns, "unique", origin = "pk" as "primary" from (select il.*, ii.name as col from pragma_index_list(\'prefix_table\') il, pragma_index_info(il.name) ii order by il.seq, ii.seqno) group by name, "unique", "primary"'
                 );
                 expect(bindings).toBeUndefined();
                 return [
@@ -222,7 +229,7 @@ describe('Sqlite Schema QueryBuilder Test', () => {
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
-                'select group_concat("from") as columns, "table" as foreign_table, group_concat("to") as foreign_columns, on_update, on_delete from (select * from pragma_foreign_key_list("prefix_table") as fkl inner join pragmar_index_list("prefix_table") as il on il.seq = fkl.id order by id desc, seq) group by id, "table", on_update, on_delete'
+                'select group_concat("from") as columns, "table" as foreign_table, group_concat("to") as foreign_columns, on_update, on_delete from (select * from pragma_foreign_key_list(\'prefix_table\') as fkl inner join pragmar_index_list(\'prefix_table\') as il on il.seq = fkl.id order by id desc, seq) group by id, "table", on_update, on_delete'
             );
             expect(bindings).toBeUndefined();
             return [

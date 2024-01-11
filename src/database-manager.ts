@@ -1,12 +1,13 @@
 import { Pdo } from 'lupdo';
 import { EventEmitter } from 'stream';
 import { bindTo } from './bindings';
+import CacheManager from './cache-manager';
 import MysqlConnection from './connections/mysql-connection';
 import PostgresConnection from './connections/postgres-connection';
 import SqliteConnection from './connections/sqlite-connection';
 import SqlserverConnection from './connections/sqlserver-connection';
 import ExpressionContract from './query/expression-contract';
-import { BindToI } from './types';
+import BindToI from './types/bind-to';
 import DriverConnectionI from './types/connection';
 import { DBConfig, ExtractConnection } from './types/database-manager';
 import { raw } from './utils';
@@ -22,11 +23,17 @@ class DatabaseManager<const Config extends DBConfig> {
      */
     protected dispatcher: EventEmitter;
 
+    /**
+     * The cache manager instance.
+     */
+    protected cacheManager: CacheManager;
+
     constructor(
         protected config: Config,
         dispatcher?: EventEmitter
     ) {
         this.dispatcher = dispatcher || new EventEmitter();
+        this.cacheManager = new CacheManager(config);
     }
 
     public connection<const T extends keyof Config['connections'] & string>(
@@ -48,14 +55,18 @@ class DatabaseManager<const Config extends DBConfig> {
 
         switch (driver) {
             case 'mysql':
-                return new MysqlConnection(name, config).setEventDispatcher(this.dispatcher);
+                return this.configure(new MysqlConnection(name, config));
             case 'sqlite':
-                return new SqliteConnection(name, config).setEventDispatcher(this.dispatcher);
+                return this.configure(new SqliteConnection(name, config));
             case 'pgsql':
-                return new PostgresConnection(name, config).setEventDispatcher(this.dispatcher);
+                return this.configure(new PostgresConnection(name, config));
             case 'sqlsrv':
-                return new SqlserverConnection(name, config).setEventDispatcher(this.dispatcher);
+                return this.configure(new SqlserverConnection(name, config));
         }
+    }
+
+    protected configure<T extends DriverConnectionI>(connection: T): T {
+        return connection.setEventDispatcher(this.dispatcher).setCacheManager(this.cacheManager);
     }
 
     /**
@@ -135,7 +146,8 @@ class DatabaseManager<const Config extends DBConfig> {
             promises.push(this.connections[name].disconnect());
         }
 
-        await Promise.all(promises);
+        await Promise.allSettled(promises);
+        await this.cacheManager.terminate();
     }
 }
 

@@ -30,6 +30,22 @@ class JoinClause<Parent extends GrammarBuilderI = GrammarBuilderI>
     }
 
     /**
+     * The "on" clause to the join implementation.
+     */
+    protected onImplementation(
+        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>,
+        operatorOrSecond: Stringable | null = null,
+        second: Stringable | null = null,
+        boolean: ConditionBoolean = 'and'
+    ): this {
+        if (this.isQueryableCallback<JoinClauseI>(first)) {
+            return this.whereNested(first, boolean);
+        }
+
+        return this.whereColumnImplementation(first, operatorOrSecond, second, boolean);
+    }
+
+    /**
      * Add an "on" clause to the join.
      *
      * On clauses can be chained, e.g.
@@ -46,21 +62,10 @@ class JoinClause<Parent extends GrammarBuilderI = GrammarBuilderI>
     public on(first: Stringable, operator: string, second: Stringable): this;
     public on(
         first: Stringable | WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public on(
-        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null,
-        boolean: ConditionBoolean = 'and'
+        operatorOrSecond?: Stringable,
+        second?: Stringable
     ): this {
-        if (this.isQueryableCallback<JoinClauseI>(first)) {
-            return this.whereNested(first, boolean);
-        }
-
-        return this.whereColumn(first, operatorOrSecond, second, boolean);
+        return this.onImplementation(first, operatorOrSecond, second);
     }
 
     /**
@@ -71,10 +76,10 @@ class JoinClause<Parent extends GrammarBuilderI = GrammarBuilderI>
     public orOn(first: Stringable, operator: string, second: Stringable): this;
     public orOn(
         first: Stringable | WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
+        operatorOrSecond?: Stringable,
+        second?: Stringable
     ): this {
-        return this.on(first, operatorOrSecond, second, 'or');
+        return this.onImplementation(first, operatorOrSecond, second, 'or');
     }
 
     /**

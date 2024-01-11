@@ -29,7 +29,7 @@ class SqliteConnector extends Connector {
 
         const options: SqliteOptions = merge(
             {
-                readonly: config.readonly,
+                readonly: config.readonly ?? false,
                 path: config.database,
                 wal: config.journal_mode_wal,
                 walMaxSize: config.wal_max_size,

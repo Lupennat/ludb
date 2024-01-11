@@ -55,7 +55,7 @@ class Grammar extends BaseGrammar {
     /**
      * Compile a create view command;
      */
-    public compileCreateView(_name: Stringable, _command: CommandViewDefinition<ViewRegistryI>): string {
+    public compileCreateView(_name: Stringable, _command?: CommandViewDefinition<ViewRegistryI>): string {
         throw new Error('This database driver does not support creating views.');
     }
 

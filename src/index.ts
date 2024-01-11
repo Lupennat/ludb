@@ -5,3 +5,4 @@ export * from './events';
 export * from './query';
 export * from './schema';
 export * from './types';
+export { jsonParse, jsonStringify } from './utils';

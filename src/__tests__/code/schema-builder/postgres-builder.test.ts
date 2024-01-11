@@ -56,6 +56,11 @@ describe('Postgres Schema QueryBuilder Test', () => {
         const session = connection.sessionSchema();
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create view foo');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
                     'create view "schema"."prefix_foo" as select "id", "name" from "schema2"."prefix_baz" where "type" in (\'bar\', \'bax\')'
                 );
@@ -85,6 +90,8 @@ describe('Postgres Schema QueryBuilder Test', () => {
             });
 
         const builder = new PostgresBuilder(session);
+
+        expect(await builder.createView('create view foo')).toBeTruthy();
         expect(
             await builder.createView('schema.foo', view =>
                 view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('schema2.baz'))

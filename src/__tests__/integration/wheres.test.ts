@@ -80,7 +80,7 @@ describe('Wheres', () => {
         expect(
             await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
-                .where({ name: 'wrong-name', email: 'test-email1' }, null, null, 'or')
+                .orWhere({ name: 'wrong-name', email: 'test-email1' })
                 .first()
         ).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
 

@@ -19,10 +19,10 @@ describe('Sqlite Connector', () => {
         new SqliteConnection('fake', { database: ':memory:', foreign_key_constraints: false });
         const connector = new SqliteConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
-        connector.connect({ database: ':memory:', foreign_key_constraints: false });
+        connector.connect({ database: ':memory:', readonly: true, foreign_key_constraints: false });
         expect(spiedConnection).toHaveBeenLastCalledWith(
             'sqlite',
-            { path: ':memory:' },
+            { path: ':memory:', readonly: true },
             { created: expect.any(Function), max: 5, min: 0 },
             { ATTR_CASE: 1, ATTR_DEBUG: 1, ATTR_NULLS: 1 }
         );
@@ -100,7 +100,7 @@ describe('Sqlite Connector', () => {
         connector.connect({ database: __dirname + '/test.sql', foreign_key_constraints: false });
         expect(spiedConnection).toHaveBeenLastCalledWith(
             'sqlite',
-            { path: __dirname + '/test.sql' },
+            { path: __dirname + '/test.sql', readonly: false },
             { created: expect.any(Function), max: 5, min: 0 },
             { ATTR_CASE: 1, ATTR_DEBUG: 1, ATTR_NULLS: 1 }
         );

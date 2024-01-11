@@ -2,11 +2,13 @@ import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStat
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
+import CacheManager from '../cache-manager';
 import QueryExecuted from '../events/query-executed';
 import { Grammar } from '../query';
 import ExpressionContract from '../query/expression-contract';
 import { SchemaGrammar } from '../schema';
 import BindToI from './bind-to';
+import { CacheSessionOptions } from './cache';
 import ConnectionConfig from './config';
 import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from './generics';
 import { QueryAbleCallback } from './query/grammar-builder';
@@ -174,6 +176,11 @@ interface BaseConnection {
     getConfig<T>(option?: string, defaultValue?: T): T;
 
     /**
+     * Get the cache manager used by the connection.
+     */
+    getCacheManager(): CacheManager | undefined;
+
+    /**
      * Get the event dispatcher used by the connection.
      */
     getEventDispatcher(): EventEmitter | undefined;
@@ -200,6 +207,11 @@ interface BaseConnection {
 }
 
 export default interface DriverConnectionI extends BaseConnection {
+    /**
+     * Define Cache Strategy for current session
+     */
+    cache(cache: CacheSessionOptions): ConnectionSessionI<DriverConnectionI>;
+
     /**
      * Get the current PDO connection.
      */
@@ -266,6 +278,16 @@ export default interface DriverConnectionI extends BaseConnection {
     unsetEventDispatcher(): this;
 
     /**
+     * Set the cache manager instance on the connection.
+     */
+    setCacheManager(cacheManager: CacheManager): this;
+
+    /**
+     * Unset the cache manager for this connection.
+     */
+    unsetCacheManager(): this;
+
+    /**
      * Get the schema grammar used by the connection.
      */
     getSchemaGrammar(): SchemaGrammar;
@@ -301,6 +323,11 @@ export default interface DriverConnectionI extends BaseConnection {
 
 export interface ConnectionSessionI<DriverConnection extends DriverConnectionI = DriverConnectionI>
     extends BaseConnection {
+    /**
+     * Define Cache Strategy for current session
+     */
+    cache(cache: CacheSessionOptions): this;
+
     /**
      * Set Reference for current session
      */

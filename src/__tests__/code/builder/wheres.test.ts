@@ -32,7 +32,7 @@ describe('QueryBuilder Wheres', () => {
         expect(builder.getBindings()).toEqual([]);
 
         builder = getBuilder();
-        builder.select('*').from('users').where(new Raw('id = 1'), null, null, 'and', true);
+        builder.select('*').from('users').whereNot(new Raw('id = 1'));
         expect(builder.toSql()).toBe('select * from "users" where not id = 1');
         expect(builder.getBindings()).toEqual([]);
     });
@@ -1525,28 +1525,24 @@ describe('QueryBuilder Wheres', () => {
         const method = 'whereNotFooBarAndNotBazOrNotQux';
         const parameters = ['corge', 'waldo', 'fred'];
         const builder = getBuilder();
-        const spiedWhere = jest.spyOn(builder, 'where');
 
         expect(builder).toEqual(builder.dynamicWhere(method, parameters));
-        expect(spiedWhere).toHaveBeenNthCalledWith(1, 'foo_bar', '=', parameters[0], 'and', true);
-        expect(spiedWhere).toHaveBeenNthCalledWith(2, 'baz', '=', parameters[1], 'and', true);
-        expect(spiedWhere).toHaveBeenNthCalledWith(3, 'qux', '=', parameters[2], 'or', true);
+
         expect('select * where not "foo_bar" = ? and not "baz" = ? or not "qux" = ?').toBe(builder.toSql());
+        expect(parameters).toEqual(builder.getBindings());
     });
 
     it('Works Dynamic Where Is Not Greedy', () => {
         const method = 'whereIosVersionAndNotAndroidVersionOrOrientation';
         const parameters = ['6.1', '4.2', 'Vertical'];
         const builder = getBuilder();
-        const spiedWhere = jest.spyOn(builder, 'where');
 
         builder.dynamicWhere(method, parameters);
-        expect(spiedWhere).toHaveBeenNthCalledWith(1, 'ios_version', '=', parameters[0], 'and', false);
-        expect(spiedWhere).toHaveBeenNthCalledWith(2, 'android_version', '=', parameters[1], 'and', true);
-        expect(spiedWhere).toHaveBeenNthCalledWith(3, 'orientation', '=', parameters[2], 'or', false);
+
         expect('select * where "ios_version" = ? and not "android_version" = ? or "orientation" = ?').toBe(
             builder.toSql()
         );
+        expect(parameters).toEqual(builder.getBindings());
     });
 
     it('Works Where Row Values', () => {
@@ -2127,41 +2123,30 @@ describe('QueryBuilder Wheres', () => {
 
     it('Works Where With Object', () => {
         let builder = getBuilder();
-        builder.from('users').where({ name: 'wrong-name', email: 'test-email1' }, null, null, 'or');
+        builder.from('users').orWhere({ name: 'wrong-name', email: 'test-email1' });
         expect('select * from "users" where ("name" = ? or "email" = ?)').toBe(builder.toSql());
         expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
 
         builder = getBuilder();
-        builder.from('users').where({ name: 'wrong-name', email: 'test-email1' }, null, null, 'or', true);
+        builder.from('users').orWhereNot({ name: 'wrong-name', email: 'test-email1' });
         expect('select * from "users" where not ("name" = ? or "email" = ?)').toBe(builder.toSql());
         expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
     });
 
     it('Works Where With Tuples', () => {
         let builder = getBuilder();
-        builder.from('users').where(
-            [
-                ['name', 'wrong-name'],
-                ['email', '!=', 'test-email1']
-            ],
-            null,
-            null,
-            'or'
-        );
+        builder.from('users').orWhere([
+            ['name', 'wrong-name'],
+            ['email', '!=', 'test-email1']
+        ]);
         expect('select * from "users" where ("name" = ? or "email" != ?)').toBe(builder.toSql());
         expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
 
         builder = getBuilder();
-        builder.from('users').where(
-            [
-                ['name', 'wrong-name'],
-                ['email', '!=', 'test-email1']
-            ],
-            null,
-            null,
-            'or',
-            true
-        );
+        builder.from('users').orWhereNot([
+            ['name', 'wrong-name'],
+            ['email', '!=', 'test-email1']
+        ]);
         expect('select * from "users" where not ("name" = ? or "email" != ?)').toBe(builder.toSql());
         expect(['wrong-name', 'test-email1']).toEqual(builder.getBindings());
     });

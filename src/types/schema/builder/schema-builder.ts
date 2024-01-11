@@ -117,7 +117,7 @@ export default interface SchemaBuilderI<Session extends ConnectionSessionI<Drive
     /**
      * Create a new table on the schema.
      */
-    createView(view: Stringable, callback: ViewCallback): Promise<boolean>;
+    createView(view: Stringable, callback?: ViewCallback): Promise<boolean>;
     /**
      * create user-defined type.
      */

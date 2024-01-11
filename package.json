@@ -47,11 +47,12 @@
         "clean": "rimraf ./dist",
         "docs:api": "npx typedoc --logLevel Error --excludeExternals --excludeProtected --excludePrivate --out ./docs/api/ --readme none src/index.ts",
         "docs:md:index": "npx markdown-to-html --output ./docs/index.html --source ./README.md",
+        "docs:md:cache": "npx markdown-to-html --output ./docs/cache.html --source ./CACHE.md",
         "docs:md:schema": "npx markdown-to-html --output ./docs/schema.html --source ./SCHEMA.md",
         "docs:md:config": "npx markdown-to-html --output ./docs/config.html --source ./CONFIG.md",
         "docs:md:changelog": "npx markdown-to-html --output ./docs/changelog.html --source ./CHANGELOG.md",
         "docs:md:builder": "npx markdown-to-html --output ./docs/builder.html --source ./BUILDER.md",
-        "docs:md": "npm run docs:md:index && npm run docs:md:schema && npm run docs:md:config && npm run docs:md:changelog && npm run docs:md:builder",
+        "docs:md": "npm run docs:md:index && npm run docs:md:schema && npm run docs:md:cache && npm run docs:md:config && npm run docs:md:changelog && npm run docs:md:builder",
         "docs": "rimraf ./docs && npm run docs:api && npm run docs:md",
         "test:code": "jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --config test/jest.config.js ",
         "test:coverage": "jest --modulePathIgnorePatterns '<rootDir>/src/__tests__/integration/' --coverage --config test/jest.config.js",
@@ -67,8 +68,8 @@
         "test:integration:sqlsrv22": "cross-env DB=sqlsrv22 jest --runInBand --modulePathIgnorePatterns '<rootDir>/src/__tests__/code/' --config test/jest.config.js",
         "lint": "eslint --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
         "lint:fix": "eslint --fix --ext \".js,.jsx,.ts,.tsx\" \"./src\"",
-        "sqlite:up": "touch .sqlite3.db",
-        "sqlite:down": "rimraf .sqlite3.db",
+        "sqlite:up": "touch sqlite3.db",
+        "sqlite:down": "rimraf sqlite3.db",
         "db:up": "npm run sqlite:up && docker compose -f docker-compose.yml up --build -d mysql57 mysql8 postgres12 postgres16 sqlsrv17 sqlsrv22 maria1003 maria1011 && docker-compose -f docker-compose.yml up waitmysql57 waitmysql8 waitpostgres12 waitpostgres16 waitsqlsrv17 waitsqlsrv22 waitmaria1003 waitmaria1011",
         "db:down": "npm run sqlite:down && docker compose -f docker-compose.yml down -v"
     },
@@ -117,9 +118,11 @@
         "reurls": {
             "README.md": "index.html",
             "SCHEMA.md": "schema.html",
+            "CACHE.md": "cache.html",
             "CONFIG.md": "config.html",
             "BUILDER.md": "builder.html",
-            "CHANGELOG.md": "changelog.html"
+            "CHANGELOG.md": "changelog.html",
+            "https://ludb.lupennat.com/": "/"
         }
     }
 }

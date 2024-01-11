@@ -13,7 +13,7 @@
     </a>
 </p>
 
-# Ludb (BETA Release)
+# Ludb (Beta Release)
 
 > Ludb offers an (almost) identical api to [Laravel Database](https://laravel.com/docs/database).
 
@@ -46,10 +46,11 @@ import { DatabaseManager } from 'ludb';
     -   [Events](#events)
     -   [Listening For Query Events](#listening-for-query-events)
     -   [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time)
+-   [Cache](#cache)
 -   [Database Transactions](#database-transactions)
 -   [Differences With Laravel](#differences-with-laravel)
 -   [Under The Hood](#under-the-hood)
--   [Api](https://luconnection.lupennat.com/api)
+-   [Api](https://ludb.lupennat.com/api)
 
 ## Introduction
 
@@ -359,6 +360,11 @@ const afterMiddleware = (req: Request, res: Response, next: NextFunction) => {
 app.get('/', beforeMiddleware, responseHandler, afterMiddleware);
 ```
 
+
+## Cache
+
+Ludb support caching queries for select operations `selectOne`, `scalar`, `selectFromWriteConnection` and `select`, [here](CACHE.md) you can find more information about caching 
+
 ## Database Transactions
 
 You may use the `transaction` method provided by the `connecttion` to run a set of operations within a database transaction. If an exception is thrown within the transaction closure, the transaction will automatically be rolled back and the exception is re-thrown. If the closure executes successfully, the transaction will automatically be committed. You don't need to worry about manually rolling back or committing while using the `transaction` method:
@@ -412,6 +418,7 @@ session.commit();
 ## Differences With Laravel
 
 -   The `DatabaseManager` instance do not proxy methods to default connection, you always need to call `connection(name)` method to access method of `Connection`.
+-   The `DatabaseManager` do not expose functionality to extend registered drivers.
 -   Methods `whenQueryingForLongerThan` and `allowQueryDurationHandlersToRunAgain` do not exist, [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time) offer a valid alternative.
 -   Methods `getQueryLog` and `getRawQueryLog` do not exist, logging query is used only internally for `pretend` method.
 -   Methods `beginTransaction` and `useWriteConnectionWhenReading` return a `ConnectionSession` you must use the session instead the original connection for the queries you want to execute them within the transaction or against the write pdo.

@@ -29,8 +29,30 @@ const config: DatabaseConfig = {
     attributes:  {
         [ATTR_CASE]: CASE_LOWER
     },
+    cache: {
+        resolver() => {
+            return new MyCacheDriver();
+        },
+        duration: 60000,
+        always: true,
+        prefix: 'db_',
+        options: {
+            my_cache_driver_option: true
+        }
+    },
     connections: {
         sqlite: {
+            cache: {
+                resolver() => {
+                    return new AnotherCacheDriver();
+                },
+                duration: () => 5000,
+                always: false,
+                prefix: '',
+                options: {
+                    another_cache_driver_option: true
+                }
+            },
             driver: 'sqlite',
             database: 'path or memorty',
             prefix: '',

@@ -1,11 +1,17 @@
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import Cursor from '../../paginations/cursor';
+import { CacheSessionOptions } from '../cache';
 import { Binding, Stringable } from '../generics';
 import PaginatorI, { CursorPaginatorI, LengthAwarePaginatorI } from '../paginations';
 import GrammarBuilderI, { NumericValues, QueryAbleCallback, RowValues } from './grammar-builder';
 import RegistryI, { BindingTypes } from './registry';
 
 export default interface QueryBuilderI extends GrammarBuilderI {
+    /**
+     * Define Cache Strategy for current builder
+     */
+    cache(cache: CacheSessionOptions): this;
+
     /**
      * Chunk the results of the query.
      */

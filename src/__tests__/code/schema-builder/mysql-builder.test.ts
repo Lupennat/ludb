@@ -38,6 +38,11 @@ describe('Mysql Schema QueryBuilder Test', () => {
         jest.spyOn(session, 'getQueryGrammar').mockReturnValue(new MysqlGrammar());
         jest.spyOn(session, 'statement')
             .mockImplementationOnce(async (sql, bindings) => {
+                expect(sql).toBe('create view foo');
+                expect(bindings).toBeUndefined();
+                return true;
+            })
+            .mockImplementationOnce(async (sql, bindings) => {
                 expect(sql).toBe(
                     "create view `prefix_foo` as select `id`, `name` from `baz` where `type` in ('bar', 'bax')"
                 );
@@ -67,6 +72,8 @@ describe('Mysql Schema QueryBuilder Test', () => {
             });
 
         const builder = new MysqlBuilder(session);
+
+        expect(await builder.createView('create view foo')).toBeTruthy();
         expect(
             await builder.createView('foo', view =>
                 view.as(query => query.select('id', 'name').whereIn('type', ['bar', 'bax']).from('baz'))
@@ -368,7 +375,7 @@ describe('Mysql Schema QueryBuilder Test', () => {
         jest.spyOn(session, 'getTablePrefix').mockReturnValue('prefix_');
         jest.spyOn(session, 'selectFromWriteConnection').mockImplementationOnce(async (sql, bindings) => {
             expect(sql).toBe(
-                "select table_name as `name`, (data_length + index_length) as `size`, table_comment as `comment`, engine as `engine`, table_collation as `collation` from information_schema.tables where table_schema = 'database' and table_type = 'BASE TABLE' order by table_name"
+                "select table_name as `name`, (data_length + index_length) as `size`, table_comment as `comment`, engine as `engine`, table_collation as `collation` from information_schema.tables where table_schema = 'database' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED') order by table_name"
             );
             expect(bindings).toBeUndefined();
             return [{ name: 'users', comment: 'comment', engine: 'innodb', size: 100, collation: 'collation' }];

@@ -32,6 +32,7 @@
 -   [Update Statements](#update-statements)
     -   [Updating JSON Columns](#updating-json-columns)
     -   [Increment & Decrement](#increment-and-decrement)
+-   [Cache](#cache)
 -   [Delete Statements](#delete-statements)
 -   [Pessimistic Locking](#pessimistic-locking)
 -   [Debugging](#debugging)
@@ -975,6 +976,27 @@ await DB.table('users').incrementEach({
     balance: 100
 });
 ```
+
+## Cache
+
+Ludb support caching queries for all "select" operations, you can configure cache for specific query using method `cache`
+
+```ts
+await DB.table('users').cache({ cache: false }).get(); // disable cache 
+await DB.table('users').cache({ cache: true }).get(); // use connection default cache
+await DB.table('users').cache({ cache: 10000 }).get(); // cache for 10000ms
+await DB.table('users').cache({ key: 'query-key' }).get(); // use custom key for specific query
+await DB.table('users')
+    .cache({ options: { driver_options: true } })
+    .get(); // use custom cache driver options
+
+await DB.table('users')
+    .cache({ cache: () => 10000, key: 'query-key', options: { driver_options: true } })
+    .get(); // full syntax for cache
+
+```
+
+[here](#CACHE.md) you can find more information about caching
 
 ## Delete Statements
 

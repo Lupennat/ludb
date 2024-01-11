@@ -395,6 +395,23 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * The join clause implementation.
+     */
+    protected joinImplementation(
+        table: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
+        operatorOrSecond: Stringable | null = null,
+        second: Stringable | null = null,
+        type = 'inner'
+    ): this {
+        return this.baseJoin(type, table, first, join => {
+            // it's safe to force any to avoid type error
+            // overload is more flexible on not exposed method onImplementation
+            join.on(first as any, operatorOrSecond as any, second as any);
+        });
+    }
+
+    /**
      * Add a join clause to the query.
      */
     public join(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
@@ -406,17 +423,8 @@ abstract class CommonGrammarBuilder<
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
         type?: string
-    ): this;
-    public join(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null,
-        type = 'inner'
     ): this {
-        return this.baseJoin(type, table, first, join => {
-            join.on(first, operatorOrSecond, second);
-        });
+        return this.joinImplementation(table, first, operatorOrSecond, second, type);
     }
 
     /**
@@ -442,6 +450,23 @@ abstract class CommonGrammarBuilder<
         this.addBinding(join.getBindings(), 'join');
 
         return this;
+    }
+
+    /**
+     * The "join where" clause implementation.
+     */
+    protected joinWhereImplementation(
+        table: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null,
+        type = 'inner'
+    ): this {
+        return this.baseJoin(type, table, first, join => {
+            // it's safe to force any to avoid type error
+            // overload is more flexible on not exposed method whereImplementation
+            join.where(first as any, operatorOrSecond as any, second as any);
+        });
     }
 
     /**
@@ -472,18 +497,26 @@ abstract class CommonGrammarBuilder<
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>,
         type?: string
-    ): this;
-    public joinWhere(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
-        second: Binding | QueryAbleCallback<JoinClauseI> = null,
+    ): this {
+        return this.joinWhereImplementation(table, first, operatorOrSecond, second, type);
+    }
+
+    /**
+     * The subquery join clause implementation.
+     */
+    protected joinSubImplementation(
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
+        operatorOrSecond: Stringable | null = null,
+        second: Stringable | null = null,
         type = 'inner'
     ): this {
-        return this.baseJoin(type, table, first, join => {
-            join.where(first, operatorOrSecond, second);
+        return this.baseJoinSub(query, as, (expression: ExpressionContract) => {
+            return this.joinImplementation(expression, first, operatorOrSecond, second, type);
         });
     }
+
     /**
      * Add a subquery join clause to the query.
      */
@@ -512,18 +545,8 @@ abstract class CommonGrammarBuilder<
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null,
         type?: string
-    ): this;
-    public joinSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null,
-        type = 'inner'
     ): this {
-        return this.baseJoinSub(query, as, (expression: ExpressionContract) => {
-            return this.join(expression, first, operatorOrSecond, second, type);
-        });
+        return this.joinSubImplementation(query, as, first, operatorOrSecond, second, type);
     }
 
     /**
@@ -541,6 +564,22 @@ abstract class CommonGrammarBuilder<
         this.addBinding(bindings, 'join');
 
         return callback(this.raw(expression));
+    }
+
+    /**
+     * The subquery join where clause implementation.
+     */
+    protected joinWhereSubImplementation(
+        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
+        as: Stringable,
+        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
+        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
+        second: Binding | QueryAbleCallback<JoinClauseI> = null,
+        type = 'inner'
+    ): this {
+        return this.baseJoinSub(query, as, (expression: ExpressionContract) => {
+            return this.joinWhereImplementation(expression, first, operatorOrSecond, second, type);
+        });
     }
 
     /**
@@ -584,18 +623,8 @@ abstract class CommonGrammarBuilder<
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>,
         type?: string
-    ): this;
-    public joinWhereSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
-        second: Binding | QueryAbleCallback<JoinClauseI> = null,
-        type = 'inner'
     ): this {
-        return this.baseJoinSub(query, as, (expression: ExpressionContract) => {
-            return this.joinWhere(expression, first, operatorOrSecond, second, type);
-        });
+        return this.joinWhereSubImplementation(query, as, first, operatorOrSecond, second, type);
     }
 
     /**
@@ -609,14 +638,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
-    ): this;
-    public leftJoin(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
     ): this {
-        return this.join(table, first, operatorOrSecond, second, 'left');
+        return this.joinImplementation(table, first, operatorOrSecond, second, 'left');
     }
     /**
      * Add a "join where" clause to the query.
@@ -645,14 +668,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
-    public leftJoinWhere(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
-        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
-        return this.joinWhere(table, first, operatorOrSecond, second, 'left');
+        return this.joinWhereImplementation(table, first, operatorOrSecond, second, 'left');
     }
 
     /**
@@ -682,15 +699,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
-    ): this;
-    public leftJoinSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
     ): this {
-        return this.joinSub(query, as, first, operatorOrSecond, second, 'left');
+        return this.joinSubImplementation(query, as, first, operatorOrSecond, second, 'left');
     }
 
     /**
@@ -733,15 +743,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
-    public leftJoinWhereSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
-        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
-        return this.joinWhereSub(query, as, first, operatorOrSecond, second, 'left');
+        return this.joinWhereSubImplementation(query, as, first, operatorOrSecond, second, 'left');
     }
 
     /**
@@ -755,14 +758,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
-    ): this;
-    public rightJoin(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
     ): this {
-        return this.join(table, first, operatorOrSecond, second, 'right');
+        return this.joinImplementation(table, first, operatorOrSecond, second, 'right');
     }
 
     /**
@@ -792,14 +789,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
-    public rightJoinWhere(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
-        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
-        return this.joinWhere(table, first, operatorOrSecond, second, 'right');
+        return this.joinWhereImplementation(table, first, operatorOrSecond, second, 'right');
     }
 
     /**
@@ -829,15 +820,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
-    ): this;
-    public rightJoinSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
     ): this {
-        return this.joinSub(query, as, first, operatorOrSecond, second, 'right');
+        return this.joinSubImplementation(query, as, first, operatorOrSecond, second, 'right');
     }
 
     /**
@@ -880,15 +864,8 @@ abstract class CommonGrammarBuilder<
         first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
         operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
         second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
-    public rightJoinWhereSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond: string | Binding | QueryAbleCallback<JoinClauseI> = null,
-        second: Binding | QueryAbleCallback<JoinClauseI> = null
     ): this {
-        return this.joinWhereSub(query, as, first, operatorOrSecond, second, 'right');
+        return this.joinWhereSubImplementation(query, as, first, operatorOrSecond, second, 'right');
     }
     /**
      * Add a "cross join" clause to the query.
@@ -900,17 +877,11 @@ abstract class CommonGrammarBuilder<
     public crossJoin(
         table: Stringable,
         first?: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
-    ): this;
-    public crossJoin(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable | null = null,
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
+        operatorOrSecond?: Stringable,
+        second?: Stringable
     ): this {
-        if (first !== null) {
-            return this.join(table, first, operatorOrSecond, second, 'cross');
+        if (first != null) {
+            return this.joinImplementation(table, first, operatorOrSecond, second, 'cross');
         }
 
         this.registry.joins.push(this.newJoinClause(this, 'cross', table));
@@ -945,31 +916,12 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
-     * Add a basic where clause to the query.
+     * The basic where clause implementation.
      */
-    public where(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
-    public where(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
-    public where(
-        column: QueryAbleCallback<this> | GrammarBuilderI,
-        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
-    ): this;
-    public where(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
-    public where(
-        column: QueryAbleCallback<this> | GrammarBuilderI,
-        operator: string,
-        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
-    ): this;
-    public where(
+    protected whereImplementation(
         column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public where(
-        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
-        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -995,7 +947,11 @@ abstract class CommonGrammarBuilder<
                 not,
                 (query, values) => {
                     values = values.length === 3 ? values : [values[0], '=', values[1]];
-                    query.where(...values, boolean);
+                    if (boolean.toLowerCase() === 'and') {
+                        query.where(...values);
+                    } else {
+                        query.orWhere(...values);
+                    }
                 }
             );
         }
@@ -1029,7 +985,7 @@ abstract class CommonGrammarBuilder<
                 );
             }
 
-            return this.addBinding(bindings, 'where').where(this.raw(`(${sub})`), operator, val, boolean);
+            return this.addBinding(bindings, 'where').whereImplementation(this.raw(`(${sub})`), operator, val, boolean);
         }
 
         // If the value is a Closure, it means the developer is performing an entire
@@ -1127,14 +1083,18 @@ abstract class CommonGrammarBuilder<
     /**
      * Prepare the value and operator to proxy call another method.
      */
-    protected prepareValueAndOperator<T, U>(value: T, operator: string | U, useDefault: boolean): [T, U | string] {
+    protected prepareValueAndOperator<T, U>(
+        value: T,
+        operator: string | U,
+        useDefault: boolean
+    ): [Exclude<T, undefined>, U | string] {
         if (useDefault) {
-            return [operator as T, '='];
+            return [operator as any, '='];
         } else if (this.invalidOperatorAndValue(operator, value)) {
             throw new TypeError('Illegal operator and value combination.');
         }
 
-        return [value, operator];
+        return [value as any, operator];
     }
 
     /**
@@ -1173,8 +1133,40 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a basic where clause to the query.
+     */
+    public where(column: ExpressionContract): this;
+    public where(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
+    public where(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
+    public where(
+        column: QueryAbleCallback<this> | GrammarBuilderI,
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
+    ): this;
+    public where(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
+    public where(
+        column: QueryAbleCallback<this> | GrammarBuilderI,
+        operator: string,
+        value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
+    ): this;
+    public where(
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
+        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI
+    ): this;
+    public where(
+        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
+        operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
+
+        return this.whereImplementation(column, operatorOrValue, value);
+    }
+
+    /**
      * Add an "or where" clause to the query.
      */
+    public orWhere(column: ExpressionContract): this;
     public orWhere(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     public orWhere(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public orWhere(
@@ -1199,23 +1191,20 @@ abstract class CommonGrammarBuilder<
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.where(column, operatorOrValue, value, 'or');
+        return this.whereImplementation(column, operatorOrValue, value, 'or');
     }
 
     /**
      * Add a basic "where not" clause to the query.
      */
+    public whereNot(column: ExpressionContract): this;
     public whereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     public whereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public whereNot(
         column: QueryAbleCallback<this> | GrammarBuilderI,
         value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
-    public whereNot(
-        column: Stringable,
-        operator: string,
-        value: Binding | QueryAbleCallback<this> | GrammarBuilderI
-    ): this;
+    public whereNot(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public whereNot(
         column: QueryAbleCallback<this> | GrammarBuilderI,
         operator: string,
@@ -1224,33 +1213,29 @@ abstract class CommonGrammarBuilder<
     public whereNot(
         column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
         operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        boolean?: ConditionBoolean
+        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
     public whereNot(
         column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
         operatorOrValue: string | Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
-        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null,
-        boolean: ConditionBoolean = 'and'
+        value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
-        return this.where(column, operatorOrValue, value, boolean, true);
+
+        return this.whereImplementation(column, operatorOrValue, value, 'and', true);
     }
 
     /**
      * Add an "or where not" clause to the query.
      */
+    public orWhereNot(column: ExpressionContract): this;
     public orWhereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     public orWhereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     public orWhereNot(
         column: QueryAbleCallback<this> | GrammarBuilderI,
         value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
-    public orWhereNot(
-        column: Stringable,
-        operator: string,
-        value: Binding | QueryAbleCallback<this> | GrammarBuilderI
-    ): this;
+    public orWhereNot(column: Stringable, operator: string, value: Binding | QueryAbleCallback<this>): this;
     public orWhereNot(
         column: QueryAbleCallback<this> | GrammarBuilderI,
         operator: string,
@@ -1267,23 +1252,14 @@ abstract class CommonGrammarBuilder<
         value: Binding | QueryAbleCallback<this> | GrammarBuilderI = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
-        return this.whereNot(column, operatorOrValue, value, 'or');
+
+        return this.whereImplementation(column, operatorOrValue, value, 'or', true);
     }
 
     /**
      * Add a "where" clause comparing two columns to the query.
      */
-    public whereColumn(first: WhereColumnTuple[]): this;
-    public whereColumn(first: Stringable, second: Stringable): this;
-    public whereColumn(first: Stringable, operator: string, second: Stringable): this;
-    public whereColumn(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereColumn(
+    protected whereColumnImplementation(
         first: Stringable | WhereColumnTuple[],
         operatorOrSecond: Stringable | null = null,
         second: Stringable | null = null,
@@ -1296,7 +1272,11 @@ abstract class CommonGrammarBuilder<
         if (Array.isArray(first)) {
             return this.addArrayOfWheres(first, boolean, not, (query, values) => {
                 values = values.length === 3 ? values : [values[0], '=', values[1]];
-                query.whereColumn(...values, boolean);
+                if (boolean.toLowerCase() === 'and') {
+                    query.whereColumn(...values);
+                } else {
+                    query.orWhereColumn(...values);
+                }
             });
         }
 
@@ -1329,6 +1309,20 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a "where" clause comparing two columns to the query.
+     */
+    public whereColumn(first: WhereColumnTuple[]): this;
+    public whereColumn(first: Stringable, second: Stringable): this;
+    public whereColumn(first: Stringable, operator: string, second: Stringable): this;
+    public whereColumn(
+        first: Stringable | WhereColumnTuple[],
+        operatorOrSecond?: Stringable | null,
+        second?: Stringable | null
+    ): this {
+        return this.whereColumnImplementation(first, operatorOrSecond, second);
+    }
+
+    /**
      * Add an "or where" clause comparing two columns to the query.
      */
     public orWhereColumn(first: WhereColumnTuple[]): this;
@@ -1338,13 +1332,8 @@ abstract class CommonGrammarBuilder<
         first: Stringable | WhereColumnTuple[],
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
-    ): this;
-    public orWhereColumn(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
     ): this {
-        return this.whereColumn(first, operatorOrSecond, second, 'or');
+        return this.whereColumnImplementation(first, operatorOrSecond, second, 'or');
     }
 
     /**
@@ -1356,16 +1345,9 @@ abstract class CommonGrammarBuilder<
     public whereColumnNot(
         first: Stringable | WhereColumnTuple[],
         operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public whereColumnNot(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null,
-        boolean: ConditionBoolean = 'and'
+        second?: Stringable | null
     ): this {
-        return this.whereColumn(first, operatorOrSecond, second, boolean, true);
+        return this.whereColumnImplementation(first, operatorOrSecond, second, 'and', true);
     }
 
     /**
@@ -1378,13 +1360,8 @@ abstract class CommonGrammarBuilder<
         first: Stringable | WhereColumnTuple[],
         operatorOrSecond?: Stringable | null,
         second?: Stringable | null
-    ): this;
-    public orWhereColumnNot(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond: Stringable | null = null,
-        second: Stringable | null = null
     ): this {
-        return this.whereColumnNot(first, operatorOrSecond, second, 'or');
+        return this.whereColumnImplementation(first, operatorOrSecond, second, 'or', true);
     }
 
     /**
@@ -1666,27 +1643,12 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
-     * Add a "where date" statement to the query.
+     * The "where date" statement implementation.
      */
-    public whereDate(column: Stringable, value: Stringable | Date | null): this;
-    public whereDate(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereDate(
+    protected whereDateImplementation(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereDate(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null,
+        value: Stringable | Date | null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1704,94 +1666,72 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a "where date" statement to the query.
+     */
+    public whereDate(column: Stringable, value: Stringable | Date | null): this;
+    public whereDate(column: Stringable, operator: string, value: Stringable | Date | null): this;
+    public whereDate(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
+
+        return this.whereDateImplementation(column, operatorOrValue, value);
+    }
+
+    /**
      * Add an "or where date" statement to the query.
      */
     public orWhereDate(column: Stringable, value: Stringable | Date | null): this;
-    public orWhereDate(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereDate(column: Stringable, operator: string, value: Stringable | Date | null): this;
     public orWhereDate(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
         value?: Stringable | Date | null
-    ): this;
-    public orWhereDate(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDate(column, operatorOrValue, value, 'or');
+        return this.whereDateImplementation(column, operatorOrValue, value, 'or');
     }
 
     /**
      * Add a "where not date" statement to the query.
      */
     public whereDateNot(column: Stringable, value: Stringable | Date | null): this;
-    public whereDateNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    public whereDateNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
     public whereDateNot(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public whereDateNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null,
-        boolean: ConditionBoolean = 'and'
+        value?: Stringable | Date | null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDate(column, operatorOrValue, value, boolean, true);
+        return this.whereDateImplementation(column, operatorOrValue, value, 'and', true);
     }
 
     /**
      * Add an "or where not date" statement to the query.
      */
     public orWhereDateNot(column: Stringable, value: Stringable | Date | null): this;
-    public orWhereDateNot(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereDateNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
     public orWhereDateNot(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
         value?: Stringable | Date | null
-    ): this;
-    public orWhereDateNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDateNot(column, operatorOrValue, value, 'or');
+        return this.whereDateImplementation(column, operatorOrValue, value, 'or', true);
     }
 
     /**
-     * Add a "where time" statement to the query.
+     * The "where time" statement implementation.
      */
-    public whereTime(column: Stringable, value: Stringable | Date | null): this;
-    public whereTime(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereTime(
+    protected whereTimeImplementation(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereTime(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null,
+        value: Stringable | Date | null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1810,94 +1750,72 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a "where time" statement to the query.
+     */
+    public whereTime(column: Stringable, value: Stringable | Date | null): this;
+    public whereTime(column: Stringable, operator: string, value: Stringable | Date | null): this;
+    public whereTime(
+        column: Stringable,
+        operatorOrValue: Stringable | Date | null,
+        value?: Stringable | Date | null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
+
+        return this.whereTimeImplementation(column, operatorOrValue, value);
+    }
+
+    /**
      * Add an "or where time" statement to the query.
      */
     public orWhereTime(column: Stringable, value: Stringable | Date | null): this;
-    public orWhereTime(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereTime(column: Stringable, operator: string, value: Stringable | Date | null): this;
     public orWhereTime(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
         value?: Stringable | Date | null
-    ): this;
-    public orWhereTime(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereTime(column, operatorOrValue, value, 'or');
+        return this.whereTimeImplementation(column, operatorOrValue, value, 'or');
     }
 
     /**
      * Add a "where not time" statement to the query.
      */
     public whereTimeNot(column: Stringable, value: Stringable | Date | null): this;
-    public whereTimeNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    public whereTimeNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
     public whereTimeNot(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public whereTimeNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null,
-        boolean: ConditionBoolean = 'and'
+        value?: Stringable | Date | null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereTime(column, operatorOrValue, value, boolean, true);
+        return this.whereTimeImplementation(column, operatorOrValue, value, 'and', true);
     }
 
     /**
      * Add an "or where not time" statement to the query.
      */
     public orWhereTimeNot(column: Stringable, value: Stringable | Date | null): this;
-    public orWhereTimeNot(column: Stringable, operator: string, value?: Stringable | Date | null): this;
+    public orWhereTimeNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
     public orWhereTimeNot(
         column: Stringable,
         operatorOrValue: Stringable | Date | null,
         value?: Stringable | Date | null
-    ): this;
-    public orWhereTimeNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value: Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereTimeNot(column, operatorOrValue, value, 'or');
+        return this.whereTimeImplementation(column, operatorOrValue, value, 'or', true);
     }
 
     /**
-     * Add a "where day" statement to the query.
+     * The "where day" statement implementation.
      */
-    public whereDay(column: Stringable, value: Stringable | number | Date | null): this;
-    public whereDay(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereDay(
+    protected whereDayImplementation(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereDay(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null,
+        value: number | Stringable | Date | null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -1917,94 +1835,72 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a "where day" statement to the query.
+     */
+    public whereDay(column: Stringable, value: Stringable | number | Date | null): this;
+    public whereDay(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
+    public whereDay(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
+
+        return this.whereDayImplementation(column, operatorOrValue, value);
+    }
+
+    /**
      * Add an "or where day" statement to the query.
      */
     public orWhereDay(column: Stringable, value: Stringable | number | Date | null): this;
-    public orWhereDay(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereDay(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public orWhereDay(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
         value?: Stringable | number | Date | null
-    ): this;
-    public orWhereDay(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDay(column, operatorOrValue, value, 'or');
+        return this.whereDayImplementation(column, operatorOrValue, value, 'or');
     }
 
     /**
      * Add a "where not day" statement to the query.
      */
     public whereDayNot(column: Stringable, value: Stringable | number | Date | null): this;
-    public whereDayNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    public whereDayNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public whereDayNot(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public whereDayNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null,
-        boolean: ConditionBoolean = 'and'
+        value?: Stringable | number | Date | null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDay(column, operatorOrValue, value, boolean, true);
+        return this.whereDayImplementation(column, operatorOrValue, value, 'and', true);
     }
 
     /**
      * Add an "or where not day" statement to the query.
      */
     public orWhereDayNot(column: Stringable, value: Stringable | number | Date | null): this;
-    public orWhereDayNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereDayNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public orWhereDayNot(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
         value?: Stringable | number | Date | null
-    ): this;
-    public orWhereDayNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereDayNot(column, operatorOrValue, value, 'or');
+        return this.whereDayImplementation(column, operatorOrValue, value, 'or', true);
     }
 
     /**
      * Add a "where month" statement to the query.
      */
-    public whereMonth(column: Stringable, value: Stringable | number | Date | null): this;
-    public whereMonth(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereMonth(
+    protected whereMonthImplementation(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereMonth(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null,
+        value: number | Stringable | Date | null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -2024,94 +1920,72 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a "where month" statement to the query.
+     */
+    public whereMonth(column: Stringable, value: Stringable | number | Date | null): this;
+    public whereMonth(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
+    public whereMonth(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
+
+        return this.whereMonthImplementation(column, operatorOrValue, value);
+    }
+
+    /**
      * Add an "or where month" statement to the query.
      */
     public orWhereMonth(column: Stringable, value: Stringable | number | Date | null): this;
-    public orWhereMonth(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereMonth(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public orWhereMonth(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
         value?: Stringable | number | Date | null
-    ): this;
-    public orWhereMonth(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereMonth(column, operatorOrValue, value, 'or');
+        return this.whereMonthImplementation(column, operatorOrValue, value, 'or');
     }
 
     /**
      * Add a "where not month" statement to the query.
      */
     public whereMonthNot(column: Stringable, value: Stringable | number | Date | null): this;
-    public whereMonthNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    public whereMonthNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public whereMonthNot(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public whereMonthNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null,
-        boolean: ConditionBoolean = 'and'
+        value?: Stringable | number | Date | null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereMonth(column, operatorOrValue, value, boolean, true);
+        return this.whereMonthImplementation(column, operatorOrValue, value, 'and', true);
     }
 
     /**
      * Add an "or where not month" statement to the query.
      */
     public orWhereMonthNot(column: Stringable, value: Stringable | number | Date | null): this;
-    public orWhereMonthNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereMonthNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public orWhereMonthNot(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
         value?: Stringable | number | Date | null
-    ): this;
-    public orWhereMonthNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereMonthNot(column, operatorOrValue, value, 'or');
+        return this.whereMonthImplementation(column, operatorOrValue, value, 'or', true);
     }
 
     /**
-     * Add a "where year" statement to the query.
+     * The "where year" statement implementation.
      */
-    public whereYear(column: Stringable, value: Stringable | number | Date | null): this;
-    public whereYear(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereYear(
+    protected whereYearImplementation(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public whereYear(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null,
+        value: number | Stringable | Date | null,
         boolean: ConditionBoolean = 'and',
         not = false
     ): this {
@@ -2131,70 +2005,61 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a "where year" statement to the query.
+     */
+    public whereYear(column: Stringable, value: Stringable | number | Date | null): this;
+    public whereYear(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
+    public whereYear(
+        column: Stringable,
+        operatorOrValue: Stringable | number | Date | null,
+        value?: Stringable | number | Date | null
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
+        return this.whereYearImplementation(column, operatorOrValue, value);
+    }
+
+    /**
      * Add an "or where year" statement to the query.
      */
     public orWhereYear(column: Stringable, value: Stringable | number | Date | null): this;
-    public orWhereYear(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereYear(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public orWhereYear(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
         value?: Stringable | number | Date | null
-    ): this;
-    public orWhereYear(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
-
-        return this.whereYear(column, operatorOrValue, value, 'or');
+        return this.whereYearImplementation(column, operatorOrValue, value, 'or');
     }
 
     /**
      * Add a "where not year" statement to the query.
      */
     public whereYearNot(column: Stringable, value: Stringable | number | Date | null): this;
-    public whereYearNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    public whereYearNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public whereYearNot(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public whereYearNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null,
-        boolean: ConditionBoolean = 'and'
+        value?: Stringable | number | Date | null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereYear(column, operatorOrValue, value, boolean, true);
+        return this.whereYearImplementation(column, operatorOrValue, value, 'and', true);
     }
 
     /**
      * Add an "or where not year" statement to the query.
      */
     public orWhereYearNot(column: Stringable, value: Stringable | number | Date | null): this;
-    public orWhereYearNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
+    public orWhereYearNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
     public orWhereYearNot(
         column: Stringable,
         operatorOrValue: Stringable | number | Date | null,
         value?: Stringable | number | Date | null
-    ): this;
-    public orWhereYearNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value: number | Stringable | Date | null = null
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
 
-        return this.whereYearNot(column, operatorOrValue, value, 'or');
+        return this.whereYearImplementation(column, operatorOrValue, value, 'or', true);
     }
 
     /**
@@ -2585,7 +2450,7 @@ abstract class CommonGrammarBuilder<
         // are ready to add it to this query as a where clause just like any other
         // clause on the query. Then we'll increment the parameter index values.
 
-        this.where(snakeCase(segment), '=', parameters[index], connector, not);
+        this.whereImplementation(snakeCase(segment), '=', parameters[index], connector, not);
     }
 
     /**
@@ -2658,19 +2523,9 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
-     * Add a "having" clause to the query.
+     * The "having" clause implementation.
      */
-    public having(column: QueryAbleCallback<this> | Stringable): this;
-    public having(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
-    public having(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
-    public having(
-        column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    public having(
+    protected havingImplementation(
         column: Stringable | QueryAbleCallback<this>,
         operatorOrValue: Stringable | number | null = null,
         value: Stringable | number | null = null,
@@ -2731,69 +2586,63 @@ abstract class CommonGrammarBuilder<
     }
 
     /**
+     * Add a "having" clause to the query.
+     */
+    public having(column: QueryAbleCallback<this> | Stringable): this;
+    public having(column: Stringable, value: Stringable | number): this;
+    public having(column: Stringable, operator: string, value: Stringable | number): this;
+    public having(
+        column: Stringable | QueryAbleCallback<this>,
+        operatorOrValue?: Stringable | number,
+        value?: Stringable | number
+    ): this {
+        [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
+        return this.havingImplementation(column, operatorOrValue, value);
+    }
+
+    /**
      * Add an "or having" clause to the query.
      */
     public orHaving(column: QueryAbleCallback<this> | Stringable): this;
-    public orHaving(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
-    public orHaving(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
+    public orHaving(column: Stringable, value: Stringable | number): this;
+    public orHaving(column: Stringable, operator: string, value: Stringable | number): this;
     public orHaving(
         column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null
-    ): this;
-    public orHaving(
-        column: Stringable | QueryAbleCallback<this>,
-        operatorOrValue: number | Stringable | null = null,
-        value: number | Stringable | null = null
+        operatorOrValue?: Stringable | number,
+        value?: Stringable | number
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
-        return this.having(column, operatorOrValue, value, 'or');
+        return this.havingImplementation(column, operatorOrValue, value, 'or');
     }
 
     /**
      * Add a "having not" clause to the query.
      */
     public havingNot(column: QueryAbleCallback<this> | Stringable): this;
-    public havingNot(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
-    public havingNot(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
+    public havingNot(column: Stringable, value: Stringable | number): this;
+    public havingNot(column: Stringable, operator: string, value: Stringable | number): this;
     public havingNot(
         column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null,
-        boolean?: ConditionBoolean
-    ): this;
-    public havingNot(
-        column: Stringable | QueryAbleCallback<this>,
-        operatorOrValue: Stringable | number | null = null,
-        value: Stringable | number | null = null,
-        boolean: ConditionBoolean = 'and'
+        operatorOrValue?: Stringable | number,
+        value?: Stringable | number
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
-        return this.having(column, operatorOrValue, value, boolean, true);
+        return this.havingImplementation(column, operatorOrValue, value, 'and', true);
     }
 
     /**
      * Add an "or having not" clause to the query.
      */
     public orHavingNot(column: QueryAbleCallback<this> | Stringable): this;
-    public orHavingNot(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
+    public orHavingNot(column: Stringable, value: Stringable | number): this;
+    public orHavingNot(column: Stringable, operator: string, value: Stringable | number): this;
     public orHavingNot(
         column: QueryAbleCallback<this> | Stringable,
-        operator: string,
-        value: Stringable | number
-    ): this;
-    public orHavingNot(
-        column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null
-    ): this;
-    public orHavingNot(
-        column: Stringable | QueryAbleCallback<this>,
-        operatorOrValue: number | Stringable | null = null,
-        value: number | Stringable | null = null
+        operatorOrValue?: Stringable | number,
+        value?: Stringable | number
     ): this {
         [value, operatorOrValue] = this.prepareValueAndOperator(value, operatorOrValue, arguments.length === 2);
-        return this.havingNot(column, operatorOrValue, value, 'or');
+        return this.havingImplementation(column, operatorOrValue, value, 'or', true);
     }
 
     /**

@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStatementI } from 'lupdo';
 import PdoRowData from 'lupdo/dist/typings/types/pdo-raw-data';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
+import CacheManager from '../../../cache-manager';
 import ConnectionSession, { RunCallback } from '../../../connections/connection-session';
 import DatabaseManager from '../../../database-manager';
-import { GrammarBuilder } from '../../../query';
+import { ExpressionContract, GrammarBuilder } from '../../../query';
 import JoinClause from '../../../query/join-clause';
 import QueryBuilder from '../../../query/query-builder';
 import Blueprint from '../../../schema/blueprint';
@@ -15,9 +18,18 @@ import MysqlSchemaGrammar from '../../../schema/grammars/mysql-grammar';
 import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
 import SqliteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
 import SqlserverSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
+import {
+    CacheConfiguration,
+    CacheDriverI,
+    QueryCache,
+    QueryCacheConnection,
+    QueryCacheManager,
+    QueryCacheResponse,
+    QueryCacheStore
+} from '../../../types/cache';
 import DriverConnectionI from '../../../types/connection';
 import { DBConfig } from '../../../types/database-manager';
-import { Binding } from '../../../types/generics';
+import { Binding, BindingExclude, BindingExcludeObject } from '../../../types/generics';
 import GrammarBuilderI, { Arrayable } from '../../../types/query/grammar-builder';
 import JoinClauseI from '../../../types/query/join-clause';
 import BlueprintI from '../../../types/schema/blueprint';
@@ -164,6 +176,64 @@ export function blueprintResolver(
     prefix?: string
 ): BlueprintI {
     return new Blueprint(table, grammar, callback, prefix);
+}
+
+export class MockedCacheManager extends CacheManager {
+    public generateQueryCache(
+        connectionName: string,
+        queryCacheConnection: QueryCacheConnection
+    ): QueryCacheManager | undefined {
+        return super.generateQueryCache(connectionName, queryCacheConnection);
+    }
+
+    public getCacheConfigs(): any {
+        return this.cacheConfig;
+    }
+
+    public getCachemap(): any {
+        return this.cacheMap;
+    }
+
+    public getCaches(): any {
+        return this.caches;
+    }
+
+    public generateHash(
+        query: string,
+        bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
+    ): string {
+        return super.generateHash(query, bindings);
+    }
+
+    public getCacheConfig(connectionName: string): Omit<CacheConfiguration, 'resolver'> {
+        return super.getCacheConfig(connectionName);
+    }
+
+    public getCacheName(connectionName: string): string | undefined {
+        return super.getCacheName(connectionName);
+    }
+
+    public getCache(connectionName: string): CacheDriverI | undefined {
+        return super.getCache(connectionName);
+    }
+}
+
+export class MockedCacheDriver implements CacheDriverI {
+    async connect(): Promise<boolean> {
+        return true;
+    }
+
+    async disconnect(): Promise<void> {}
+
+    async isExpired(_time: number, _duration: number): Promise<boolean> {
+        return false;
+    }
+
+    async get(_queryCache: QueryCache): Promise<QueryCacheResponse | undefined> {
+        return undefined;
+    }
+
+    async store(_queryCacheStore: QueryCacheStore): Promise<void> {}
 }
 
 export class MockedConnectionSession extends ConnectionSession {

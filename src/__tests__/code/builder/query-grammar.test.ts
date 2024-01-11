@@ -862,30 +862,12 @@ describe('QueryBuilder Select-From', () => {
         expect('select * from [users] having ([bar] & ?) != 0').toBe(builder.toSql());
     });
 
-    it('Works Uppercase Leading Booleans Are Removed', () => {
-        let builder = getBuilder();
-        builder.select('*').from('users').where('name', '=', 'Taylor', 'AND');
-        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
-        builder = getBuilder();
-        builder.select('*').from('users').where('name', '=', 'Taylor', 'OR');
-        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
-    });
-
     it('Works Lowercase Leading Booleans Are Removed', () => {
         let builder = getBuilder();
-        builder.select('*').from('users').where('name', '=', 'Taylor', 'and');
+        builder.select('*').from('users').where('name', '=', 'Taylor');
         expect('select * from "users" where "name" = ?').toBe(builder.toSql());
         builder = getBuilder();
-        builder.select('*').from('users').where('name', '=', 'Taylor', 'or');
-        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
-    });
-
-    it('Works Case Insensitive Leading Booleans Are Removed', () => {
-        let builder = getBuilder();
-        builder.select('*').from('users').where('name', '=', 'Taylor', 'And');
-        expect('select * from "users" where "name" = ?').toBe(builder.toSql());
-        builder = getBuilder();
-        builder.select('*').from('users').where('name', '=', 'Taylor', 'Or');
+        builder.select('*').from('users').orWhere('name', '=', 'Taylor');
         expect('select * from "users" where "name" = ?').toBe(builder.toSql());
     });
 });

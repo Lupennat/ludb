@@ -73,6 +73,9 @@ class MysqlGrammar extends Grammar {
      * Compile a create view command;
      */
     public compileCreateView(name: Stringable, command: CommandViewDefinition<ViewRegistryI>): string {
+        if (!command) {
+            return this.getValue(name).toString();
+        }
         const registry = command.getRegistry();
         let sql = `create`;
         const algorithm = registry.algorithm ? this.getValue(registry.algorithm).toString() : '';
@@ -117,7 +120,7 @@ class MysqlGrammar extends Grammar {
             'table_comment as `comment`, engine as `engine`, table_collation as `collation` ' +
             'from information_schema.tables where table_schema = ' +
             this.quoteString(database) +
-            " and table_type = 'BASE TABLE' " +
+            " and table_type in ('BASE TABLE', 'SYSTEM VERSIONED') " +
             'order by table_name'
         );
     }

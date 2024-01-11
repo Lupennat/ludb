@@ -7,6 +7,7 @@ import Raw from '../../../query/expression';
 import Grammar from '../../../query/grammars/grammar';
 import QueryBuilder from '../../../query/query-builder';
 
+import CacheManager from '../../../cache-manager';
 import Expression from '../../../query/expression';
 import MysqlGrammar from '../../../query/grammars/mysql-grammar';
 import PostgresGrammar from '../../../query/grammars/postgres-grammar';
@@ -158,6 +159,17 @@ describe('Connection', () => {
         expect(connection.getEventDispatcher()).toBeInstanceOf(TestEmitter);
         connection.unsetEventDispatcher();
         expect(connection.getEventDispatcher()).toBeUndefined();
+    });
+
+    it('Works Cache Manager', () => {
+        const connection = getConnection();
+        expect(connection.getCacheManager()).toBeUndefined();
+        connection.setCacheManager(
+            new CacheManager({ connections: { sqlite: { driver: 'sqlite', database: ':memory:' } } })
+        );
+        expect(connection.getCacheManager()).toBeInstanceOf(CacheManager);
+        connection.unsetCacheManager();
+        expect(connection.getCacheManager()).toBeUndefined();
     });
 
     it('Works Bind Values', async () => {
@@ -334,6 +346,16 @@ describe('Connection', () => {
         const spiedSession = jest.spyOn(session, 'query');
         expect(connection.query()).toBeInstanceOf(QueryBuilder);
         expect(spiedSession).toHaveBeenCalledTimes(1);
+    });
+
+    it('Works Cache', () => {
+        const connection = getConnection();
+        const session = new ConnectionSession(connection);
+        jest.spyOn(connection, 'session').mockReturnValue(session);
+        const spiedSession = jest.spyOn(session, 'cache');
+        expect(connection.cache({ cache: 1000, key: 'test', options: { a: true } })).toBeInstanceOf(ConnectionSession);
+        expect(spiedSession).toHaveBeenCalledTimes(1);
+        expect(spiedSession).toHaveBeenCalledWith({ cache: 1000, key: 'test', options: { a: true } });
     });
 
     it('Works Select One', async () => {

@@ -4,6 +4,7 @@ import { PostgresOptions } from 'lupdo-postgres';
 import { SqliteOptions } from 'lupdo-sqlite';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
+import { CacheConfiguration } from './cache';
 
 interface DatabaseConnectionOptions {
     /**
@@ -106,6 +107,10 @@ export interface MysqlConfig extends MysqlConnectionOptions {
      * read connection
      */
     read?: MysqlReadAndWriteOptions;
+    /**
+     * The cache Specific Connection Configuration
+     */
+    cache?: CacheConfiguration;
 }
 
 interface SqliteConnectionOptions {
@@ -170,6 +175,10 @@ export interface SqliteConfig extends SqliteConnectionOptions {
      * read connection
      */
     read?: SqliteReadAndWriteOptions;
+    /**
+     * The cache Specific Connection Configuration
+     */
+    cache?: CacheConfiguration;
 }
 
 interface PostgresConnectionOptions extends DatabaseConnectionOptions {
@@ -239,6 +248,10 @@ export interface PostgresConfig extends PostgresConnectionOptions {
      * read connection
      */
     read?: PostgresReadAndWriteOptions;
+    /**
+     * The cache Specific Connection Configuration
+     */
+    cache?: CacheConfiguration;
 }
 
 interface SqlserverConnectionOptions extends DatabaseConnectionOptions {
@@ -295,6 +308,10 @@ export interface SqlserverConfig extends SqlserverConnectionOptions {
      * read connection
      */
     read?: SqlserverReadAndWriteOptions;
+    /**
+     * The cache Specific Connection Configuration
+     */
+    cache?: CacheConfiguration;
 }
 
 export type FlattedConnectionConfig<T> = Omit<T, 'read' | 'write'>;

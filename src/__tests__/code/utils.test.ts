@@ -1,3 +1,4 @@
+import { bindTo } from '../../bindings';
 import Expression from '../../query/expression';
 import Grammar from '../../query/grammars/grammar';
 import {
@@ -7,6 +8,8 @@ import {
     causedByConcurrencyError,
     causedByLostConnection,
     getMessagesFromError,
+    jsonParse,
+    jsonStringify,
     raw,
     stringifyReplacer,
     trimChar
@@ -104,5 +107,31 @@ describe('Utils', () => {
         expect(addslashes('\0')).toBe('\\0');
         expect(addslashes('\u0000')).toBe('\\0');
         expect(addslashes('\x00')).toBe('\\0');
+    });
+
+    it('Works jsonStringify', () => {
+        expect(
+            jsonStringify({
+                date: new Date('2024-01-03'),
+                type: bindTo.bigInteger(BigInt(10), { test: true }),
+                bigInteger: BigInt(50),
+                buffer: Buffer.from('test')
+            })
+        ).toEqual(
+            '{"date":"2024-01-03T00:00:00.000Z","type":{"type":"TypedBinding","data":{"options":{"test":true},"value":{"type":"BigInt","data":"10"},"type":"BIGINT"}},"bigInteger":{"type":"BigInt","data":"50"},"buffer":{"type":"Buffer","data":[116,101,115,116]}}'
+        );
+    });
+
+    it('Works jsonParse', () => {
+        expect(
+            jsonParse(
+                '{"date":"2024-01-03T00:00:00.000Z","type":{"type":"TypedBinding","data":{"options":{"test":true},"value":{"type":"BigInt","data":"10"},"type":"BIGINT"}},"bigInteger":{"type":"BigInt","data":"50"},"buffer":{"type":"Buffer","data":[116,101,115,116]}}'
+            )
+        ).toEqual({
+            date: '2024-01-03T00:00:00.000Z',
+            type: bindTo.bigInteger(BigInt(10), { test: true }),
+            bigInteger: BigInt(50),
+            buffer: Buffer.from('test')
+        });
     });
 });

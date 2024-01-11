@@ -340,15 +340,17 @@ class QueryBuilder<Session extends ConnectionSessionI<DriverConnectionI> = Conne
     /**
      * Create a new table on the schema.
      */
-    public async createView(view: Stringable, callback: ViewCallback): Promise<boolean> {
+    public async createView(view: Stringable, callback?: ViewCallback): Promise<boolean> {
         return await this.getConnection().statement(
             this.getGrammar().compileCreateView(
                 view,
-                callback(
-                    new CommandViewDefinition<ViewRegistryI>('create', {
-                        as: new GrammarBuilder(this.connection)
-                    } as ViewRegistryI)
-                )
+                callback
+                    ? callback(
+                          new CommandViewDefinition<ViewRegistryI>('create', {
+                              as: new GrammarBuilder(this.connection)
+                          } as ViewRegistryI)
+                      )
+                    : undefined
             )
         );
     }

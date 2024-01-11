@@ -50,7 +50,11 @@ class SqliteGrammar extends Grammar {
     /**
      * Compile a create view command;
      */
-    public compileCreateView(name: Stringable, command: CommandViewDefinition<ViewRegistryI>): string {
+    public compileCreateView(name: Stringable, command?: CommandViewDefinition<ViewRegistryI>): string {
+        if (!command) {
+            return this.getValue(name).toString();
+        }
+
         const registry = command.getRegistry();
         let sql = `create${registry.temporary ? ' temporary' : ''} view ${this.wrapTable(name)}`;
 
@@ -91,7 +95,7 @@ class SqliteGrammar extends Grammar {
         return (
             'select name, type, not "notnull" as "nullable", dflt_value as "default", pk as "primary" ' +
             'from pragma_table_info(' +
-            this.wrap(table.replace('.', '__')) +
+            this.quoteString(table.replace('.', '__')) +
             ') order by cid asc'
         );
     }
@@ -103,11 +107,11 @@ class SqliteGrammar extends Grammar {
         return (
             'select "primary" as name, group_concat(col) as columns, 1 as "unique", 1 as "primary" ' +
             'from (select name as col from pragma_table_info(' +
-            this.wrap(table.replace('.', '__')) +
+            this.quoteString(table.replace('.', '__')) +
             ') where pk > 0 order by pk, cid) group by name ' +
             'union select name, group_concat(col) as columns, "unique", origin = "pk" as "primary" ' +
             'from (select il.*, ii.name as col from pragma_index_list(' +
-            table +
+            this.quoteString(table) +
             ') il, pragma_index_info(il.name) ii order by il.seq, ii.seqno) ' +
             'group by name, "unique", "primary"'
         );
@@ -121,9 +125,9 @@ class SqliteGrammar extends Grammar {
             'select group_concat("from") as columns, "table" as foreign_table, ' +
             'group_concat("to") as foreign_columns, on_update, on_delete ' +
             'from (select * from pragma_foreign_key_list(' +
-            this.wrap(table.replace('.', '__')) +
+            this.quoteString(table.replace('.', '__')) +
             ') as fkl inner join pragmar_index_list(' +
-            this.wrap(table.replace('.', '__')) +
+            this.quoteString(table.replace('.', '__')) +
             ') as il on il.seq = fkl.id order by id desc, seq) ' +
             'group by id, "table", on_update, on_delete'
         );

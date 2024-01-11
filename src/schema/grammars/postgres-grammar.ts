@@ -189,7 +189,11 @@ class PostgresGrammar extends Grammar {
     /**
      * Compile a create view command;
      */
-    public compileCreateView(name: Stringable, command: CommandViewDefinition<ViewRegistryI>): string {
+    public compileCreateView(name: Stringable, command?: CommandViewDefinition<ViewRegistryI>): string {
+        if (!command) {
+            return this.getValue(name).toString();
+        }
+
         const registry = command.getRegistry();
         let sql = `create${registry.temporary ? ' temporary' : ''}${
             registry.recursive ? ' recursive' : ''

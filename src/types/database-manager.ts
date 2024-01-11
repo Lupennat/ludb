@@ -3,6 +3,7 @@ import MysqlConnection from '../connections/mysql-connection';
 import PostgresConnection from '../connections/postgres-connection';
 import SqliteConnection from '../connections/sqlite-connection';
 import SqlserverConnection from '../connections/sqlserver-connection';
+import { CacheConfiguration } from './cache';
 import { MysqlConfig, PostgresConfig, SqliteConfig, SqlserverConfig } from './config';
 
 export interface DBMysqlConfig extends MysqlConfig {
@@ -38,6 +39,7 @@ export type DBConnectionsConfig = DBMysqlConfig | DBSqliteConfig | DBPostgresCon
 export type DBConnections = Record<string, DBConnectionsConfig>;
 
 export type DBConfig = {
+    cache?: CacheConfiguration;
     attributes?: PdoAttributes;
     connections: DBConnections;
 };

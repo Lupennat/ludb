@@ -291,3 +291,31 @@ export function hasInvalidUTF8Characters(str: string): boolean {
 export function hasNullBytesCharacters(str: string): boolean {
     return str.includes('\0');
 }
+
+export function jsonStringify(data: any): string {
+    return JSON.stringify(data, (_key, value) => {
+        switch (true) {
+            case typeof value === 'bigint':
+                return { type: 'BigInt', data: value.toString() };
+            case value instanceof TypedBinding:
+                return { type: 'TypedBinding', data: { options: value.options, value: value.value, type: value.type } };
+            default:
+                return value;
+        }
+    });
+}
+
+export function jsonParse<T = any>(json: string): T {
+    return JSON.parse(json, (_key, value) => {
+        switch (true) {
+            case value && value.type === 'Buffer':
+                return Buffer.from(value.data);
+            case value && value.type === 'BigInt':
+                return BigInt(value.data);
+            case value && value.type === 'TypedBinding':
+                return TypedBinding.create(value.data.type, value.data.value, value.data.options);
+            default:
+                return value;
+        }
+    });
+}

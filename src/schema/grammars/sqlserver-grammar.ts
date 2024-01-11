@@ -72,8 +72,13 @@ class SqlserverGrammar extends Grammar {
     /**
      * Compile a create view command;
      */
-    public compileCreateView(name: Stringable, command: CommandViewDefinition<ViewRegistryI>): string {
+    public compileCreateView(name: Stringable, command?: CommandViewDefinition<ViewRegistryI>): string {
+        if (!command) {
+            return this.getValue(name).toString();
+        }
+
         const registry = command.getRegistry();
+
         let sql = `create view ${this.wrapTable(name)}`;
 
         const columns = registry.columnNames ? registry.columnNames : [];

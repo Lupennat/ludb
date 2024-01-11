@@ -88,16 +88,17 @@ describe('QueryBuilder Havings', () => {
         builder = getBuilder();
         expect(() => {
             builder.having(
+                // @ts-expect-error wrong parameters
                 query => {
                     query.selectRaw('?', ['ignore']).having('name', '=', 'bar');
                 },
-                '=',
-                'test'
+                '='
             );
         }).toThrow('Value must be null when column is a callback.');
 
         builder = getBuilder();
         expect(() => {
+            // @ts-expect-error wrong parameters
             builder.select('*').from('users').having('id', '>', null);
         }).toThrow('Illegal operator and value combination.');
     });
@@ -387,7 +388,7 @@ describe('QueryBuilder Havings', () => {
         expect(builder.getBindings()).toEqual([]);
 
         builder = getBuilder();
-        builder.select('*').from('users').having(new Raw('user_foo < user_bar'), null, null, 'and', true);
+        builder.select('*').from('users').havingNot(new Raw('user_foo < user_bar'));
         expect(builder.toSql()).toBe('select * from "users" having not user_foo < user_bar');
         expect(builder.getBindings()).toEqual([]);
     });

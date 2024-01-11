@@ -3,6 +3,7 @@ import Cursor from '../paginations/cursor';
 import CursorPaginator from '../paginations/cursor-paginator';
 import LengthAwarePaginator from '../paginations/length-aware-paginator';
 import Paginator from '../paginations/paginator';
+import { CacheSessionOptions } from '../types';
 import { Binding, Stringable } from '../types/generics';
 import PaginatorI, {
     CursorPaginatorI,
@@ -20,6 +21,15 @@ import JoinClause from './join-clause';
 import { cloneOrders } from './registry';
 
 class QueryBuilder extends CommonGrammarBuilder implements QueryBuilderI {
+    /**
+     * Define Cache Strategy for current builder
+     */
+    public cache(cache: CacheSessionOptions): this {
+        this.getConnection().cache(cache);
+
+        return this;
+    }
+
     /**
      * Chunk the results of the query.
      */

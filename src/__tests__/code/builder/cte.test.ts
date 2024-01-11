@@ -1,4 +1,4 @@
-import { GrammarBuilderI } from '../../../types';
+import GrammarBuilderI from '../../../types/query/grammar-builder';
 import {
     getBuilder,
     getMysqlBuilder,

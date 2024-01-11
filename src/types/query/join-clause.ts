@@ -1,6 +1,6 @@
 import ExpressionContract from '../../query/expression-contract';
 import { Stringable } from '../generics';
-import GrammarBuilderI, { ConditionBoolean, QueryAbleCallback, WhereColumnTuple } from './grammar-builder';
+import GrammarBuilderI, { QueryAbleCallback, WhereColumnTuple } from './grammar-builder';
 import RegistryI, { BindingTypes } from './registry';
 
 export type JoinClauseConstructor<
@@ -27,12 +27,6 @@ export default interface JoinClauseI extends GrammarBuilderI {
     on(first: WhereColumnTuple[] | QueryAbleCallback<this>): this;
     on(first: Stringable, second: Stringable): this;
     on(first: Stringable, operator: string, second: Stringable): this;
-    on(
-        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<this>,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        boolean?: ConditionBoolean
-    ): this;
 
     /**
      * Add an "or on" clause to the join.
@@ -40,11 +34,6 @@ export default interface JoinClauseI extends GrammarBuilderI {
     orOn(first: WhereColumnTuple[] | QueryAbleCallback<this>): this;
     orOn(first: Stringable, second: Stringable): this;
     orOn(first: Stringable, operator: string, second: Stringable): this;
-    orOn(
-        first: Stringable | WhereColumnTuple[] | QueryAbleCallback<this>,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
-    ): this;
 
     /**
      * Create a new query instance for nested where condition.

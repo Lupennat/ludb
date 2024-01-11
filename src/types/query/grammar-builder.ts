@@ -22,11 +22,11 @@ export type OrderDirection =
     | `${'D' | 'd'}${'E' | 'e'}${'S' | 's'}${'C' | 'c'}`;
 export type WhereMethod = 'where' | 'whereColumn';
 
-export type WhereTuple = [Stringable, string | Binding, Binding?];
+export type WhereTuple = [Stringable, string, Binding] | [Stringable, Binding];
 export type WhereObject = {
     [key: string]: Binding;
 };
-export type WhereColumnTuple = [Stringable, Stringable, Stringable?];
+export type WhereColumnTuple = [Stringable, Stringable] | [Stringable, string, Stringable];
 
 export type BetweenTuple = [Stringable | number | bigint | Date, Stringable | number | bigint | Date];
 export type BetweenColumnsTuple = [Stringable, Stringable];
@@ -133,13 +133,6 @@ export default interface GrammarBuilderI<
     join(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     join(table: Stringable, first: Stringable, operator: Stringable): this;
     join(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
-    join(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        type?: string
-    ): this;
 
     /**
      * Add a "join where" clause to the query.
@@ -163,13 +156,6 @@ export default interface GrammarBuilderI<
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
-    joinWhere(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
-        second?: Binding | QueryAbleCallback<JoinClauseI>,
-        type?: string
-    ): this;
 
     /**
      * Add a subquery join clause to the query.
@@ -191,14 +177,6 @@ export default interface GrammarBuilderI<
         first: Stringable,
         operator: string,
         second: Stringable
-    ): this;
-    joinSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        type?: string
     ): this;
 
     /**
@@ -235,14 +213,6 @@ export default interface GrammarBuilderI<
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
-    joinWhereSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
-        second?: Binding | QueryAbleCallback<JoinClauseI>,
-        type?: string
-    ): this;
 
     /**
      * Add a left join to the query.
@@ -250,12 +220,6 @@ export default interface GrammarBuilderI<
     leftJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     leftJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     leftJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
-    leftJoin(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
-    ): this;
 
     /**
      * Add a "join where" clause to the query.
@@ -279,12 +243,6 @@ export default interface GrammarBuilderI<
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
-    leftJoinWhere(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
-        second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
 
     /**
      * Add a subquery left join to the query.
@@ -306,13 +264,6 @@ export default interface GrammarBuilderI<
         first: Stringable,
         operator: string,
         second: Stringable
-    ): this;
-    leftJoinSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
     ): this;
 
     /**
@@ -349,13 +300,6 @@ export default interface GrammarBuilderI<
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
-    leftJoinWhereSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
-        second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
 
     /**
      * Add a right join to the query.
@@ -363,12 +307,6 @@ export default interface GrammarBuilderI<
     rightJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     rightJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     rightJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
-    rightJoin(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
-    ): this;
 
     /**
      * Add a "right join where" clause to the query.
@@ -392,12 +330,6 @@ export default interface GrammarBuilderI<
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
-    rightJoinWhere(
-        table: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
-        second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
 
     /**
      * Add a subquery right join to the query.
@@ -419,13 +351,6 @@ export default interface GrammarBuilderI<
         first: Stringable,
         operator: string,
         second: Stringable
-    ): this;
-    rightJoinSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
     ): this;
 
     /**
@@ -462,13 +387,6 @@ export default interface GrammarBuilderI<
         operator: string,
         second: BindingExclude<null> | QueryAbleCallback<JoinClauseI>
     ): this;
-    rightJoinWhereSub(
-        query: QueryAbleCallback<this> | GrammarBuilderI | Stringable,
-        as: Stringable,
-        first: QueryAbleCallback<JoinClauseI> | GrammarBuilderI | WhereTuple[] | WhereObject | Stringable,
-        operatorOrSecond?: string | Binding | QueryAbleCallback<JoinClauseI>,
-        second?: Binding | QueryAbleCallback<JoinClauseI>
-    ): this;
 
     /**
      * Add a "cross join" clause to the query.
@@ -477,12 +395,6 @@ export default interface GrammarBuilderI<
     crossJoin(table: Stringable, first: WhereColumnTuple[] | QueryAbleCallback<JoinClauseI>): this;
     crossJoin(table: Stringable, first: Stringable, operator: Stringable): this;
     crossJoin(table: Stringable, first: Stringable, operator: string, second: Stringable): this;
-    crossJoin(
-        table: Stringable,
-        first?: QueryAbleCallback<JoinClauseI> | WhereColumnTuple[] | Stringable | null,
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
-    ): this;
 
     /**
      * Add a subquery cross join to the query.
@@ -549,6 +461,7 @@ export default interface GrammarBuilderI<
     /**
      * Add a basic where clause to the query.
      */
+    where(column: ExpressionContract): this;
     where(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     where(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     where(
@@ -561,17 +474,11 @@ export default interface GrammarBuilderI<
         operator: string,
         value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
-    where(
-        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
 
     /**
      * Add an "or where" clause to the query.
      */
+    orWhere(column: ExpressionContract): this;
     orWhere(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     orWhere(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     orWhere(
@@ -584,15 +491,11 @@ export default interface GrammarBuilderI<
         operator: string,
         value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
-    orWhere(
-        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI
-    ): this;
 
     /**
      * Add a basic "where not" clause to the query.
      */
+    whereNot(column: ExpressionContract): this;
     whereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     whereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     whereNot(
@@ -605,16 +508,11 @@ export default interface GrammarBuilderI<
         operator: string,
         value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
-    whereNot(
-        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        boolean?: ConditionBoolean
-    ): this;
 
     /**
      * Add an "or where not" clause to the query.
      */
+    orWhereNot(column: ExpressionContract): this;
     orWhereNot(column: QueryAbleCallback<this> | WhereTuple[] | WhereObject): this;
     orWhereNot(column: Stringable, value: Binding | QueryAbleCallback<this>): this;
     orWhereNot(
@@ -627,11 +525,6 @@ export default interface GrammarBuilderI<
         operator: string,
         value: BindingExclude<null> | QueryAbleCallback<this> | GrammarBuilderI
     ): this;
-    orWhereNot(
-        column: Stringable | QueryAbleCallback<this> | GrammarBuilderI | WhereTuple[] | WhereObject,
-        operatorOrValue?: string | Binding | QueryAbleCallback<this> | GrammarBuilderI,
-        value?: Binding | QueryAbleCallback<this> | GrammarBuilderI
-    ): this;
 
     /**
      * Add a "where" clause comparing two columns to the query.
@@ -639,13 +532,6 @@ export default interface GrammarBuilderI<
     whereColumn(first: WhereColumnTuple[]): this;
     whereColumn(first: Stringable, second: Stringable): this;
     whereColumn(first: Stringable, operator: string, second: Stringable): this;
-    whereColumn(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
 
     /**
      * Add an "or where" clause comparing two columns to the query.
@@ -653,11 +539,6 @@ export default interface GrammarBuilderI<
     orWhereColumn(first: WhereColumnTuple[]): this;
     orWhereColumn(first: Stringable, second: Stringable): this;
     orWhereColumn(first: Stringable, operator: string, second: Stringable): this;
-    orWhereColumn(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
-    ): this;
 
     /**
      * Add a "where not" clause comparing two columns to the query.
@@ -665,12 +546,6 @@ export default interface GrammarBuilderI<
     whereColumnNot(first: WhereColumnTuple[]): this;
     whereColumnNot(first: Stringable, second: Stringable): this;
     whereColumnNot(first: Stringable, operator: string, second: Stringable): this;
-    whereColumnNot(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null,
-        boolean?: ConditionBoolean
-    ): this;
 
     /**
      * Add an "or where not" clause comparing two columns to the query.
@@ -678,11 +553,6 @@ export default interface GrammarBuilderI<
     orWhereColumnNot(first: WhereColumnTuple[]): this;
     orWhereColumnNot(first: Stringable, second: Stringable): this;
     orWhereColumnNot(first: Stringable, operator: string, second: Stringable): this;
-    orWhereColumnNot(
-        first: Stringable | WhereColumnTuple[],
-        operatorOrSecond?: Stringable | null,
-        second?: Stringable | null
-    ): this;
 
     /**
      * Add a raw where clause to the query.
@@ -836,283 +706,121 @@ export default interface GrammarBuilderI<
      * Add a "where date" statement to the query.
      */
     whereDate(column: Stringable, value: Stringable | Date | null): this;
-    whereDate(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    whereDate(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
+    whereDate(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add an "or where date" statement to the query.
      */
     orWhereDate(column: Stringable, value: Stringable | Date | null): this;
-    orWhereDate(column: Stringable, operator: string, value?: Stringable | Date | null): this;
-    orWhereDate(column: Stringable, operatorOrValue: Stringable | Date | null, value?: Stringable | Date | null): this;
+    orWhereDate(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add a "where not date" statement to the query.
      */
     whereDateNot(column: Stringable, value: Stringable | Date | null): this;
-    whereDateNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    whereDateNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    whereDateNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add an "or where not date" statement to the query.
      */
     orWhereDateNot(column: Stringable, value: Stringable | Date | null): this;
-    orWhereDateNot(column: Stringable, operator: string, value?: Stringable | Date | null): this;
-    orWhereDateNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null
-    ): this;
+    orWhereDateNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add a "where time" statement to the query.
      */
     whereTime(column: Stringable, value: Stringable | Date | null): this;
-    whereTime(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    whereTime(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
+    whereTime(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add an "or where time" statement to the query.
      */
     orWhereTime(column: Stringable, value: Stringable | Date | null): this;
-    orWhereTime(column: Stringable, operator: string, value?: Stringable | Date | null): this;
-    orWhereTime(column: Stringable, operatorOrValue: Stringable | Date | null, value?: Stringable | Date | null): this;
+    orWhereTime(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add a "where not time" statement to the query.
      */
     whereTimeNot(column: Stringable, value: Stringable | Date | null): this;
-    whereTimeNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    whereTimeNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    whereTimeNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add an "or where not time" statement to the query.
      */
     orWhereTimeNot(column: Stringable, value: Stringable | Date | null): this;
-    orWhereTimeNot(column: Stringable, operator: string, value?: Stringable | Date | null): this;
-    orWhereTimeNot(
-        column: Stringable,
-        operatorOrValue: Stringable | Date | null,
-        value?: Stringable | Date | null
-    ): this;
+    orWhereTimeNot(column: Stringable, operator: string, value: Stringable | Date | null): this;
 
     /**
      * Add a "where day" statement to the query.
      */
     whereDay(column: Stringable, value: Stringable | number | Date | null): this;
-    whereDay(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    whereDay(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
+    whereDay(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add an "or where day" statement to the query.
      */
     orWhereDay(column: Stringable, value: Stringable | number | Date | null): this;
-    orWhereDay(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
-    orWhereDay(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null
-    ): this;
+    orWhereDay(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add a "where not day" statement to the query.
      */
     whereDayNot(column: Stringable, value: Stringable | number | Date | null): this;
-    whereDayNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    whereDayNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    whereDayNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add an "or where not day" statement to the query.
      */
     orWhereDayNot(column: Stringable, value: Stringable | number | Date | null): this;
-    orWhereDayNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
-    orWhereDayNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null
-    ): this;
+    orWhereDayNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add a "where month" statement to the query.
      */
     whereMonth(column: Stringable, value: Stringable | number | Date | null): this;
-    whereMonth(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    whereMonth(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
+    whereMonth(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add an "or where month" statement to the query.
      */
     orWhereMonth(column: Stringable, value: Stringable | number | Date | null): this;
-    orWhereMonth(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
-    orWhereMonth(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null
-    ): this;
+    orWhereMonth(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add a "where not month" statement to the query.
      */
     whereMonthNot(column: Stringable, value: Stringable | number | Date | null): this;
-    whereMonthNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    whereMonthNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    whereMonthNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add an "or where not month" statement to the query.
      */
     orWhereMonthNot(column: Stringable, value: Stringable | number | Date | null): this;
-    orWhereMonthNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
-    orWhereMonthNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null
-    ): this;
+    orWhereMonthNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add a "where year" statement to the query.
      */
     whereYear(column: Stringable, value: Stringable | number | Date | null): this;
-    whereYear(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
-    whereYear(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
+    whereYear(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add an "or where year" statement to the query.
      */
     orWhereYear(column: Stringable, value: Stringable | number | Date | null): this;
-    orWhereYear(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
-    orWhereYear(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null
-    ): this;
+    orWhereYear(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add a "where not year" statement to the query.
      */
     whereYearNot(column: Stringable, value: Stringable | number | Date | null): this;
-    whereYearNot(
-        column: Stringable,
-        operator: string,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
-    whereYearNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null,
-        boolean?: ConditionBoolean
-    ): this;
+    whereYearNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add an "or where not year" statement to the query.
      */
     orWhereYearNot(column: Stringable, value: Stringable | number | Date | null): this;
-    orWhereYearNot(column: Stringable, operator: string, value?: Stringable | number | Date | null): this;
-    orWhereYearNot(
-        column: Stringable,
-        operatorOrValue: Stringable | number | Date | null,
-        value?: Stringable | number | Date | null
-    ): this;
+    orWhereYearNot(column: Stringable, operator: string, value: Stringable | number | Date | null): this;
 
     /**
      * Add a nested where statement to the query.
@@ -1303,52 +1011,29 @@ export default interface GrammarBuilderI<
      * Add a "having" clause to the query.
      */
     having(column: QueryAbleCallback<this> | Stringable): this;
-    having(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
-    having(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
-    having(
-        column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null,
-        boolean?: ConditionBoolean,
-        not?: boolean
-    ): this;
+    having(column: Stringable, value: Stringable | number): this;
+    having(column: Stringable, operator: string, value: Stringable | number): this;
 
     /**
      * Add an "or having" clause to the query.
      */
     orHaving(column: QueryAbleCallback<this> | Stringable): this;
-    orHaving(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
-    orHaving(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
-    orHaving(
-        column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null
-    ): this;
+    orHaving(column: Stringable, value: Stringable | number): this;
+    orHaving(column: Stringable, operator: string, value: Stringable | number): this;
 
     /**
      * Add a "having not" clause to the query.
      */
     havingNot(column: QueryAbleCallback<this> | Stringable): this;
-    havingNot(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
-    havingNot(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
-    havingNot(
-        column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null,
-        boolean?: ConditionBoolean
-    ): this;
+    havingNot(column: Stringable, value: Stringable | number): this;
+    havingNot(column: Stringable, operator: string, value: Stringable | number): this;
 
     /**
      * Add an "or having not" clause to the query.
      */
     orHavingNot(column: QueryAbleCallback<this> | Stringable): this;
-    orHavingNot(column: QueryAbleCallback<this> | Stringable, value: Stringable | number): this;
-    orHavingNot(column: QueryAbleCallback<this> | Stringable, operator: string, value: Stringable | number): this;
-    orHavingNot(
-        column: QueryAbleCallback<this> | Stringable,
-        operatorOrValue?: Stringable | number | null,
-        value?: Stringable | number | null
-    ): this;
+    orHavingNot(column: Stringable, value: Stringable | number): this;
+    orHavingNot(column: Stringable, operator: string, value: Stringable | number): this;
 
     /**
      * Add a nested having statement to the query.
