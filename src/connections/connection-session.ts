@@ -8,6 +8,7 @@ import {
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import { EventEmitter } from 'stream';
+import CacheManager from '../cache-manager';
 import DeadlockError from '../errors/deadlock-error';
 import QueryError from '../errors/query-error';
 import ConnectionEvent from '../events/connection-event';
@@ -17,26 +18,15 @@ import TransactionBeginning from '../events/transaction-beginning';
 import TransactionCommitted from '../events/transaction-committed';
 import TransactionCommitting from '../events/transaction-committing';
 import TransactionRolledBack from '../events/transaction-rolledback';
-import Builder from '../query/builder';
 import ExpressionContract from '../query/expression-contract';
-import { BindToI } from '../types';
-import { FlattedConnectionConfig } from '../types/config';
-import DriverConnectionI, {
-    BeforeExecutingCallback,
-    ConnectionSessionI,
-    LoggedQuery,
-    PretendingCallback,
-    TransactionCallback
-} from '../types/connection';
-import BuilderI, {
-    Binding,
-    BindingExclude,
-    BindingExcludeObject,
-    BindingObject,
-    SubQuery
-} from '../types/query/builder';
-import GrammarI from '../types/query/grammar';
-import SchemaGrammarI from '../types/schema/grammar';
+import QueryBuilder from '../query/query-builder';
+import BindToI from '../types/bind-to';
+import { CacheSessionOptions } from '../types/cache';
+import ConnectionConfig from '../types/config';
+import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
+import { QueryAbleCallback } from '../types/query/grammar-builder';
+import QueryBuilderI from '../types/query/query-builder';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
 export type RunCallback<T> = (query: string, bindings: Binding[] | BindingObject) => Promise<T>;
@@ -44,7 +34,9 @@ export type AfterCommitEvent = {
     level: number;
     query: QueryExecuted;
 };
-class ConnectionSession implements ConnectionSessionI {
+class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConnectionI>
+    implements ConnectionSessionI<DriverConnection>
+{
     /**
      * Indicates if the connection is in a "dry run".
      */
@@ -86,22 +78,64 @@ class ConnectionSession implements ConnectionSessionI {
     protected afterCommit: AfterCommitEvent[] = [];
 
     /**
+     * The Query Executed Reference
+     */
+    protected referenceId: string = '';
+
+    /**
+     * Cache session Object
+     */
+    protected cacheSessionOptions: CacheSessionOptions = {
+        key: undefined,
+        cache: undefined,
+        options: undefined
+    };
+
+    /**
      * Create a new connection session instance.
      */
-    constructor(protected driverConnection: DriverConnectionI, protected isSchemaConnection = false) {}
+    constructor(
+        protected driverConnection: DriverConnection,
+        protected isSchemaConnection = false
+    ) {}
+
+    /**
+     * Define Cache Strategy for current session
+     */
+    public cache(cache: CacheSessionOptions): this {
+        this.cacheSessionOptions = cache;
+
+        return this;
+    }
+
+    /**
+     * Set Reference for current session
+     */
+    public reference(reference: string): this {
+        this.referenceId = reference;
+
+        return this;
+    }
+
+    /**
+     * Get Reference for current session
+     */
+    public getReference(): string {
+        return this.referenceId;
+    }
 
     /**
      * Begin a fluent query against a database table.
      */
-    public table(table: SubQuery<BuilderI>, as?: string): BuilderI {
+    public table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI {
         return this.query().from(table, as);
     }
 
     /**
      * Get a new query builder instance.
      */
-    public query(): BuilderI {
-        return new Builder(this, this.getQueryGrammar());
+    public query(): QueryBuilderI {
+        return new QueryBuilder(this);
     }
 
     /**
@@ -162,9 +196,66 @@ class ConnectionSession implements ConnectionSessionI {
                 return [];
             }
 
+            const preparedBindings = this.prepareBindings(bindings);
+
+            const cache = await this.getCacheManager()?.get<T[]>(this.getDriverConnection().getName(), {
+                ...this.cacheSessionOptions,
+                query,
+                bindings: preparedBindings
+            });
+
+            if (
+                cache &&
+                cache.result !== undefined &&
+                !(await this.getCacheManager()?.isExpired(
+                    this.getDriverConnection().getName(),
+                    cache.time,
+                    cache.duration,
+                    cache.options
+                ))
+            ) {
+                return cache.result;
+            }
+
             // For select statements, we'll simply execute the query and return an array
             // of the database result set. Each element in the array will be a single
             // row from the database table, and will either be an array or objects.
+            const statement = this.prepared(await this.getPdoForSelect(useReadPdo).prepare(query));
+
+            this.bindValues(statement, preparedBindings);
+
+            await statement.execute();
+
+            if ('close' in statement && typeof statement.close === 'function') {
+                await statement.close();
+            }
+
+            const result = statement.fetchDictionary<T>().all();
+
+            if (cache) {
+                await this.getCacheManager()?.store<T[]>(this.getDriverConnection().getName(), {
+                    ...cache,
+                    result
+                });
+            }
+
+            return result;
+        });
+    }
+
+    /**
+     * Run a select statement against the database.
+     */
+    public async selectResultSets<T = Dictionary>(
+        query: string,
+        bindings: Binding[] | BindingObject = [],
+        useReadPdo?: boolean
+    ): Promise<T[][]> {
+        return this.run<T[][]>(query, bindings, async (query, bindings) => {
+            if (this.pretending()) {
+                return [];
+            }
+
             const statement = this.prepared(await this.getPdoForSelect(useReadPdo).prepare(query));
 
             this.bindValues(statement, this.prepareBindings(bindings));
@@ -175,7 +266,13 @@ class ConnectionSession implements ConnectionSessionI {
                 await statement.close();
             }
 
-            return statement.fetchDictionary<T>().all();
+            const sets: T[][] = [];
+
+            do {
+                sets.push(statement.fetchDictionary<T>().all());
+            } while (statement.nextRowset());
+
+            return sets;
         });
     }
 
@@ -389,7 +486,7 @@ class ConnectionSession implements ConnectionSessionI {
     /**
      * Execute the given callback in "dry run" mode.
      */
-    public async pretend(callback: PretendingCallback): Promise<LoggedQuery[]> {
+    public async pretend(callback: (session: this) => void | Promise<void>): Promise<LoggedQuery[]> {
         return await this.withFreshQueryLog<LoggedQuery[]>(async () => {
             this.isPretending = true;
 
@@ -402,6 +499,27 @@ class ConnectionSession implements ConnectionSessionI {
 
             return this.queryLog;
         });
+    }
+
+    /**
+     * Execute the given callback without "pretending".
+     */
+    public async withoutPretending<T>(callback: () => T | Promise<T>): Promise<T> {
+        if (!this.pretending()) {
+            return callback();
+        }
+
+        this.isPretending = false;
+
+        this.disableQueryLog();
+
+        const result = await callback();
+
+        this.isPretending = true;
+
+        this.enableQueryLog();
+
+        return result;
     }
 
     /**
@@ -499,7 +617,10 @@ class ConnectionSession implements ConnectionSessionI {
         );
 
         if (this.loggingQueries) {
-            this.queryLog.push({ query, bindings });
+            this.queryLog.push({
+                query: this.getQueryGrammar().substituteBindingsIntoRawSql(query, this.prepareBindings(bindings)),
+                bindings
+            });
         }
     }
 
@@ -511,9 +632,16 @@ class ConnectionSession implements ConnectionSessionI {
     }
 
     /**
+     * Disable the query log on the connection.
+     */
+    protected disableQueryLog(): void {
+        this.loggingQueries = false;
+    }
+
+    /**
      * Execute a Closure within a transaction.
      */
-    public async transaction(callback: TransactionCallback, attempts = 1): Promise<void> {
+    public async transaction(callback: (session: this) => void | Promise<void>, attempts = 1): Promise<void> {
         for (let currentAttempt = 1; currentAttempt <= attempts; currentAttempt++) {
             await this.beginTransaction();
 
@@ -872,7 +1000,7 @@ class ConnectionSession implements ConnectionSessionI {
         statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI,
         bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
     ): void {
-        this.driverConnection.bindValues(statement, bindings);
+        this.getDriverConnection().bindValues(statement, bindings);
     }
 
     /**
@@ -881,7 +1009,7 @@ class ConnectionSession implements ConnectionSessionI {
     public prepareBindings(
         bindings: Binding[] | BindingObject
     ): BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract> {
-        return this.driverConnection.prepareBindings(bindings);
+        return this.getDriverConnection().prepareBindings(bindings);
     }
 
     /**
@@ -899,14 +1027,14 @@ class ConnectionSession implements ConnectionSessionI {
      * Ensure using Pdo
      */
     protected getEnsuredPdo(): Pdo {
-        return this.isSchemaConnection ? this.getSchemaPdo() : this.driverConnection.getPdo();
+        return this.isSchemaConnection ? this.getSchemaPdo() : this.getDriverConnection().getPdo();
     }
 
     /**
      * Get the current Schema PDO connection.
      */
     public getSchemaPdo(): Pdo {
-        return this.driverConnection.getSchemaPdo();
+        return this.getDriverConnection().getSchemaPdo();
     }
 
     /**
@@ -924,92 +1052,85 @@ class ConnectionSession implements ConnectionSessionI {
             return this.getPdo();
         }
 
-        return this.isSchemaConnection ? this.getSchemaPdo() : this.driverConnection.getReadPdo();
+        return this.isSchemaConnection ? this.getSchemaPdo() : this.getDriverConnection().getReadPdo();
     }
 
     /**
      * Get the database connection name.
      */
     public getName(): string {
-        return this.driverConnection.getName();
-    }
-
-    /**
-     * Get the database connection full name.
-     */
-    public getNameWithReadWriteType(): string {
-        return this.driverConnection.getNameWithReadWriteType();
+        return this.getDriverConnection().getName();
     }
 
     /**
      * Return all hook to be run just before a database query is executed.
      */
     public getBeforeExecuting(): BeforeExecutingCallback[] {
-        return this.driverConnection.getBeforeExecuting();
+        return this.getDriverConnection().getBeforeExecuting();
     }
 
     /**
      * Get an option from the configuration options.
      */
-    getConfig<T extends FlattedConnectionConfig>(): T;
+    getConfig<T extends ConnectionConfig>(): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
     getConfig<T>(option?: string, defaultValue?: T): T {
-        return this.driverConnection.getConfig<T>(option, defaultValue);
+        return this.getDriverConnection().getConfig<T>(option, defaultValue);
     }
 
     /**
-     * Detect if session is for Schema Builder
+     * Detect if session is for Schema QueryBuilder
      */
     public isSchema(): boolean {
         return this.isSchemaConnection;
     }
 
     /**
-     * Get the PDO driver name.
-     */
-    public getDriverName(): string {
-        return this.driverConnection.getDriverName();
-    }
-
-    /**
      * Get the schema grammar used by the connection.
      */
-    public getSchemaGrammar(): SchemaGrammarI {
-        return this.driverConnection.getSchemaGrammar();
+    public getSchemaGrammar(): ReturnType<DriverConnection['getSchemaGrammar']> {
+        return this.getDriverConnection().getSchemaGrammar() as ReturnType<DriverConnection['getSchemaGrammar']>;
     }
 
     /**
      * Get the query grammar used by the connection.
      */
-    public getQueryGrammar(): GrammarI {
-        return this.driverConnection.getQueryGrammar();
+    public getQueryGrammar(): ReturnType<DriverConnection['getQueryGrammar']> {
+        return this.getDriverConnection().getQueryGrammar() as ReturnType<DriverConnection['getQueryGrammar']>;
     }
 
     /**
      * Get the event dispatcher used by the connection.
      */
     public getEventDispatcher(): EventEmitter | undefined {
-        return this.driverConnection.getEventDispatcher();
+        return this.getDriverConnection().getEventDispatcher();
+    }
+
+    /**
+     * Get the cache manager used by the connection.
+     */
+    public getCacheManager(): CacheManager | undefined {
+        return this.getDriverConnection().getCacheManager();
     }
 
     /**
      * Get the name of the connected database.
      */
     public getDatabaseName(): string {
-        return this.driverConnection.getDatabaseName();
+        return this.getDriverConnection().getDatabaseName();
     }
 
     /**
      * Get the table prefix for the connection.
      */
     public getTablePrefix(): string {
-        return this.driverConnection.getTablePrefix();
+        return this.getDriverConnection().getTablePrefix();
     }
 
     /**
      * Get the Driver Connection of current session
      */
-    public getDriverConnection(): DriverConnectionI {
+    public getDriverConnection(): DriverConnection {
         return this.driverConnection;
     }
 
@@ -1017,14 +1138,14 @@ class ConnectionSession implements ConnectionSessionI {
      * Get a new raw query expression.
      */
     public raw(value: string | bigint | number): ExpressionContract {
-        return this.driverConnection.raw(value);
+        return this.getDriverConnection().raw(value);
     }
 
     /**
      * Get the bind to object.
      */
     public get bindTo(): BindToI {
-        return this.driverConnection.bindTo;
+        return this.getDriverConnection().bindTo;
     }
 }
 

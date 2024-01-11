@@ -1,5 +1,5 @@
 import Raw from '../../query/expression';
-import { DB } from './fixtures/config';
+import { DB, currentGenericDB } from './fixtures/config';
 
 interface JsonMulti {
     options: string;
@@ -50,7 +50,7 @@ describe('Json', () => {
         ['null value', 1, 'json_col->bar']
     ];
 
-    const Schema = DB.connection().getSchemaBuilder();
+    const Schema = DB.connection(currentGenericDB).getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_json_table', table => {
@@ -76,7 +76,7 @@ describe('Json', () => {
             table.json('json_col').nullable();
         });
 
-        await DB.connection()
+        await DB.connection(currentGenericDB)
             .table('test_json_table')
             .insert([
                 { json_col: { foo: ['bar'] } },
@@ -85,7 +85,7 @@ describe('Json', () => {
                 { json_col: { test: [] } }
             ]);
 
-        await DB.connection()
+        await DB.connection(currentGenericDB)
             .table('test_json_table_contains')
             .insert([
                 { json_col: { foo: { bar: ['baz'] } } },
@@ -103,11 +103,11 @@ describe('Json', () => {
         await Schema.drop('test_json_table_null');
         await Schema.drop('test_json_table_not_null');
         await Schema.drop('test_json_table_contains');
-        await DB.disconnect();
+        await DB.connection(currentGenericDB).disconnect();
     });
 
     it('Works Update Wrapping Json', async () => {
-        let updatedCount = await DB.connection()
+        let updatedCount = await DB.connection(currentGenericDB)
             .table('test_json_table')
             .whereJsonContainsKey('json_col->test')
             .update({
@@ -118,65 +118,97 @@ describe('Json', () => {
 
         expect(
             JSON.parse(
-                (await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').sole<Json>())
-                    .json_col
+                (
+                    await DB.connection(currentGenericDB)
+                        .table('test_json_table')
+                        .whereJsonContainsKey('json_col->test')
+                        .sole<Json>()
+                ).json_col
             )
         ).toEqual({ test: [0, 1] });
 
-        updatedCount = await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').update({
-            'json_col->test[2]': 2,
-            'json_col->test[3]': 3
-        });
+        updatedCount = await DB.connection(currentGenericDB)
+            .table('test_json_table')
+            .whereJsonContainsKey('json_col->test')
+            .update({
+                'json_col->test[2]': 2,
+                'json_col->test[3]': 3
+            });
 
         expect(updatedCount).toBe(1);
         expect(
             JSON.parse(
-                (await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').sole<Json>())
-                    .json_col
+                (
+                    await DB.connection(currentGenericDB)
+                        .table('test_json_table')
+                        .whereJsonContainsKey('json_col->test')
+                        .sole<Json>()
+                ).json_col
             )
         ).toEqual({ test: [0, 1, 2, 3] });
 
-        updatedCount = await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').update({
-            'json_col->test': {}
-        });
+        updatedCount = await DB.connection(currentGenericDB)
+            .table('test_json_table')
+            .whereJsonContainsKey('json_col->test')
+            .update({
+                'json_col->test': {}
+            });
 
         expect(updatedCount).toBe(1);
         expect(
             JSON.parse(
-                (await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').sole<Json>())
-                    .json_col
+                (
+                    await DB.connection(currentGenericDB)
+                        .table('test_json_table')
+                        .whereJsonContainsKey('json_col->test')
+                        .sole<Json>()
+                ).json_col
             )
         ).toEqual({ test: {} });
 
-        updatedCount = await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').update({
-            'json_col->test->first_name': 'John',
-            'json_col->test->last_name': 'Doe'
-        });
+        updatedCount = await DB.connection(currentGenericDB)
+            .table('test_json_table')
+            .whereJsonContainsKey('json_col->test')
+            .update({
+                'json_col->test->first_name': 'John',
+                'json_col->test->last_name': 'Doe'
+            });
 
         expect(updatedCount).toBe(1);
         expect(
             JSON.parse(
-                (await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').sole<Json>())
-                    .json_col
+                (
+                    await DB.connection(currentGenericDB)
+                        .table('test_json_table')
+                        .whereJsonContainsKey('json_col->test')
+                        .sole<Json>()
+                ).json_col
             )
         ).toEqual({ test: { first_name: 'John', last_name: 'Doe' } });
 
-        updatedCount = await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').update({
-            'json_col->test->first_name': true,
-            'json_col->test->last_name': false
-        });
+        updatedCount = await DB.connection(currentGenericDB)
+            .table('test_json_table')
+            .whereJsonContainsKey('json_col->test')
+            .update({
+                'json_col->test->first_name': true,
+                'json_col->test->last_name': false
+            });
 
         expect(updatedCount).toBe(1);
         expect(
             JSON.parse(
-                (await DB.connection().table('test_json_table').whereJsonContainsKey('json_col->test').sole<Json>())
-                    .json_col
+                (
+                    await DB.connection(currentGenericDB)
+                        .table('test_json_table')
+                        .whereJsonContainsKey('json_col->test')
+                        .sole<Json>()
+                ).json_col
             )
         ).toEqual({ test: { first_name: true, last_name: false } });
     });
 
     it('Works Update Wrapping Json Array', async () => {
-        const id = await DB.connection()
+        const id = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .insertGetId({
                 options: {},
@@ -185,7 +217,7 @@ describe('Json', () => {
                 created_at: DB.bindTo.dateTime('2023-03-12 22:00:00')
             });
 
-        const updatedCount = await DB.connection()
+        const updatedCount = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .where('id', id)
             .update({
@@ -198,7 +230,10 @@ describe('Json', () => {
             });
         expect(updatedCount).toBe(1);
 
-        const res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
+        const res = await DB.connection(currentGenericDB)
+            .table('test_json_table_multi')
+            .where('id', id)
+            .sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ '2fa': false, presets: ['laravel', 'vue'], language: 'english' });
         expect(JSON.parse(res.meta)).toEqual({ tags: ['white', 'large'] });
@@ -207,7 +242,7 @@ describe('Json', () => {
     });
 
     it('Works Update Wrapping Nested Json Array', async () => {
-        const id = await DB.connection()
+        const id = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .insertGetId({
                 options: { sharing: {} },
@@ -216,7 +251,7 @@ describe('Json', () => {
                 created_at: DB.bindTo.dateTime('2023-03-12 22:00:00')
             });
 
-        const updatedCount = await DB.connection()
+        const updatedCount = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .where('id', id)
             .update({
@@ -230,7 +265,10 @@ describe('Json', () => {
 
         expect(updatedCount).toBe(1);
 
-        const res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
+        const res = await DB.connection(currentGenericDB)
+            .table('test_json_table_multi')
+            .where('id', id)
+            .sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({
             name: 'Lupennat',
@@ -243,7 +281,7 @@ describe('Json', () => {
     });
 
     it('Works Update Wrapping Json Path Array Index', async () => {
-        const id = await DB.connection()
+        const id = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .insertGetId({
                 options: [
@@ -255,14 +293,20 @@ describe('Json', () => {
                 created_at: DB.bindTo.dateTime('2023-03-12 22:00:00')
             });
 
-        const updatedCount = await DB.connection().table('test_json_table_multi').where('id', id).update({
-            'options->[1]->2fa': true,
-            'meta->tags[0][0]': 'black'
-        });
+        const updatedCount = await DB.connection(currentGenericDB)
+            .table('test_json_table_multi')
+            .where('id', id)
+            .update({
+                'options->[1]->2fa': true,
+                'meta->tags[0][0]': 'black'
+            });
 
         expect(updatedCount).toBe(1);
 
-        const res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
+        const res = await DB.connection(currentGenericDB)
+            .table('test_json_table_multi')
+            .where('id', id)
+            .sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual([
             { '2fa': false, first: true },
@@ -274,7 +318,7 @@ describe('Json', () => {
     });
 
     it('Works Update With Json Prepares Bindings Correctly', async () => {
-        const id = await DB.connection()
+        const id = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .insertGetId({
                 options: { enable: true, size: 10 },
@@ -284,7 +328,7 @@ describe('Json', () => {
                 created_at: DB.bindTo.dateTime('2023-03-12 22:00:00')
             });
 
-        let updatedCount = await DB.connection()
+        let updatedCount = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .where('id', id)
             .update({
@@ -295,7 +339,10 @@ describe('Json', () => {
 
         expect(updatedCount).toBe(1);
 
-        let res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
+        let res = await DB.connection(currentGenericDB)
+            .table('test_json_table_multi')
+            .where('id', id)
+            .sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 10 });
         expect(JSON.parse(res.list)).toEqual([null]);
@@ -303,7 +350,7 @@ describe('Json', () => {
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:06');
 
-        updatedCount = await DB.connection()
+        updatedCount = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .where('id', id)
             .update({
@@ -314,35 +361,35 @@ describe('Json', () => {
 
         expect(updatedCount).toBe(1);
 
-        res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
+        res = await DB.connection(currentGenericDB).table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 45 });
         expect(JSON.parse(res.list)).toEqual([1]);
         expect(JSON.parse(res.meta)).toEqual({});
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:08');
-        updatedCount = await DB.connection()
+        updatedCount = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .where('id', id)
             .update({ 'options->size': null });
 
         expect(updatedCount).toBe(1);
 
-        res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
+        res = await DB.connection(currentGenericDB).table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: null });
         expect(JSON.parse(res.meta)).toEqual({});
         expect(res.group_id).toBe(10);
         expect(res.created_at).toBe('2015-05-26 22:02:08');
 
-        updatedCount = await DB.connection()
+        updatedCount = await DB.connection(currentGenericDB)
             .table('test_json_table_multi')
             .where('id', id)
             .update({ 'list->[1]': null, 'options->size': new Raw('70') });
 
         expect(updatedCount).toBe(1);
 
-        res = await DB.connection().table('test_json_table_multi').where('id', id).sole<JsonMulti>();
+        res = await DB.connection(currentGenericDB).table('test_json_table_multi').where('id', id).sole<JsonMulti>();
 
         expect(JSON.parse(res.options)).toEqual({ enable: false, size: 70 });
         expect(JSON.parse(res.meta)).toEqual({});
@@ -354,12 +401,12 @@ describe('Json', () => {
     it.each(data)(
         'Works Json Where Null %s',
         async (_description: string, expected: boolean, key: string, value: any = { value: 123 }) => {
-            const id = await DB.connection().table('test_json_table_null').insertGetId({
+            const id = await DB.connection(currentGenericDB).table('test_json_table_null').insertGetId({
                 json_col: value
             });
 
             expect(
-                await DB.connection()
+                await DB.connection(currentGenericDB)
                     .table('test_json_table_null')
                     .whereNull(`json_col->${key}`)
                     .where('id', id)
@@ -371,12 +418,12 @@ describe('Json', () => {
     it.each(data)(
         'Works Json Where Not Null %s',
         async (_description: string, expected: boolean, key: string, value: any = { value: 123 }) => {
-            const id = await DB.connection().table('test_json_table_not_null').insertGetId({
+            const id = await DB.connection(currentGenericDB).table('test_json_table_not_null').insertGetId({
                 json_col: value
             });
 
             expect(
-                await DB.connection()
+                await DB.connection(currentGenericDB)
                     .table('test_json_table_not_null')
                     .whereNotNull(`json_col->${key}`)
                     .where('id', id)
@@ -389,7 +436,10 @@ describe('Json', () => {
         'Works Where Json Contains Key %s',
         async (_description: string, count: number, column: string) => {
             expect(count).toBe(
-                await DB.connection().table('test_json_table_contains').whereJsonContainsKey(column).count()
+                await DB.connection(currentGenericDB)
+                    .table('test_json_table_contains')
+                    .whereJsonContainsKey(column)
+                    .count()
             );
         }
     );

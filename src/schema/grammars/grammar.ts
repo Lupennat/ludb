@@ -2,10 +2,9 @@
 
 import BaseGrammar from '../../grammar';
 import ExpressionContract from '../../query/expression-contract';
-import { ConnectionSessionI } from '../../types';
-import { Stringable } from '../../types/query/builder';
+import { ConnectionSessionI } from '../../types/connection';
+import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
-import GrammarI from '../../types/schema/grammar';
 import {
     ColumnDefinitionRegistryI,
     ColumnsRegistryI,
@@ -13,15 +12,17 @@ import {
     CommentRegistryI,
     ModifiersType,
     RenameFullRegistryI,
-    RenameRegistryI
+    RenameRegistryI,
+    ViewRegistryI
 } from '../../types/schema/registry';
 import { isStringable, trimChar } from '../../utils';
 import ColumnDefinition from '../definitions/column-definition';
 import CommandDefinition from '../definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../definitions/commands/command-index-definition';
+import CommandViewDefinition from '../definitions/commands/command-view-definition';
 
-class Grammar extends BaseGrammar implements GrammarI {
+class Grammar extends BaseGrammar {
     /**
      * The possible column modifiers.
      */
@@ -45,24 +46,66 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
-     * Compile the SQL needed to retrieve all table names.
+     * Compile a create user-defined type.
      */
-    public compileGetAllTables(_searchPath?: string[]): string {
-        throw new Error('This database driver does not support get all tables.');
+    public compileCreateType(_name: Stringable, _type: string, _definition: any): string {
+        throw new Error('This database driver does not support creating types.');
     }
 
     /**
-     * Compile the SQL needed to retrieve all table views.
+     * Compile a create view command;
      */
-    public compileGetAllViews(_searchPath?: string[]): string {
-        throw new Error('This database driver does not support get all views.');
+    public compileCreateView(_name: Stringable, _command?: CommandViewDefinition<ViewRegistryI>): string {
+        throw new Error('This database driver does not support creating views.');
     }
 
     /**
-     * Compile the SQL needed to retrieve all type names.
+     * Compile the query to determine if the dbstat table is available.
      */
-    public compileGetAllTypes(): string {
-        throw new Error('This database driver does not support get all types.');
+    public compileDbstatExists(): string {
+        throw new Error('This database driver can not check if database exists.');
+    }
+
+    /**
+     * Compile the query to determine the tables.
+     */
+    public compileTables(_databaseOrSchemaOrWithSize?: string | boolean): string {
+        throw new Error('This database driver does not support get tables.');
+    }
+
+    /**
+     * Compile the query to determine the views.
+     */
+    public compileViews(_databaseOrSchema?: string): string {
+        throw new Error('This database driver does not support get views.');
+    }
+
+    /**
+     * Compile the query to determine the user-defined types.
+     */
+    public compileTypes(_databaseOrSchema?: string): string {
+        throw new Error('This database driver does not support get types.');
+    }
+
+    /**
+     * Compile the query to determine the columns.
+     */
+    public compileColumns(_table: string, _databaseOrSchema?: string): string {
+        throw new Error('This database driver does not support get table columns.');
+    }
+
+    /**
+     * Compile the query to determine the indexes.
+     */
+    public compileIndexes(_table: string, _databaseOrSchema?: string): string {
+        throw new Error('This database driver does not support get table indexes.');
+    }
+
+    /**
+     * Compile the query to determine the foreign keys.
+     */
+    public compileForeignKeys(_table: string, _databaseOrSchema?: string): string {
+        throw new Error('This database driver does not support get table foreign keys.');
     }
 
     /**
@@ -82,29 +125,36 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile the SQL needed to drop all tables.
      */
-    public compileDropAllTables(_tables?: Stringable[]): string {
-        throw new Error('This database driver does not support drop all tables.');
+    public compileDropTables(_tables?: Stringable[]): string {
+        throw new Error('This database driver does not support drop tables.');
     }
 
     /**
      * Compile the SQL needed to drop all views.
      */
-    public compileDropAllViews(_views?: Stringable[]): string {
-        throw new Error('This database driver does not support drop all views.');
+    public compileDropViews(_views?: Stringable[]): string {
+        throw new Error('This database driver does not support drop views.');
     }
 
     /**
      * Compile the SQL needed to drop all types.
      */
-    public compileDropAllTypes(_types?: Stringable[]): string {
-        throw new Error('This database driver does not support drop all types.');
+    public compileDropTypes(_types?: Stringable[]): string {
+        throw new Error('This database driver does not support drop types.');
+    }
+
+    /**
+     * Compile the SQL needed to drop all domains.
+     */
+    public compileDropDomains(_domains?: Stringable[]): string {
+        throw new Error('This database driver does not support drop domains.');
     }
 
     /**
      * Compile the command to drop all foreign keys.
      */
-    public compileDropAllForeignKeys(): string {
-        throw new Error('This database driver does not support drop all foreign keys.');
+    public compileDropForeignKeys(): string {
+        throw new Error('This database driver does not support drop foreign keys.');
     }
 
     /**
@@ -119,27 +169,6 @@ class Grammar extends BaseGrammar implements GrammarI {
      */
     public compileCreate(_blueprint: BlueprintI, _command: CommandDefinition, _connection: ConnectionSessionI): string {
         throw new Error('This database driver does not support create table.');
-    }
-
-    /**
-     * Compile the query to determine the list of tables.
-     */
-    public compileTableExists(): string {
-        throw new Error('This database driver does not support table exists.');
-    }
-
-    /**
-     * Compile the query to determine the data type of column.
-     */
-    public compileColumnType(_table?: string, _column?: string): string {
-        throw new Error('This database driver does not support get column type.');
-    }
-
-    /**
-     * Compile the query to determine the list of columns.
-     */
-    public compileColumnListing(_table?: string): string {
-        throw new Error('This database driver does not support column listing.');
     }
 
     /**
@@ -371,7 +400,11 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a foreign key command.
      */
-    public compileForeign(blueprint: BlueprintI, command: CommandForeignKeyDefinition): string {
+    public compileForeign(
+        blueprint: BlueprintI,
+        command: CommandForeignKeyDefinition,
+        _connection: ConnectionSessionI
+    ): string {
         const registry = command.getRegistry();
         // We need to prepare several of the elements of the foreign key definition
         // before we can create the SQL, such as wrapping the tables and convert
@@ -413,12 +446,54 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Compile a drop table (if exists) command.
      */
-    public compileDropIfExists(
+    public compileDropTableIfExists(
         _blueprint: BlueprintI,
         _command: CommandDefinition,
         _connection: ConnectionSessionI
     ): string {
         throw new Error('This database driver does not support drop table if exists.');
+    }
+
+    /**
+     * Compile a drop view command.
+     */
+    public compileDropView(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping views.');
+    }
+
+    /**
+     * Compile a drop view (if exists) command.
+     */
+    public compileDropViewIfExists(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping views.');
+    }
+
+    /**
+     * Compile a drop type command.
+     */
+    public compileDropType(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping types.');
+    }
+
+    /**
+     * Compile a drop type (if exists) command.
+     */
+    public compileDropTypeIfExists(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping types.');
+    }
+
+    /**
+     * Compile a drop domain command.
+     */
+    public compileDropDomain(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping domains.');
+    }
+
+    /**
+     * Compile a drop domain (if exists) command.
+     */
+    public compileDropDomainIfExists(_name: Stringable): string {
+        throw new Error('This database driver does not support dropping domains.');
     }
 
     /**
@@ -1051,11 +1126,8 @@ class Grammar extends BaseGrammar implements GrammarI {
     /**
      * Wrap a value in keyword identifiers.
      */
-    public wrap(value: Stringable | CommandDefinition | ColumnDefinition, prefixAlias = false): string {
-        return super.wrap(
-            value instanceof CommandDefinition || value instanceof ColumnDefinition ? value.name : value,
-            prefixAlias
-        );
+    public wrap(value: Stringable | CommandDefinition | ColumnDefinition): string {
+        return super.wrap(value instanceof CommandDefinition || value instanceof ColumnDefinition ? value.name : value);
     }
 
     /**
@@ -1088,10 +1160,10 @@ class Grammar extends BaseGrammar implements GrammarI {
     }
 
     /**
-     * Check if this Grammar supports schema changes wrapped in a transaction.
+     * check if this Grammar supports drop foreign for table changes.
      */
-    public supportsSchemaTransactions(): boolean {
-        return this.transactions;
+    public supportsDropForeign(): boolean {
+        return true;
     }
 }
 

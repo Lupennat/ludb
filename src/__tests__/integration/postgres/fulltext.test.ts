@@ -1,9 +1,10 @@
-import { DB, isPostgres } from '../fixtures/config';
+import { DB, currentGenericDB, currentPostgresDB, isPostgres } from '../fixtures/config';
 
 const maybe = isPostgres() ? describe : describe.skip;
 
 maybe('Postgres FullText', () => {
-    const Schema = DB.connection().getSchemaBuilder();
+    const currentDB = currentGenericDB as currentPostgresDB;
+    const Schema = DB.connection(currentDB).getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_fulltext_articles', table => {
@@ -13,7 +14,7 @@ maybe('Postgres FullText', () => {
             table.fulltext(['title', 'body']);
         });
 
-        await DB.connection()
+        await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .insert([
                 { title: 'PostgreSQL Tutorial', body: 'DBMS stands for DataBase ...' },
@@ -27,11 +28,11 @@ maybe('Postgres FullText', () => {
 
     afterAll(async () => {
         await Schema.drop('test_fulltext_articles');
-        await DB.disconnect();
+        await DB.connection(currentDB).disconnect();
     });
 
     it('Works Where Fulltext', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'database')
             .orderBy('id')
@@ -43,7 +44,7 @@ maybe('Postgres FullText', () => {
     });
 
     it('Works Where Fulltext With Web Search', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], '+PostgreSQL -YourSQL', { mode: 'websearch' })
             .get();
@@ -52,7 +53,7 @@ maybe('Postgres FullText', () => {
     });
 
     it('Works Where Fulltext With Plain', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'PostgreSQL tutorial', { mode: 'plain' })
             .get();
@@ -61,7 +62,7 @@ maybe('Postgres FullText', () => {
     });
 
     it('Works Where Fulltext With Plain', async () => {
-        const articles = await DB.connection()
+        const articles = await DB.connection(currentDB)
             .table('test_fulltext_articles')
             .whereFulltext(['title', 'body'], 'PostgreSQL tutorial', { mode: 'phrase' })
             .get();

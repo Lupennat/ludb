@@ -4,55 +4,38 @@ import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
 import { bindTo } from '../bindings';
+import CacheManager from '../cache-manager';
 import QueryExecuted from '../events/query-executed';
 import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
-import SchemaBuilder from '../schema/builders/builder';
 import SchemaGrammar from '../schema/grammars/grammar';
-import { BindToI } from '../types';
-import { DriverFLattedConfig, FlattedConnectionConfig, ReadWriteType } from '../types/config';
-import DriverConnectionI, {
-    BeforeExecutingCallback,
-    ConnectionResolver,
-    ConnectionSessionI,
-    LoggedQuery,
-    PretendingCallback,
-    QueryExecutedCallback,
-    TransactionCallback
-} from '../types/connection';
-import BuilderI, {
-    Binding,
-    BindingExclude,
-    BindingExcludeObject,
-    BindingObject,
-    SubQuery
-} from '../types/query/builder';
-import GrammarI from '../types/query/grammar';
-import SchemaBuilderI from '../types/schema/builder';
-import SchemaGrammarI from '../types/schema/grammar';
-import { raw } from '../utils';
+import { CacheSessionOptions } from '../types';
+import BindToI from '../types/bind-to';
+import ConnectionConfig, { FlattedConnectionConfig, ReadAndWriteConnectionOptions } from '../types/config';
+import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
+import ConnectorI from '../types/connector';
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
+import { QueryAbleCallback } from '../types/query/grammar-builder';
+import QueryBuilderI from '../types/query/query-builder';
+import SchemaBuilderI from '../types/schema/builder/schema-builder';
+import { merge, raw } from '../utils';
 import ConnectionSession from './connection-session';
 
-class Connection implements DriverConnectionI {
+abstract class Connection<const Config extends ConnectionConfig = ConnectionConfig> implements DriverConnectionI {
     /**
      * The active PDO connection used for reads.
      */
     protected readPdo: Pdo | null = null;
 
     /**
-     * The type of the connection.
+     * The active PDO connection used.
      */
-    protected readWriteType: ReadWriteType | null = null;
+    protected pdo!: Pdo;
 
     /**
-     * The query grammar implementation.
+     * The active Schema PDO connection used.
      */
-    protected queryGrammar!: GrammarI;
-
-    /**
-     * The schema grammar implementation.
-     */
-    protected schemaGrammar!: SchemaGrammarI;
+    protected schemaPdo!: Pdo;
 
     /**
      * The event dispatcher instance.
@@ -60,80 +43,173 @@ class Connection implements DriverConnectionI {
     protected dispatcher?: EventEmitter;
 
     /**
+     * the cache manager instance.
+     */
+    protected cacheManager?: CacheManager;
+
+    /**
      * All of the callbacks that should be invoked before a query is executed.
      */
     protected beforeExecutingCallbacks: BeforeExecutingCallback[] = [];
 
     /**
-     * The connection resolvers.
+     * the connection table prefix
      */
-    protected static resolvers: { [key: string]: ConnectionResolver } = {};
+    protected tablePrefix: string;
+
+    /**
+     * the connection database
+     */
+    protected database: string;
 
     /**
      * Create a new database connection instance.
      */
     public constructor(
-        protected pdo: Pdo,
-        protected schemaPdo: Pdo,
-        protected config: DriverFLattedConfig,
-        protected database: string,
-        protected tablePrefix: string
+        protected name: string,
+        protected config: Config
     ) {
-        // We need to initialize a query grammar and the schema grammar
-        // which are both very important parts of the database abstractions
-        // so we initialize these to their default values while starting.
-        this.useDefaultQueryGrammar().useDefaultSchemaGrammar();
+        this.tablePrefix = this.config.prefix || '';
+        this.database = this.config.database;
+        this.setDefaultQueryGrammar();
+        this.setDefaultSchemaGrammar();
+        if ('read' in this.config || 'write' in this.config) {
+            this.createReadWriteConnection();
+        } else {
+            this.createSingleConnection(this.config);
+        }
     }
 
     /**
-     * Start Connection session for Builder
+     * create Connector
      */
-    public session(): ConnectionSessionI {
+    protected abstract createConnector(): ConnectorI;
+
+    /**
+     * set Default Query Grammar
+     */
+    protected abstract setDefaultQueryGrammar(): void;
+
+    /**
+     * set Default Schema Grammar
+     */
+    protected abstract setDefaultSchemaGrammar(): void;
+
+    /**
+     * Get a schema builder instance for the connection.
+     */
+    public abstract getSchemaBuilder(): SchemaBuilderI<ConnectionSessionI<DriverConnectionI>>;
+
+    /**
+     * Get the schema grammar used by the connection.
+     */
+    public abstract getSchemaGrammar(): SchemaGrammar;
+
+    /**
+     * Get the query grammar used by the connection.
+     */
+    public abstract getQueryGrammar(): Grammar;
+
+    /**
+     * Create a single database connection instance.
+     */
+    protected createSingleConnection(config: FlattedConnectionConfig<Config>): void {
+        this.pdo = this.createPdoResolver(config);
+        this.schemaPdo = this.createPdoSchemaResolver(config);
+    }
+
+    /**
+     * Create a read / write database connection instance.
+     */
+    protected createReadWriteConnection(): void {
+        this.createSingleConnection(this.getWriteConfig());
+        this.readPdo = this.createReadPdo();
+    }
+
+    /**
+     * Create a new PDO instance for reading.
+     */
+    protected createReadPdo(): Pdo {
+        return this.createPdoResolver(this.getReadConfig());
+    }
+
+    /**
+     * Get the read configuration for a read / write connection.
+     */
+    protected getReadConfig(): FlattedConnectionConfig<Config> {
+        return this.mergeReadWriteConfig(this.getReadWriteConfig('read'));
+    }
+
+    /**
+     * Get the write configuration for a read / write connection.
+     */
+    protected getWriteConfig(): FlattedConnectionConfig<Config> {
+        return this.mergeReadWriteConfig(this.getReadWriteConfig('write'));
+    }
+
+    /**
+     * Get a read / write level configuration.
+     */
+    protected getReadWriteConfig(
+        type: 'read' | 'write'
+    ): FlattedConnectionConfig<ReadAndWriteConnectionOptions<Config>> | undefined {
+        if (type in this.config) {
+            const options = this.config[type];
+            return options as FlattedConnectionConfig<ReadAndWriteConnectionOptions<Config>>;
+        }
+        return undefined;
+    }
+
+    /**
+     * Merge a configuration for a read / write connection.
+     */
+    protected mergeReadWriteConfig(
+        toMerge?: FlattedConnectionConfig<ReadAndWriteConnectionOptions<Config>>
+    ): FlattedConnectionConfig<Config> {
+        const merged = merge<Config>(this.config, (toMerge ?? {}) as Partial<Config>);
+        delete merged.read;
+        delete merged.write;
+
+        return merged;
+    }
+
+    /**
+     * Create a new PDO instance for Schema.
+     */
+    protected createPdoSchemaResolver(config: FlattedConnectionConfig<Config>): Pdo {
+        return this.createConnector().connect(
+            Object.assign({}, config, {
+                pool: { min: 0, max: 1 }
+            })
+        );
+    }
+
+    /**
+     * Create a new PDO instance.
+     */
+    protected createPdoResolver(config: FlattedConnectionConfig<Config>): Pdo {
+        return this.createConnector().connect(config);
+    }
+
+    /**
+     * Set Reference for current session
+     */
+    public reference(reference: string): ConnectionSessionI<this> {
+        return this.session().reference(reference);
+    }
+
+    /**
+     * Start Connection session for QueryBuilder
+     */
+    public session(): ConnectionSessionI<this> {
         return new ConnectionSession(this);
     }
 
     /**
      * Start Connection session for SchemaBuilder
      */
-    public sessionSchema(): ConnectionSessionI {
+    public sessionSchema(): ConnectionSessionI<this> {
         return new ConnectionSession(this, true);
-    }
-
-    /**
-     * Set the query grammar to the default implementation.
-     */
-    public useDefaultQueryGrammar(): this {
-        this.queryGrammar = this.getDefaultQueryGrammar();
-        return this;
-    }
-
-    /**
-     * Get the default query grammar instance.
-     */
-    protected getDefaultQueryGrammar(): GrammarI {
-        return new Grammar();
-    }
-
-    /**
-     * Set the schema grammar to the default implementation.
-     */
-    public useDefaultSchemaGrammar(): this {
-        this.schemaGrammar = this.getDefaultSchemaGrammar();
-        return this;
-    }
-
-    /**
-     * Get the default schema grammar instance.
-     */
-    protected getDefaultSchemaGrammar(): SchemaGrammarI {
-        return new SchemaGrammar();
-    }
-
-    /**
-     * Get a schema builder instance for the connection.
-     */
-    public getSchemaBuilder(): SchemaBuilderI {
-        return new SchemaBuilder(this.sessionSchema());
     }
 
     /**
@@ -187,8 +263,8 @@ class Connection implements DriverConnectionI {
     }
 
     protected prepareBinding(binding: Binding): BindingExclude<ExpressionContract> {
-        if (this.queryGrammar.isExpression(binding)) {
-            return this.queryGrammar.getValue(binding).toString();
+        if (this.getQueryGrammar().isExpression(binding)) {
+            return this.getQueryGrammar().getValue(binding).toString();
         }
 
         return binding;
@@ -198,9 +274,9 @@ class Connection implements DriverConnectionI {
      * Reconnect to the database.
      */
     public async reconnect(): Promise<this> {
-        const promises = [this.pdo.reconnect(), this.schemaPdo.reconnect()];
+        const promises = [this.getPdo().reconnect(), this.getSchemaPdo().reconnect()];
         if (this.readPdo !== null) {
-            promises.push(this.readPdo.reconnect());
+            promises.push(this.getReadPdo().reconnect());
         }
         await Promise.all(promises);
         return this;
@@ -210,11 +286,11 @@ class Connection implements DriverConnectionI {
      * Disconnect from the underlying PDO connection.
      */
     public async disconnect(): Promise<void> {
-        const promises = [this.pdo.disconnect(), this.schemaPdo.disconnect()];
+        const promises = [this.getPdo().disconnect(), this.getSchemaPdo().disconnect()];
         if (this.readPdo !== null) {
-            promises.push(this.readPdo.disconnect());
+            promises.push(this.getReadPdo().disconnect());
         }
-        await Promise.all(promises);
+        await Promise.allSettled(promises);
     }
 
     /**
@@ -236,14 +312,14 @@ class Connection implements DriverConnectionI {
     /**
      * Register a database query listener with the connection.
      */
-    public listen(callback: QueryExecutedCallback): void {
+    public listen(callback: (event: QueryExecuted) => void | Promise<void>): void {
         this.dispatcher?.on(QueryExecuted.eventName, callback);
     }
 
     /**
      * Remove a database query listener with the connection.
      */
-    public unlisten(callback: QueryExecutedCallback): void {
+    public unlisten(callback: (event: QueryExecuted) => void | Promise<void>): void {
         this.dispatcher?.off(QueryExecuted.eventName, callback);
     }
 
@@ -269,95 +345,30 @@ class Connection implements DriverConnectionI {
     }
 
     /**
-     * Set the PDO connection.
-     */
-    public setPdo(pdo: Pdo): this {
-        this.pdo = pdo;
-
-        return this;
-    }
-
-    /**
-     * Set the Schema PDO connection.
-     */
-    public setSchemaPdo(pdo: Pdo): this {
-        this.schemaPdo = pdo;
-
-        return this;
-    }
-
-    /**
-     * Set the PDO connection used for reading.
-     */
-    public setReadPdo(pdo: Pdo): this {
-        this.readPdo = pdo;
-
-        return this;
-    }
-
-    /**
      * Get the database connection name.
      */
     public getName(): string {
-        return this.getConfig<string>('name');
-    }
-
-    /**
-     * Get the database connection full name.
-     */
-    public getNameWithReadWriteType(): string {
-        return `${this.getName()}${this.readWriteType ? '::' + this.readWriteType : ''}`;
+        return this.name;
     }
 
     /**
      * Get an option from the configuration options.
      */
-    public getConfig<T extends FlattedConnectionConfig>(): T;
+    public getConfig(): Config;
     public getConfig<T>(option?: string, defaultValue?: T): T;
-    public getConfig<T>(option?: string, defaultValue?: T): T {
+    public getConfig<T>(option?: string, defaultValue?: T): Config {
         if (option == null) {
-            return this.config as T;
+            return this.config;
         }
-        return (get(this.config, option) ?? defaultValue) as T;
+
+        return get(this.config, option as string) ?? defaultValue;
     }
 
     /**
-     * Get the PDO driver name.
+     * Define Cache Strategy for current session
      */
-    public getDriverName(): string {
-        return this.getConfig<string>('driver');
-    }
-
-    /**
-     * Get the query grammar used by the connection.
-     */
-    public getQueryGrammar(): GrammarI {
-        return this.queryGrammar;
-    }
-
-    /**
-     * Set the query grammar used by the connection.
-     */
-    public setQueryGrammar(grammar: GrammarI): this {
-        this.queryGrammar = grammar;
-
-        return this;
-    }
-
-    /**
-     * Get the schema grammar used by the connection.
-     */
-    public getSchemaGrammar(): SchemaGrammarI {
-        return this.schemaGrammar;
-    }
-
-    /**
-     * Set the schema grammar used by the connection.
-     */
-    public setSchemaGrammar(grammar: SchemaGrammarI): this {
-        this.schemaGrammar = grammar;
-
-        return this;
+    public cache(cache: CacheSessionOptions): ConnectionSessionI<this> {
+        return this.session().cache(cache);
     }
 
     /**
@@ -386,28 +397,35 @@ class Connection implements DriverConnectionI {
     }
 
     /**
+     * Get the cache manager used by the connection.
+     */
+    public getCacheManager(): CacheManager | undefined {
+        return this.cacheManager;
+    }
+
+    /**
+     * Set the cache manager instance on the connection.
+     */
+    public setCacheManager(cacheManager: CacheManager): this {
+        this.cacheManager = cacheManager;
+
+        return this;
+    }
+
+    /**
+     * Unset the cache manager for this connection.
+     */
+    public unsetCacheManager(): this {
+        this.cacheManager = undefined;
+
+        return this;
+    }
+
+    /**
      * Get the name of the connected database.
      */
     public getDatabaseName(): string {
         return this.database;
-    }
-
-    /**
-     * Set the name of the connected database.
-     */
-    public setDatabaseName(database: string): this {
-        this.database = database;
-
-        return this;
-    }
-
-    /**
-     * Set the read / write type of the connection.
-     */
-    public setReadWriteType(readWriteType: ReadWriteType | null): this {
-        this.readWriteType = readWriteType;
-
-        return this;
     }
 
     /**
@@ -418,50 +436,16 @@ class Connection implements DriverConnectionI {
     }
 
     /**
-     * Set the table prefix in use by the connection.
-     */
-    public setTablePrefix(prefix: string): this {
-        this.tablePrefix = prefix;
-
-        this.getQueryGrammar().setTablePrefix(prefix);
-
-        return this;
-    }
-
-    /**
-     * Set the table prefix and return the grammar.
-     */
-    public withTablePrefix<T extends GrammarI>(grammar: T): T {
-        grammar.setTablePrefix(this.tablePrefix);
-
-        return grammar;
-    }
-
-    /**
-     * Register a connection resolver.
-     */
-    public static resolverFor(driver: string, callback: ConnectionResolver): void {
-        Connection.resolvers[driver] = callback;
-    }
-
-    /**
-     * Get the connection resolver for the given driver.
-     */
-    public static getResolver(driver: string): ConnectionResolver | null {
-        return driver in Connection.resolvers ? Connection.resolvers[driver] : null;
-    }
-
-    /**
      * Begin a fluent query against a database table.
      */
-    public table(table: SubQuery<BuilderI>, as?: string): BuilderI {
+    public table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI {
         return this.session().table(table, as);
     }
 
     /**
      * Get a new query builder instance.
      */
-    public query(): BuilderI {
+    public query(): QueryBuilderI {
         return this.session().query();
     }
 
@@ -496,6 +480,17 @@ class Connection implements DriverConnectionI {
         useReadPdo?: boolean
     ): Promise<T[]> {
         return this.session().select<T>(query, bindings, useReadPdo);
+    }
+
+    /**
+     * Run a select statement against the database.
+     */
+    public async selectResultSets<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T[][]> {
+        return this.session().selectResultSets<T>(query, bindings, useReadPdo);
     }
 
     /**
@@ -587,28 +582,33 @@ class Connection implements DriverConnectionI {
     /**
      * Execute the given callback in "dry run" mode.
      */
-    public async pretend(callback: PretendingCallback): Promise<LoggedQuery[]> {
+    public async pretend(
+        callback: (session: ConnectionSessionI<this>) => void | Promise<void>
+    ): Promise<LoggedQuery[]> {
         return this.session().pretend(callback);
     }
 
     /**
      * Execute a Closure within a transaction.
      */
-    public async transaction(callback: TransactionCallback, attempts?: number): Promise<void> {
+    public async transaction(
+        callback: (session: ConnectionSessionI<this>) => void | Promise<void>,
+        attempts?: number
+    ): Promise<void> {
         return this.session().transaction(callback, attempts);
     }
 
     /**
      * Start a new database transaction.
      */
-    public async beginTransaction(): Promise<ConnectionSessionI> {
+    public async beginTransaction(): Promise<ConnectionSessionI<this>> {
         return this.session().beginTransaction();
     }
 
     /**
      * Indicate that the connection should use the write PDO connection for reads.
      */
-    public useWriteConnectionWhenReading(value?: boolean): ConnectionSessionI {
+    public useWriteConnectionWhenReading(value?: boolean): ConnectionSessionI<this> {
         return this.session().useWriteConnectionWhenReading(value);
     }
 

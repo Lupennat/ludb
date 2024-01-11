@@ -1,9 +1,8 @@
 import Expression from '../query/expression';
-import { ConnectionSessionI } from '../types';
-import { Stringable } from '../types/query/builder';
+import { ConnectionSessionI } from '../types/connection';
+import { Stringable } from '../types/generics';
 import { Relatable, RelatableConstructor } from '../types/schema/blueprint';
-import { BlueprintCallback } from '../types/schema/builder';
-import GrammarI from '../types/schema/grammar';
+import { BlueprintCallback } from '../types/schema/builder/schema-builder';
 import RegistryI, {
     ColumnDefinitionRegistryI,
     ColumnIndex,
@@ -18,12 +17,13 @@ import RegistryI, {
     RenameFullRegistryI,
     RenameRegistryI
 } from '../types/schema/registry';
-import Builder from './builders/builder';
+import QueryBuilder from './builders/builder';
 import ColumnDefinition from './definitions/column-definition';
 import CommandDefinition from './definitions/commands/command-definition';
 import CommandForeignKeyDefinition from './definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from './definitions/commands/command-index-definition';
 import ForeignIdColumnDefinition from './definitions/foreign-id-column-definition';
+import Grammar from './grammars/grammar';
 import createRegistry from './registries';
 
 class Blueprint {
@@ -32,7 +32,12 @@ class Blueprint {
     /**
      * Create a new schema blueprint.
      */
-    public constructor(table: string, protected grammar: GrammarI, callback?: BlueprintCallback, prefix?: string) {
+    public constructor(
+        table: Stringable,
+        protected grammar: Grammar,
+        callback?: BlueprintCallback,
+        prefix?: string
+    ) {
         this.registry = createRegistry();
         this.registry.table = table;
         this.registry.prefix = prefix ?? '';
@@ -100,9 +105,13 @@ class Blueprint {
         // Each type of command has a corresponding compiler function on the schema
         // grammar which is used to build the necessary SQL statements to build
         // the blueprint element, so we'll just call that compilers function.
-        this.ensureCommandsAreValid(connection);
+        this.ensureCommandsAreValid();
 
         for (const command of this.registry.commands) {
+            if (command.shouldBeSkipped) {
+                continue;
+            }
+
             switch (command.name) {
                 case 'add':
                     const adds = this.grammar.compileAdd(this, command, connection);
@@ -181,8 +190,8 @@ class Blueprint {
                         this.grammar.compileDropForeign(this, command as CommandForeignKeyDefinition, connection)
                     );
                     break;
-                case 'dropIfExists':
-                    statements.push(this.grammar.compileDropIfExists(this, command, connection));
+                case 'dropTableIfExists':
+                    statements.push(this.grammar.compileDropTableIfExists(this, command, connection));
                     break;
                 case 'primary':
                     statements.push(this.grammar.compilePrimary(this, command as CommandIndexDefinition, connection));
@@ -245,11 +254,11 @@ class Blueprint {
     /**
      * Ensure the commands on the blueprint are valid for the connection type.
      */
-    protected ensureCommandsAreValid(connection: ConnectionSessionI): void {
-        if (connection.getDriverName() === 'sqlite') {
+    protected ensureCommandsAreValid(): void {
+        if (!this.grammar.supportsDropForeign()) {
             if (this.commandsNamed(['dropForeign']).length > 0) {
                 throw new Error(
-                    "SQLite doesn't support dropping foreign keys (you would need to re-create the table)."
+                    "Sqlite doesn't support dropping foreign keys (you would need to re-create the table)."
                 );
             }
         }
@@ -392,8 +401,8 @@ class Blueprint {
     /**
      * Indicate that the table should be dropped if it exists.
      */
-    public dropIfExists(): CommandDefinition {
-        return this.addCommand(this.createCommand('dropIfExists', {}));
+    public dropTableIfExists(): CommandDefinition {
+        return this.addCommand(this.createCommand('dropTableIfExists', {}));
     }
 
     /**
@@ -662,14 +671,14 @@ class Blueprint {
      * Create a new char column on the table.
      */
     public char(column: Stringable, length?: number): ColumnDefinition {
-        return this.addColumn('char', column, { length: length ?? Builder.defaultStringLength });
+        return this.addColumn('char', column, { length: length ?? QueryBuilder.defaultStringLength });
     }
 
     /**
      * Create a new string column on the table.
      */
     public string(column: Stringable, length?: number): ColumnDefinition {
-        return this.addColumn('string', column, { length: length ?? Builder.defaultStringLength });
+        return this.addColumn('string', column, { length: length ?? QueryBuilder.defaultStringLength });
     }
 
     /**
@@ -1099,9 +1108,9 @@ class Blueprint {
      * Add the proper columns for a polymorphic table.
      */
     public morphs(name: Stringable, indexName?: Stringable): void {
-        if (Builder.defaultMorphKeyType === 'uuid') {
+        if (QueryBuilder.defaultMorphKeyType === 'uuid') {
             this.uuidMorphs(name, indexName);
-        } else if (Builder.defaultMorphKeyType === 'ulid') {
+        } else if (QueryBuilder.defaultMorphKeyType === 'ulid') {
             this.ulidMorphs(name, indexName);
         } else {
             this.numericMorphs(name, indexName);
@@ -1112,9 +1121,9 @@ class Blueprint {
      * Add nullable columns for a polymorphic table.
      */
     public nullableMorphs(name: Stringable, indexName?: Stringable): void {
-        if (Builder.defaultMorphKeyType === 'uuid') {
+        if (QueryBuilder.defaultMorphKeyType === 'uuid') {
             this.nullableUuidMorphs(name, indexName);
-        } else if (Builder.defaultMorphKeyType === 'ulid') {
+        } else if (QueryBuilder.defaultMorphKeyType === 'ulid') {
             this.nullableUlidMorphs(name, indexName);
         } else {
             this.nullableNumericMorphs(name, indexName);
@@ -1375,7 +1384,7 @@ class Blueprint {
     /**
      * Get the blueprint grammar.
      */
-    public getGrammar(): GrammarI {
+    public getGrammar(): Grammar {
         return this.grammar;
     }
 
@@ -1384,6 +1393,13 @@ class Blueprint {
      */
     public getTable(): Stringable {
         return this.registry.table;
+    }
+
+    /**
+     * Get the table prefix.
+     */
+    public getPrefix(): Stringable {
+        return this.registry.prefix;
     }
 
     /**

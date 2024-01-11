@@ -1,18 +1,17 @@
 import { compareVersions } from 'compare-versions';
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { MysqlOptions } from 'lupdo-mysql';
-import { MySqlConfig } from '../types/config';
-import ConnectorI from '../types/connector';
+import { FlattedConnectionConfig, MysqlConfig } from '../types/config';
 import { merge } from '../utils';
 import Connector from './connector';
 
-class MySqlConnector extends Connector implements ConnectorI {
+class MysqlConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect(config: MySqlConfig): Pdo {
-        const attributes = this.getAttributes<MySqlConfig>(config);
-        const poolOptions = this.getPoolOptions<MySqlConfig>(config);
+    public connect(config: FlattedConnectionConfig<MysqlConfig>): Pdo {
+        const attributes = this.getAttributes(config);
+        const poolOptions = this.getPoolOptions(config);
 
         const originalCreated = poolOptions.created;
 
@@ -51,13 +50,13 @@ class MySqlConnector extends Connector implements ConnectorI {
         // We need to grab the PDO options that should be used while making the brand
         // new connection instance. The PDO options control various aspects of the
         // connection's behavior, and some might be specified by the developers.
-        return this.createConnection<MysqlOptions>('mysql', options, poolOptions, attributes);
+        return this.createConnection('mysql', options, poolOptions, attributes);
     }
 
     /**
      * Set the connection transaction isolation level.
      */
-    public async configureIsolationLevel(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
+    public async configureIsolationLevel(connection: PdoConnectionI, config: MysqlConfig): Promise<void> {
         if (config.isolation_level) {
             connection.query(`set session transaction isolation level ${config.isolation_level}`);
         }
@@ -66,7 +65,7 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Set the connection character set and collation.
      */
-    public async configureEncoding(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
+    public async configureEncoding(connection: PdoConnectionI, config: MysqlConfig): Promise<void> {
         if (config.charset) {
             connection.query(`set names '${config.charset}'${this.getCollation(config)}`);
         }
@@ -75,14 +74,14 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Get the collation for the configuration.
      */
-    protected getCollation(config: MySqlConfig): string {
+    protected getCollation(config: MysqlConfig): string {
         return config.collation ? ` collate '${config.collation}'` : '';
     }
 
     /**
      * Set the timezone on the connection.
      */
-    public async configureTimezone(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
+    public async configureTimezone(connection: PdoConnectionI, config: MysqlConfig): Promise<void> {
         if (config.timezone) {
             connection.query(`set time_zone="${config.timezone}"`);
         }
@@ -91,7 +90,7 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Set the modes for the connection.
      */
-    public async setModes(connection: PdoConnectionI, config: MySqlConfig): Promise<void> {
+    public async setModes(connection: PdoConnectionI, config: MysqlConfig): Promise<void> {
         if (config.modes && config.modes.length > 0) {
             connection.query(`set session sql_mode='${config.modes.join(',')}'`);
         } else if (config.strict !== undefined) {
@@ -106,7 +105,7 @@ class MySqlConnector extends Connector implements ConnectorI {
     /**
      * Get the query to enable strict mode.
      */
-    protected strictMode(connection: PdoConnectionI, config: MySqlConfig): string {
+    protected strictMode(connection: PdoConnectionI, config: MysqlConfig): string {
         const version = (config.version ?? connection.version).split('-')[0];
         if (compareVersions(version, '8.0.11') >= 0) {
             return "set session sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'";
@@ -116,4 +115,4 @@ class MySqlConnector extends Connector implements ConnectorI {
     }
 }
 
-export default MySqlConnector;
+export default MysqlConnector;

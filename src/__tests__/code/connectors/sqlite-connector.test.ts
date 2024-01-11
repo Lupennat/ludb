@@ -1,32 +1,35 @@
 import { Pdo } from 'lupdo';
 import { rm, writeFile } from 'node:fs/promises';
-import SQLiteConnector from '../../../connectors/sqlite-connector';
-import { FakeConnection, pdo } from '../fixtures/mocked';
+import SqliteConnection from '../../../connections/sqlite-connection';
+import SqliteConnector from '../../../connectors/sqlite-connector';
+import { FakeConnection } from '../fixtures/lupdo-fake';
 
-describe('SQLite Connector', () => {
+describe('Sqlite Connector', () => {
+    const pdo = new Pdo('fake', {});
+
     beforeAll(async () => {
         await writeFile(__dirname + '/test.sql', '');
     });
 
     afterAll(async () => {
-        await pdo.disconnect();
         await rm(__dirname + '/test.sql');
     });
 
-    it('Works SQLite Connector', async () => {
-        const connector = new SQLiteConnector();
+    it('Works Sqlite Connector', async () => {
+        new SqliteConnection('fake', { database: ':memory:', foreign_key_constraints: false });
+        const connector = new SqliteConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
-        connector.connect({ driver: 'sqlite', database: ':memory:', foreign_key_constraints: false });
+        connector.connect({ database: ':memory:', readonly: true, foreign_key_constraints: false });
         expect(spiedConnection).toHaveBeenLastCalledWith(
             'sqlite',
-            { path: ':memory:' },
+            { path: ':memory:', readonly: true },
             { created: expect.any(Function), max: 5, min: 0 },
             { ATTR_CASE: 1, ATTR_DEBUG: 1, ATTR_NULLS: 1 }
         );
     });
 
     it('Works Created Callback', async () => {
-        let connector = new SQLiteConnector();
+        let connector = new SqliteConnector();
         let spiedCallback: jest.SpyInstance[] = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
@@ -41,7 +44,6 @@ describe('SQLite Connector', () => {
         });
 
         let pdo = connector.connect({
-            driver: 'sqlite',
             database: ':memory:',
             foreign_key_constraints: false,
             pool: {
@@ -49,11 +51,11 @@ describe('SQLite Connector', () => {
             }
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
 
-        connector = new SQLiteConnector();
+        connector = new SqliteConnector();
         spiedCallback = [];
         jest.spyOn(connector, 'createConnection').mockImplementationOnce(
             (_driver, options, poolOptions, attributes) => {
@@ -63,64 +65,59 @@ describe('SQLite Connector', () => {
         );
 
         pdo = connector.connect({
-            driver: 'sqlite',
             database: ':memory:',
             foreign_key_constraints: false
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
     });
 
-    it('Works SQLite Foreign Key Constraints', async () => {
+    it('Works Sqlite Foreign Key Constraints', async () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
-        const connector = new SQLiteConnector();
+        const connector = new SqliteConnector();
 
         await connector.configureForeignKeyConstraints(fakeConnection, {
-            driver: 'sqlite',
             database: ':memory:'
         });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.configureForeignKeyConstraints(fakeConnection, {
-            driver: 'sqlite',
             database: ':memory:',
             foreign_key_constraints: false
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('foreign_keys = OFF');
         await connector.configureForeignKeyConstraints(fakeConnection, {
-            driver: 'sqlite',
             database: ':memory:',
             foreign_key_constraints: true
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('foreign_keys = ON');
     });
 
-    it('Works SQLite Connector With Real Path', () => {
-        const connector = new SQLiteConnector();
+    it('Works Sqlite Connector With Real Path', () => {
+        const connector = new SqliteConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
-        connector.connect({ driver: 'sqlite', database: __dirname + '/test.sql', foreign_key_constraints: false });
+        connector.connect({ database: __dirname + '/test.sql', foreign_key_constraints: false });
         expect(spiedConnection).toHaveBeenLastCalledWith(
             'sqlite',
-            { path: __dirname + '/test.sql' },
+            { path: __dirname + '/test.sql', readonly: false },
             { created: expect.any(Function), max: 5, min: 0 },
             { ATTR_CASE: 1, ATTR_DEBUG: 1, ATTR_NULLS: 1 }
         );
     });
 
     it('Works Missing Database Throw An Error', () => {
-        const connector = new SQLiteConnector();
+        const connector = new SqliteConnector();
         expect(() => {
-            // @ts-expect-error test missing database
-            connector.connect({ driver: 'sqlite' });
-        }).toThrowError('Database file path is required.');
+            connector.connect({ database: '' });
+        }).toThrow('Database file path is required.');
     });
 
     it('Works Path Not Found Throw An Error', () => {
-        const connector = new SQLiteConnector();
+        const connector = new SqliteConnector();
         expect(() => {
-            connector.connect({ driver: 'sqlite', database: './not-exists.sql' });
-        }).toThrowError(
+            connector.connect({ database: './not-exists.sql' });
+        }).toThrow(
             'Database file at path [./not-exists.sql] does not exist. Ensure this is an absolute path to the database.'
         );
     });

@@ -1,9 +1,10 @@
-import { DB, isSqlServer } from '../fixtures/config';
+import { DB, currentGenericDB, currentSqlserverDB, isSqlserver } from '../fixtures/config';
 
-const maybe = isSqlServer() ? describe : describe.skip;
+const maybe = isSqlserver() ? describe : describe.skip;
 
-maybe('Postgres Schema Builder', () => {
-    const Schema = DB.connection().getSchemaBuilder();
+maybe('Postgres Schema QueryBuilder', () => {
+    const currentDB = currentGenericDB as currentSqlserverDB;
+    const Schema = DB.connection(currentDB).getSchemaBuilder();
 
     beforeAll(async () => {
         await Schema.create('test_schema_users', table => {
@@ -12,28 +13,61 @@ maybe('Postgres Schema Builder', () => {
             table.string('age');
             table.enum('color', ['red', 'blue']);
         });
+
+        await Schema.createView('test_schema_users_view', view =>
+            view.as(query => query.select('name', 'age').from('test_schema_users'))
+        );
     });
 
     afterAll(async () => {
-        await Schema.drop('test_schema_users');
-        await DB.disconnect();
+        await Schema.dropTableIfExists('test_schema_users');
+        await Schema.dropViewIfExists('test_schema_users_view');
+        await DB.connection(currentDB).disconnect();
     });
 
-    it('Works Get All Tables And Column Listing', async () => {
-        expect(await Schema.getAllTables()).toEqual(['test_schema_users']);
-        expect(await Schema.getColumnListing('test_schema_users')).toEqual(['id', 'name', 'age', 'color']);
+    it('Works Get Tables And Column Listing', async () => {
+        expect(await Schema.getTables()).toEqual([
+            {
+                name: 'test_schema_users',
+                schema: 'dbo',
+                size: 0
+            }
+        ]);
+        expect((await Schema.getColumns('test_schema_users')).map(column => column.name)).toEqual([
+            'id',
+            'name',
+            'age',
+            'color'
+        ]);
         await Schema.create('test_schema_posts', table => {
             table.integer('id');
             table.string('title');
         });
-        expect(await Schema.getAllTables()).toEqual(expect.arrayContaining(['test_schema_users', 'test_schema_posts']));
+        expect(await Schema.getTables()).toEqual([
+            {
+                name: 'test_schema_posts',
+                schema: 'dbo',
+                size: 0
+            },
+            {
+                name: 'test_schema_users',
+                schema: 'dbo',
+                size: 0
+            }
+        ]);
         await Schema.drop('test_schema_posts');
     });
 
-    it('Works Get All Views', async () => {
-        await DB.connection().statement('create view test_schema_users_view AS select name,age FROM test_schema_users');
-        expect(await Schema.getAllViews()).toEqual(['test_schema_users_view']);
-        await DB.connection().statement('drop view if exists test_schema_users_view;');
-        expect(await Schema.getAllViews()).toEqual([]);
+    it('Works Get Views', async () => {
+        let views = await Schema.getViews();
+        expect(views.length).toBe(1);
+        expect(views[0].name).toBe('test_schema_users_view');
+        expect(views[0].definition).toBe(
+            'create view [test_schema_users_view] as select [name], [age] from [test_schema_users]'
+        );
+
+        await Schema.dropView('test_schema_users_view');
+        views = await Schema.getViews();
+        expect(views.length).toBe(0);
     });
 });

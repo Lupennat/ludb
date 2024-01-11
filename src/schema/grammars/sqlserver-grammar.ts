@@ -1,6 +1,7 @@
 import Expression from '../../query/expression';
-import { Stringable } from '../../types/query/builder';
+import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
+import { SqlserverSimpleType } from '../../types/schema/generics';
 import {
     ColumnDefinitionRegistryI,
     ColumnType,
@@ -8,16 +9,18 @@ import {
     CommandType,
     ModifiersType,
     RenameFullRegistryI,
-    RenameRegistryI
+    RenameRegistryI,
+    ViewRegistryI
 } from '../../types/schema/registry';
 import { escapeQuoteForSql, isStringable } from '../../utils';
 import ColumnDefinition from '../definitions/column-definition';
 import CommandDefinition from '../definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../definitions/commands/command-index-definition';
+import CommandViewDefinition from '../definitions/commands/command-view-definition';
 import Grammar from './grammar';
 
-class SqlServerGrammar extends Grammar {
+class SqlserverGrammar extends Grammar {
     /**
      * The possible column modifiers.
      */
@@ -41,17 +44,165 @@ class SqlServerGrammar extends Grammar {
     }
 
     /**
-     * Compile the SQL needed to retrieve all table names.
+     * Compile a create user-defined type.
      */
-    public compileGetAllTables(): string {
-        return "select name, type from sys.tables where type = 'U'";
+    public compileCreateType(name: Stringable, type: 'simple', definition: SqlserverSimpleType): string;
+    public compileCreateType(name: Stringable, type: 'external', definition: string): string;
+    public compileCreateType(
+        name: Stringable,
+        _type: 'simple' | 'external',
+        definition: SqlserverSimpleType | Stringable
+    ): string;
+    public compileCreateType(
+        name: Stringable,
+        _type: 'simple' | 'external',
+        definition: SqlserverSimpleType | Stringable
+    ): string {
+        if (isStringable(definition)) {
+            return `create type ${this.getValue(name).toString()} external name ${this.getValue(
+                definition
+            ).toString()}`;
+        }
+
+        return `create type ${this.getValue(name).toString()} from ${this.getValue(definition.from)}${
+            definition.nullable !== undefined ? (definition.nullable ? ' NULL' : ' NOT NULL') : ''
+        }`;
     }
 
     /**
-     * Compile the SQL needed to retrieve all table views.
+     * Compile a create view command;
      */
-    public compileGetAllViews(): string {
-        return "select name, type from sys.objects where type = 'V'";
+    public compileCreateView(name: Stringable, command?: CommandViewDefinition<ViewRegistryI>): string {
+        if (!command) {
+            return this.getValue(name).toString();
+        }
+
+        const registry = command.getRegistry();
+
+        let sql = `create view ${this.wrapTable(name)}`;
+
+        const columns = registry.columnNames ? registry.columnNames : [];
+
+        if (columns.length) {
+            sql += ` (${this.columnize(columns)})`;
+        }
+
+        const viewAttribute = registry.viewAttribute ? this.getValue(registry.viewAttribute).toString() : '';
+
+        if (viewAttribute) {
+            sql += ` with ${viewAttribute}`;
+        }
+
+        sql += ` as ${registry.as.toRawSql()}`;
+
+        if (registry.check) {
+            sql += ` with check option`;
+        }
+
+        return sql;
+    }
+
+    /**
+     * Compile the query to determine the tables.
+     */
+    public compileTables(): string {
+        return (
+            'select t.name as name, SCHEMA_NAME(t.schema_id) as [schema], sum(u.total_pages) * 8 * 1024 as size ' +
+            'from sys.tables as t ' +
+            'join sys.partitions as p on p.object_id = t.object_id ' +
+            'join sys.allocation_units as u on u.container_id = p.hobt_id ' +
+            'group by t.name, t.schema_id ' +
+            'order by t.name'
+        );
+    }
+
+    /**
+     * Compile the query to determine the views.
+     */
+    public compileViews(): string {
+        return (
+            'select name, SCHEMA_NAME(v.schema_id) as [schema], definition from sys.views as v ' +
+            'inner join sys.sql_modules as m on v.object_id = m.object_id ' +
+            'order by name'
+        );
+    }
+
+    /**
+     * Compile the query to determine the user-defined types.
+     */
+    public compileTypes(): string {
+        return (
+            'select name, SCHEMA_NAME(schema_id) as [schema_name], TYPE_NAME(system_type_id) as [type_name], max_length as [length], precision, scale ' +
+            'from sys.types where is_user_defined = 1'
+        );
+    }
+
+    /**
+     * Compile the query to determine the columns.
+     */
+    public compileColumns(table: string): string {
+        return (
+            'select col.name, type.name as type_name, ' +
+            'col.max_length as length, col.precision as precision, col.scale as places, ' +
+            'col.is_nullable as nullable, def.definition as [default], ' +
+            'col.is_identity as autoincrement, col.collation_name as collation, ' +
+            'cast(prop.value as nvarchar(max)) as comment ' +
+            'from sys.columns as col ' +
+            'join sys.types as type on col.user_type_id = type.user_type_id ' +
+            'join sys.objects as obj on col.object_id = obj.object_id ' +
+            'join sys.schemas as scm on obj.schema_id = scm.schema_id ' +
+            'left join sys.default_constraints def on col.default_object_id = def.object_id and col.object_id = def.parent_object_id ' +
+            "left join sys.extended_properties as prop on obj.object_id = prop.major_id and col.column_id = prop.minor_id and prop.name = 'MS_Description' " +
+            "where obj.type in ('U', 'V') and obj.name = " +
+            this.quoteString(table) +
+            ' and scm.name = SCHEMA_NAME() ' +
+            'order by col.column_id'
+        );
+    }
+
+    /**
+     * Compile the query to determine the indexes.
+     */
+    public compileIndexes(table: string): string {
+        return (
+            "select idx.name as name, string_agg(col.name, ',') within group (order by idxcol.key_ordinal) as columns, " +
+            'idx.type_desc as [type], idx.is_unique as [unique], idx.is_primary_key as [primary] ' +
+            'from sys.indexes as idx ' +
+            'join sys.tables as tbl on idx.object_id = tbl.object_id ' +
+            'join sys.schemas as scm on tbl.schema_id = scm.schema_id ' +
+            'join sys.index_columns as idxcol on idx.object_id = idxcol.object_id and idx.index_id = idxcol.index_id ' +
+            'join sys.columns as col on idxcol.object_id = col.object_id and idxcol.column_id = col.column_id ' +
+            'where tbl.name = ' +
+            this.quoteString(table) +
+            ' and scm.name = SCHEMA_NAME() ' +
+            'group by idx.name, idx.type_desc, idx.is_unique, idx.is_primary_key'
+        );
+    }
+
+    /**
+     * Compile the query to determine the foreign keys.
+     */
+    public compileForeignKeys(table: string): string {
+        return (
+            'select fk.name as name, ' +
+            "string_agg(lc.name, ',') within group (order by fkc.constraint_column_id) as columns, " +
+            'fs.name as foreign_schema, ft.name as foreign_table, ' +
+            "string_agg(fc.name, ',') within group (order by fkc.constraint_column_id) as foreign_columns, " +
+            'fk.update_referential_action_desc as on_update, ' +
+            'fk.delete_referential_action_desc as on_delete ' +
+            'from sys.foreign_keys as fk ' +
+            'join sys.foreign_key_columns as fkc on fkc.constraint_object_id = fk.object_id ' +
+            'join sys.tables as lt on lt.object_id = fk.parent_object_id ' +
+            'join sys.schemas as ls on lt.schema_id = ls.schema_id ' +
+            'join sys.columns as lc on fkc.parent_object_id = lc.object_id and fkc.parent_column_id = lc.column_id ' +
+            'join sys.tables as ft on ft.object_id = fk.referenced_object_id ' +
+            'join sys.schemas as fs on ft.schema_id = fs.schema_id ' +
+            'join sys.columns as fc on fkc.referenced_object_id = fc.object_id and fkc.referenced_column_id = fc.column_id ' +
+            'where lt.name = ' +
+            this.quoteString(table) +
+            ' and ls.name = SCHEMA_NAME() ' +
+            'group by fk.name, fs.name, ft.name, fk.update_referential_action_desc, fk.delete_referential_action_desc'
+        );
     }
 
     /**
@@ -71,14 +222,14 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the SQL needed to drop all tables.
      */
-    public compileDropAllTables(): string {
+    public compileDropTables(): string {
         return "EXEC sp_msforeachtable 'DROP TABLE ?'";
     }
 
     /**
      * Compile the SQL needed to drop all views.
      */
-    public compileDropAllViews(): string {
+    public compileDropViews(): string {
         return `DECLARE @sql NVARCHAR(MAX) = N'';
         SELECT @sql += 'DROP VIEW ' + QUOTENAME(OBJECT_SCHEMA_NAME(object_id)) + '.' + QUOTENAME(name) + ';'
         FROM sys.views;
@@ -89,11 +240,11 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the command to drop all foreign keys.
      */
-    public compileDropAllForeignKeys(): string {
+    public compileDropForeignKeys(): string {
         return `DECLARE @sql NVARCHAR(MAX) = N'';
         SELECT @sql += 'ALTER TABLE '
-            + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + '.' + + QUOTENAME(OBJECT_NAME(parent_object_id))
-            + ' DROP CONSTRAINT ' + QUOTENAME(name) + ';'
+        + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + '.' + + QUOTENAME(OBJECT_NAME(parent_object_id))
+        + ' DROP CONSTRAINT ' + QUOTENAME(name) + ';'
         FROM sys.foreign_keys;
 
         EXEC sp_executesql @sql;`;
@@ -104,27 +255,6 @@ class SqlServerGrammar extends Grammar {
      */
     public compileCreate(blueprint: BlueprintI): string {
         return `create table ${this.wrapTable(blueprint)} (${this.getColumns(blueprint).join(', ')})`;
-    }
-
-    /**
-     * Compile the query to determine the list of tables.
-     */
-    public compileTableExists(): string {
-        return "select * from sys.sysobjects where id = object_id(?) and xtype in ('U', 'V')";
-    }
-
-    /**
-     * Compile the query to determine the data type of column.
-     */
-    public compileColumnType(): string {
-        return `select c.name, t.name 'type' from sys.columns c inner join sys.types t on c.user_type_id = t.user_type_id where object_id = object_id(?) and c.name = ?`;
-    }
-
-    /**
-     * Compile the query to determine the list of columns.
-     */
-    public compileColumnListing(): string {
-        return `select name from sys.columns where object_id = object_id(?)`;
     }
 
     /**
@@ -309,11 +439,39 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a drop table (if exists) command.
      */
-    public compileDropIfExists(blueprint: BlueprintI): string {
+    public compileDropTableIfExists(blueprint: BlueprintI): string {
         const table = escapeQuoteForSql(`${this.getTablePrefix()}${this.getValue(blueprint.getTable()).toString()}`);
         return `if exists (select * from sys.sysobjects where id = object_id('${table}', 'U')) drop table ${this.wrapTable(
             blueprint
         )}`;
+    }
+
+    /**
+     * Compile a drop view command.
+     */
+    public compileDropView(name: Stringable): string {
+        return `drop view ${this.wrapTable(name)}`;
+    }
+
+    /**
+     * Compile a drop view (if exists) command.
+     */
+    public compileDropViewIfExists(name: Stringable): string {
+        return `drop view if exists ${this.wrapTable(name)}`;
+    }
+
+    /**
+     * Compile a drop type command.
+     */
+    public compileDropType(name: Stringable): string {
+        return `drop type ${this.wrapTable(name)}`;
+    }
+
+    /**
+     * Compile a drop type (if exists) command.
+     */
+    public compileDropTypeIfExists(name: Stringable): string {
+        return `drop type if exists ${this.wrapTable(name)}`;
     }
 
     /**
@@ -621,6 +779,14 @@ class SqlServerGrammar extends Grammar {
     }
 
     /**
+     * Wrap a single string in keyword identifiers.
+     */
+    protected wrapValue(value: string): string {
+        // return value === '*' ? value : `[${value.replace(/]/g, ']]')}]`;
+        return `[${value.replace(/]/g, ']]')}]`;
+    }
+
+    /**
      * Wrap a table in keyword identifiers.
      */
     public wrapTable(table: Stringable | BlueprintI): string {
@@ -643,4 +809,4 @@ class SqlServerGrammar extends Grammar {
     }
 }
 
-export default SqlServerGrammar;
+export default SqlserverGrammar;

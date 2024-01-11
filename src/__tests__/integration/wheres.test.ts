@@ -1,7 +1,7 @@
-import { DB } from './fixtures/config';
+import { DB, currentGenericDB } from './fixtures/config';
 
 describe('Wheres', () => {
-    const Schema = DB.connection().getSchemaBuilder();
+    const Schema = DB.connection(currentGenericDB).getSchemaBuilder();
     beforeAll(async () => {
         await Schema.create('test_wheres_users', table => {
             table.increments('id');
@@ -10,7 +10,7 @@ describe('Wheres', () => {
             table.string('address');
         });
 
-        await DB.connection()
+        await DB.connection(currentGenericDB)
             .table('test_wheres_users')
             .insert([
                 { name: 'test-name', email: 'test-email', address: 'test-address' },
@@ -22,24 +22,28 @@ describe('Wheres', () => {
 
     afterAll(async () => {
         await Schema.drop('test_wheres_users');
-        await DB.disconnect();
+        await DB.connection(currentGenericDB).disconnect();
     });
 
     it('Works Where And Where Or Behavior', async () => {
-        expect(await DB.connection().table('test_wheres_users').where('name', '=', 'test-name').first()).toEqual({
-            id: 1,
-            name: 'test-name',
-            email: 'test-email',
-            address: 'test-address'
-        });
-        expect(await DB.connection().table('test_wheres_users').where('name', 'test-name').first()).toEqual({
+        expect(
+            await DB.connection(currentGenericDB).table('test_wheres_users').where('name', '=', 'test-name').first()
+        ).toEqual({
             id: 1,
             name: 'test-name',
             email: 'test-email',
             address: 'test-address'
         });
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB).table('test_wheres_users').where('name', 'test-name').first()
+        ).toEqual({
+            id: 1,
+            name: 'test-name',
+            email: 'test-email',
+            address: 'test-address'
+        });
+        expect(
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .where('name', 'test-name')
                 .where('email', 'test-email')
@@ -47,35 +51,41 @@ describe('Wheres', () => {
         ).toEqual({ id: 1, name: 'test-name', email: 'test-email', address: 'test-address' });
 
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .where('name', 'test-name')
                 .where('email', 'test-email1')
                 .first()
         ).toBeNull();
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .where('name', 'wrong-name')
                 .orWhere('email', 'test-email1')
                 .first()
         ).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
         expect(
-            await DB.connection().table('test_wheres_users').where({ name: 'test-name', email: 'test-email' }).first()
+            await DB.connection(currentGenericDB)
+                .table('test_wheres_users')
+                .where({ name: 'test-name', email: 'test-email' })
+                .first()
         ).toEqual({ id: 1, name: 'test-name', email: 'test-email', address: 'test-address' });
         expect(
-            await DB.connection().table('test_wheres_users').where({ name: 'test-name', email: 'test-email1' }).first()
+            await DB.connection(currentGenericDB)
+                .table('test_wheres_users')
+                .where({ name: 'test-name', email: 'test-email1' })
+                .first()
         ).toBeNull();
 
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
-                .where({ name: 'wrong-name', email: 'test-email1' }, null, null, 'or')
+                .orWhere({ name: 'wrong-name', email: 'test-email1' })
                 .first()
         ).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
 
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .where({ name: 'test-name', email: 'test-email1' })
                 .orWhere({ name: 'test-name1', address: 'wrong-address' })
@@ -83,7 +93,7 @@ describe('Wheres', () => {
         ).toBe(1);
 
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .where({ name: 'test-name', email: 'test-email1' })
                 .orWhere({ name: 'test-name1', address: 'wrong-address' })
@@ -93,7 +103,7 @@ describe('Wheres', () => {
 
     it('Works Where Not', async () => {
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .whereNot(query => {
                     query.where('name', '=', 'test-name');
@@ -102,7 +112,7 @@ describe('Wheres', () => {
         ).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
 
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .where('name', 'test-name')
                 .whereNot(query => {
@@ -112,7 +122,7 @@ describe('Wheres', () => {
         ).toEqual({ id: 1, name: 'test-name', email: 'test-email', address: 'test-address' });
 
         expect(
-            await DB.connection()
+            await DB.connection(currentGenericDB)
                 .table('test_wheres_users')
                 .where('name', 'wrong-name')
                 .orWhereNot(query => {
@@ -123,26 +133,29 @@ describe('Wheres', () => {
     });
 
     it('Works Where In', async () => {
-        expect(await DB.connection().table('test_wheres_users').whereIn('id', [2]).first()).toEqual({
+        expect(await DB.connection(currentGenericDB).table('test_wheres_users').whereIn('id', [2]).first()).toEqual({
             id: 2,
             name: 'test-name1',
             email: 'test-email1',
             address: 'test-address1'
         });
 
-        let users = await DB.connection().table('test_wheres_users').whereIn('id', [2, 3, 22]).get();
+        let users = await DB.connection(currentGenericDB).table('test_wheres_users').whereIn('id', [2, 3, 22]).get();
 
         expect(users[0]).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
         expect(users[1]).toEqual({ id: 3, name: 'test-name2', email: 'test-email2', address: 'test-address2' });
         expect(2).toBe(users.length);
 
-        users = await DB.connection().table('test_wheres_users').whereIn('email', ['test-email1', 'test-email2']).get();
+        users = await DB.connection(currentGenericDB)
+            .table('test_wheres_users')
+            .whereIn('email', ['test-email1', 'test-email2'])
+            .get();
 
         expect(users[0]).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
         expect(users[1]).toEqual({ id: 3, name: 'test-name2', email: 'test-email2', address: 'test-address2' });
         expect(2).toBe(users.length);
 
-        users = await DB.connection()
+        users = await DB.connection(currentGenericDB)
             .table('test_wheres_users')
             .whereIn('id', [2])
             .orWhereIn('email', ['test-email1', 'test-email2'])
@@ -155,16 +168,16 @@ describe('Wheres', () => {
     });
 
     it('Works Where In Can Accept Queryable', async () => {
-        let query = DB.connection().table('test_wheres_users').select('name').where('id', '>', 2);
+        let query = DB.connection(currentGenericDB).table('test_wheres_users').select('name').where('id', '>', 2);
 
-        let users = await DB.connection().table('test_wheres_users').whereIn('name', query).get();
+        let users = await DB.connection(currentGenericDB).table('test_wheres_users').whereIn('name', query).get();
 
         expect(users[0]).toEqual({ id: 3, name: 'test-name2', email: 'test-email2', address: 'test-address2' });
         expect(users[1]).toEqual({ id: 4, name: 'test-name3', email: 'test-email3', address: 'test-address3' });
 
         expect(2).toBe(users.length);
 
-        users = await DB.connection()
+        users = await DB.connection(currentGenericDB)
             .table('test_wheres_users')
             .whereIn('name', query => {
                 query.from('test_wheres_users').select('name').where('id', '>', 2);
@@ -176,9 +189,9 @@ describe('Wheres', () => {
 
         expect(2).toBe(users.length);
 
-        query = DB.connection().table('test_wheres_users').select('name').where('id', '=', 1);
+        query = DB.connection(currentGenericDB).table('test_wheres_users').select('name').where('id', '=', 1);
 
-        users = await DB.connection().table('test_wheres_users').whereNotIn('name', query).get();
+        users = await DB.connection(currentGenericDB).table('test_wheres_users').whereNotIn('name', query).get();
 
         expect(users[0]).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
         expect(users[1]).toEqual({ id: 3, name: 'test-name2', email: 'test-email2', address: 'test-address2' });
@@ -188,24 +201,35 @@ describe('Wheres', () => {
     });
 
     it('Works Where Integer In Raw', async () => {
-        let users = await DB.connection().table('test_wheres_users').whereIntegerInRaw('id', [2, 3, 5]).get();
+        let users = await DB.connection(currentGenericDB)
+            .table('test_wheres_users')
+            .whereIntegerInRaw('id', [2, 3, 5])
+            .get();
         expect(users[0]).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
         expect(users[1]).toEqual({ id: 3, name: 'test-name2', email: 'test-email2', address: 'test-address2' });
         expect(2).toBe(users.length);
 
-        users = await DB.connection().table('test_wheres_users').whereIntegerNotInRaw('id', [1, 3]).get();
+        users = await DB.connection(currentGenericDB)
+            .table('test_wheres_users')
+            .whereIntegerNotInRaw('id', [1, 3])
+            .get();
         expect(users[0]).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
         expect(users[1]).toEqual({ id: 4, name: 'test-name3', email: 'test-email3', address: 'test-address3' });
         expect(2).toBe(users.length);
 
-        users = await DB.connection().table('test_wheres_users').whereIntegerInRaw('id', ['2', '3']).get();
+        users = await DB.connection(currentGenericDB)
+            .table('test_wheres_users')
+            .whereIntegerInRaw('id', ['2', '3'])
+            .get();
         expect(users[0]).toEqual({ id: 2, name: 'test-name1', email: 'test-email1', address: 'test-address1' });
         expect(users[1]).toEqual({ id: 3, name: 'test-name2', email: 'test-email2', address: 'test-address2' });
         expect(2).toBe(users.length);
     });
 
     it('Works Sole', async () => {
-        expect(await DB.connection().table('test_wheres_users').where('name', 'test-name').sole()).toEqual({
+        expect(
+            await DB.connection(currentGenericDB).table('test_wheres_users').where('name', 'test-name').sole()
+        ).toEqual({
             id: 1,
             name: 'test-name',
             email: 'test-email',
@@ -214,25 +238,28 @@ describe('Wheres', () => {
     });
 
     it('Works Sole Fails For Multiple Records', async () => {
-        await expect(DB.connection().table('test_wheres_users').whereIn('id', [1, 2]).sole()).rejects.toThrowError(
-            '2 records were found.'
-        );
+        await expect(
+            DB.connection(currentGenericDB).table('test_wheres_users').whereIn('id', [1, 2]).sole()
+        ).rejects.toThrow('2 records were found.');
     });
 
     it('Works Sole Fails If No Records', async () => {
         await expect(
-            DB.connection().table('test_wheres_users').where('name', 'wrong-name').sole()
-        ).rejects.toThrowError('no records were found.');
+            DB.connection(currentGenericDB).table('test_wheres_users').where('name', 'wrong-name').sole()
+        ).rejects.toThrow('no records were found.');
     });
 
     it('Works Sole Value', async () => {
         expect(
-            await DB.connection().table('test_wheres_users').where('name', 'test-name').soleValue<string>('name')
+            await DB.connection(currentGenericDB)
+                .table('test_wheres_users')
+                .where('name', 'test-name')
+                .soleValue<string>('name')
         ).toBe('test-name');
     });
 
     it('Works Chunck Map', async () => {
-        const results = await DB.connection()
+        const results = await DB.connection(currentGenericDB)
             .table('test_wheres_users')
             .orderBy('id')
             .chunkMap<string, { name: string }>(user => {

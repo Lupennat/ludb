@@ -148,8 +148,8 @@ services:
             - -c
             - 'until /usr/bin/mysql -hmaria1011 -ulupdo -plupdo@s3cRet -e "SELECT 1"; do sleep 5; done'
 
-    postgres11:
-        image: postgis/postgis:11-3.3-alpine
+    postgres12:
+        image: postgis/postgis:12-3.4-alpine
         command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
         ports:
             - '25431:5432'
@@ -161,19 +161,19 @@ services:
             - POSTGRES_PASSWORD=lupdos3cRet
             - POSTGRES_DB=tempdb
 
-    waitpostgres11:
-        image: postgis/postgis:11-3.3-alpine
+    waitpostgres12:
+        image: postgis/postgis:12-3.4-alpine
         links:
-            - postgres11
+            - postgres12
         depends_on:
-            - postgres11
+            - postgres12
         entrypoint:
             - bash
             - -c
-            - 'until /usr/local/bin/psql postgres://lupdo:lupdos3cRet@postgres11/tempdb -c "SELECT 1"; do sleep 5; done'
+            - 'until /usr/local/bin/psql postgres://lupdo:lupdos3cRet@postgres12/tempdb -c "SELECT 1"; do sleep 5; done'
 
-    postgres15:
-        image: postgis/postgis:15-3.3-alpine
+    postgres16:
+        image: postgis/postgis:16-3.4-alpine
         command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
         ports:
             - '25435:5432'
@@ -185,16 +185,16 @@ services:
             - POSTGRES_PASSWORD=lupdos3cRet
             - POSTGRES_DB=tempdb
 
-    waitpostgres15:
-        image: postgis/postgis:15-3.3-alpine
+    waitpostgres16:
+        image: postgis/postgis:16-3.4-alpine
         links:
-            - postgres15
+            - postgres16
         depends_on:
-            - postgres15
+            - postgres16
         entrypoint:
             - bash
             - -c
-            - 'until /usr/local/bin/psql postgres://lupdo:lupdos3cRet@postgres15/tempdb -c "SELECT 1"; do sleep 5; done'
+            - 'until /usr/local/bin/psql postgres://lupdo:lupdos3cRet@postgres16/tempdb -c "SELECT 1"; do sleep 5; done'
     
     sqlsrv17:
         image: mcr.microsoft.com/mssql/server:2017-latest

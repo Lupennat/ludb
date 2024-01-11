@@ -1,6 +1,6 @@
 import { isPlainObject } from 'is-plain-object';
 import { CursorPaginatorI, CursorPaginatorObject, CursorPaginatorOptions } from '../types/paginations';
-import { Objectable } from '../types/query/builder';
+import { Objectable } from '../types/query/grammar-builder';
 import { afterLast, isObjectable } from '../utils';
 import AbstractPaginator from './abstract-paginator';
 import Cursor from './cursor';
@@ -10,7 +10,12 @@ class CursorPaginator<T> extends AbstractPaginator<T, CursorPaginatorOptions> im
 
     protected hasMore: boolean;
 
-    constructor(results: T[], perPageNumber: number, protected cursor: Cursor | null, options: CursorPaginatorOptions) {
+    constructor(
+        results: T[],
+        perPageNumber: number,
+        protected cursor: Cursor | null,
+        options: CursorPaginatorOptions
+    ) {
         super(results, perPageNumber, options);
         this.results =
             this.cursor !== null && this.cursor.pointsToPreviousItems() ? this.results.reverse() : this.results;

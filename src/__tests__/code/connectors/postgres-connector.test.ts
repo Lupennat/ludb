@@ -1,9 +1,12 @@
 import { Pdo } from 'lupdo';
 import { rm, writeFile } from 'node:fs/promises';
+import PostgresConnection from '../../../connections/postgres-connection';
 import PostgresConnector from '../../../connectors/postgres-connector';
-import { FakeConnection, pdo } from '../fixtures/mocked';
+import { FakeConnection } from '../fixtures/lupdo-fake';
 
 describe('Postgres Connector', () => {
+    const pdo = new Pdo('fake', {});
+
     beforeAll(async () => {
         await writeFile(__dirname + '/sslcert', 'sslcert content');
         await writeFile(__dirname + '/sslkey', 'sslkey content');
@@ -11,19 +14,27 @@ describe('Postgres Connector', () => {
     });
 
     afterAll(async () => {
-        await pdo.disconnect();
         await rm(__dirname + '/sslcert');
         await rm(__dirname + '/sslkey');
         await rm(__dirname + '/sslrootcert');
     });
 
     it('Works Postgres Connector', async () => {
+        new PostgresConnection('fake', {
+            username: 'username',
+            password: 'secret',
+
+            host: 'foo',
+            database: 'bar',
+            port: 111,
+            application_name: 'test'
+        });
         const connector = new PostgresConnector();
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -51,7 +62,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -81,7 +92,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -108,7 +119,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -139,7 +150,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -163,7 +174,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -187,7 +198,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -211,7 +222,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -235,7 +246,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -267,7 +278,7 @@ describe('Postgres Connector', () => {
         connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -298,38 +309,38 @@ describe('Postgres Connector', () => {
             connector.connect({
                 username: 'username',
                 password: 'secret',
-                driver: 'pgsql',
+
                 host: 'foo',
                 database: 'bar',
                 port: 111,
                 application_name: 'test',
                 sslcert: './not-exists-sslcert'
             });
-        }).toThrowError();
+        }).toThrow();
         expect(() => {
             connector.connect({
                 username: 'username',
                 password: 'secret',
-                driver: 'pgsql',
+
                 host: 'foo',
                 database: 'bar',
                 port: 111,
                 application_name: 'test',
                 sslkey: './not-exists-sslkey'
             });
-        }).toThrowError();
+        }).toThrow();
         expect(() => {
             connector.connect({
                 username: 'username',
                 password: 'secret',
-                driver: 'pgsql',
+
                 host: 'foo',
                 database: 'bar',
                 port: 111,
                 application_name: 'test',
                 sslrootcert: './not-exists-sslrootcert'
             });
-        }).toThrowError();
+        }).toThrow();
     });
 
     it('Works Created Callback', async () => {
@@ -349,7 +360,7 @@ describe('Postgres Connector', () => {
         let pdo = connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
@@ -359,8 +370,8 @@ describe('Postgres Connector', () => {
             }
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
-        expect(callback).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
 
         connector = new PostgresConnector();
@@ -375,14 +386,14 @@ describe('Postgres Connector', () => {
         pdo = connector.connect({
             username: 'username',
             password: 'secret',
-            driver: 'pgsql',
+
             host: 'foo',
             database: 'bar',
             port: 111,
             application_name: 'test'
         });
         await pdo.query('SELECT 1');
-        expect(spiedCallback[0]).toBeCalledTimes(1);
+        expect(spiedCallback[0]).toHaveBeenCalledTimes(1);
         await pdo.disconnect();
     });
 
@@ -390,9 +401,12 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureIsolationLevel(fakeConnection, { driver: 'pgsql' });
+        await connector.configureIsolationLevel(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureIsolationLevel(fakeConnection, { driver: 'pgsql', isolation_level: 'READ COMMITTED' });
+        await connector.configureIsolationLevel(fakeConnection, {
+            database: 'fake',
+            isolation_level: 'READ COMMITTED'
+        });
         expect(spiedPdoFake).toHaveBeenLastCalledWith(
             'set session characteristics as transaction isolation level READ COMMITTED'
         );
@@ -402,9 +416,9 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureEncoding(fakeConnection, { driver: 'pgsql' });
+        await connector.configureEncoding(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureEncoding(fakeConnection, { driver: 'pgsql', charset: 'UTF8' });
+        await connector.configureEncoding(fakeConnection, { database: 'fake', charset: 'UTF8' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set names 'UTF8'");
     });
 
@@ -412,9 +426,9 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureTimezone(fakeConnection, { driver: 'pgsql' });
+        await connector.configureTimezone(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureTimezone(fakeConnection, { driver: 'pgsql', timezone: 'Europe/Rome' });
+        await connector.configureTimezone(fakeConnection, { database: 'fake', timezone: 'Europe/Rome' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set time zone 'Europe/Rome'");
     });
 
@@ -422,10 +436,10 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureSynchronousCommit(fakeConnection, { driver: 'pgsql' });
+        await connector.configureSynchronousCommit(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
         await connector.configureSynchronousCommit(fakeConnection, {
-            driver: 'pgsql',
+            database: 'fake',
             synchronous_commit: 'remote_write'
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith("set synchronous_commit to 'remote_write'");
@@ -435,85 +449,43 @@ describe('Postgres Connector', () => {
         const fakeConnection = new FakeConnection();
         const spiedPdoFake = jest.spyOn(fakeConnection, 'query');
         const connector = new PostgresConnector();
-        await connector.configureSearchPath(fakeConnection, { driver: 'pgsql' });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake' });
         expect(spiedPdoFake).not.toHaveBeenLastCalledWith();
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: 'public'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: 'Public'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'Public' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "Public"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: '¡foo_bar-Baz!.Áüõß'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '¡foo_bar-Baz!.Áüõß' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "¡foo_bar-Baz!.Áüõß"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: "'public'"
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: "'public'" });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: '"public"'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '"public"' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: '$user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '$user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "$user"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: 'public user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
         await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
+            database: 'fake',
             search_path: 'public\nuser\r\n\ttest'
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user", "test"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: 'public,user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public,user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: 'public, user'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: 'public, user' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: "'public', 'user'"
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: "'public', 'user'" });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: '"public", "user"'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '"public", "user"' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: '"public user"'
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: '"public user"' });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: ['public', 'user']
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: ['public', 'user'] });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user"');
-        await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
-            search_path: ['public', '$user']
-        });
+        await connector.configureSearchPath(fakeConnection, { database: 'fake', search_path: ['public', '$user'] });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "$user"');
         await connector.configureSearchPath(fakeConnection, {
-            driver: 'pgsql',
+            database: 'fake',
             search_path: ['public', '"user"', "'test'", 'spaced schema']
         });
         expect(spiedPdoFake).toHaveBeenLastCalledWith('set search_path to "public", "user", "test", "spaced schema"');

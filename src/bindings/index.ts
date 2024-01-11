@@ -17,7 +17,7 @@ import {
 import { TypeBindingOptions } from 'lupdo/dist/typings/typed-binding';
 import ExpressionContract from '../query/expression-contract';
 import BindToI from '../types/bind-to';
-import { BindingExclude } from '../types/query/builder';
+import { BindingExclude } from '../types/generics';
 
 export const bindTo: BindToI = {
     bigInteger: (

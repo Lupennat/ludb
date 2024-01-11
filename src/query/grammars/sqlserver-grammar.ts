@@ -1,12 +1,12 @@
-import { Binding, RowValues, Stringable } from '../../types/query/builder';
+import { Binding, Stringable } from '../../types/generics';
+import GrammarBuilderI, { RowValues } from '../../types/query/grammar-builder';
 import { BindingTypes, HavingBasic, WhereBasic, WhereDateTime } from '../../types/query/registry';
 import { beforeLast, escapeQuoteForSql, stringifyReplacer } from '../../utils';
-import BuilderContract from '../builder-contract';
 import Expression from '../expression';
 import IndexHint from '../index-hint';
 import Grammar from './grammar';
 
-class SqlServerGrammar extends Grammar {
+class SqlserverGrammar extends Grammar {
     /**
      * All of the available clause operators.
      */
@@ -35,6 +35,7 @@ class SqlServerGrammar extends Grammar {
      * The components that make up a select clause.
      */
     protected selectComponents: string[] = [
+        'expressions',
         'aggregate',
         'columns',
         'from',
@@ -46,13 +47,21 @@ class SqlServerGrammar extends Grammar {
         'orders',
         'offset',
         'limit',
-        'lock'
+        'lock',
+        'recursionLimit'
     ];
+
+    /**
+     * Get the "recursive" keyword.
+     */
+    protected recursiveKeyword(): string {
+        return '';
+    }
 
     /**
      * Compile a select query into SQL.
      */
-    public compileSelect(query: BuilderContract): string {
+    public compileSelect(query: GrammarBuilderI): string {
         const registry = query.getRegistry();
         // An order by clause is required for SQL Server offset to function...
         if (registry.offset && registry.orders.length === 0) {
@@ -65,7 +74,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "select *" portion of the query.
      */
-    protected compileColumns(query: BuilderContract, columns: Stringable[]): string {
+    protected compileColumns(query: GrammarBuilderI, columns: Stringable[]): string {
         if (query.getRegistry().aggregate !== null) {
             return '';
         }
@@ -87,7 +96,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "from" portion of the query.
      */
-    protected compileFrom(query: BuilderContract, table: Stringable): string {
+    protected compileFrom(query: GrammarBuilderI, table: Stringable): string {
         const from = super.compileFrom(query, table);
         const lock = query.getRegistry().lock;
 
@@ -105,14 +114,14 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the index hints for the query.
      */
-    protected compileIndexHint(_query: BuilderContract, indexHint: IndexHint): string {
+    protected compileIndexHint(_query: GrammarBuilderI, indexHint: IndexHint): string {
         return indexHint.type === 'force' ? `with (index(${indexHint.index}))` : '';
     }
 
     /**
      * Compile a bitwise operator where clause.
      */
-    protected compileWhereBitwise(_query: BuilderContract, where: WhereBasic): string {
+    protected compileWhereBitwise(_query: GrammarBuilderI, where: WhereBasic): string {
         const value = this.parameter(where.value);
         const operator = where.operator.replace(/\?/g, '??');
 
@@ -122,7 +131,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a "where date" clause.
      */
-    protected compileWhereDate(_query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereDate(_query: GrammarBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `cast(${this.wrap(where.column)} as date) ${where.operator} ${value}`;
@@ -131,7 +140,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a "where time" clause.
      */
-    protected compileWhereTime(_query: BuilderContract, where: WhereDateTime): string {
+    protected compileWhereTime(_query: GrammarBuilderI, where: WhereDateTime): string {
         const value = this.parameter(where.value);
 
         return `cast(${this.wrap(where.column)} as time) ${where.operator} ${value}`;
@@ -186,7 +195,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a having clause involving a bitwise operator.
      */
-    protected compileHavingBitwise(_query: BuilderContract, having: HavingBasic): string {
+    protected compileHavingBitwise(_query: GrammarBuilderI, having: HavingBasic): string {
         const column = this.wrap(having.column);
         const parameter = this.parameter(having.value);
 
@@ -196,7 +205,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile a delete statement without joins into SQL.
      */
-    protected compileDeleteWithoutJoins(query: BuilderContract, table: string, where: string): string {
+    protected compileDeleteWithoutJoins(query: GrammarBuilderI, table: string, where: string): string {
         const sql = super.compileDeleteWithoutJoins(query, table, where);
         const limit = query.getRegistry().limit;
 
@@ -215,7 +224,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "limit" portions of the query.
      */
-    protected compileLimit(query: BuilderContract, limit: number): string {
+    protected compileLimit(query: GrammarBuilderI, limit: number): string {
         if (limit && Number(query.getRegistry().offset) > 0) {
             return `fetch next ${limit} rows only`;
         }
@@ -226,7 +235,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the "offset" portions of the query.
      */
-    protected compileOffset(_query: BuilderContract, offset: number): string {
+    protected compileOffset(_query: GrammarBuilderI, offset: number): string {
         if (offset > 0) {
             return `offset ${offset} rows`;
         }
@@ -251,7 +260,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile an exists statement into SQL.
      */
-    public compileExists(query: BuilderContract): string {
+    public compileExists(query: GrammarBuilderI): string {
         const existsQuery = query.clone();
         const registry = existsQuery.getRegistry();
         registry.columns = [];
@@ -263,7 +272,7 @@ class SqlServerGrammar extends Grammar {
     /**
      * Compile the columns for an update statement.
      */
-    protected compileUpdateColumns(_query: BuilderContract, values: RowValues): string {
+    protected compileUpdateColumns(_query: GrammarBuilderI, values: RowValues): string {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
         return Object.keys(combinedValues)
             .map(key => {
@@ -363,9 +372,21 @@ class SqlServerGrammar extends Grammar {
     }
 
     /**
+     * Compile an update statement without joins into SQL.
+     */
+    protected compileUpdateWithoutJoins(query: GrammarBuilderI, table: string, columns: string, where: string): string {
+        const sql = super.compileUpdateWithoutJoins(query, table, columns, where);
+        const limit = query.getRegistry().limit;
+
+        return limit !== null && limit > 0 && Number(query.getRegistry().offset) <= 0
+            ? sql.replace('update', `update top (${limit})`)
+            : sql;
+    }
+
+    /**
      * Compile an update statement with joins into SQL.
      */
-    protected compileUpdateWithJoins(query: BuilderContract, table: string, columns: string, where: string): string {
+    protected compileUpdateWithJoins(query: GrammarBuilderI, table: string, columns: string, where: string): string {
         const alias = table.split(' as ').pop() as string;
         const joins = this.compileJoins(query, query.getRegistry().joins);
 
@@ -376,7 +397,7 @@ class SqlServerGrammar extends Grammar {
      * Compile an "upsert" statement into SQL.
      */
     public compileUpsert(
-        query: BuilderContract,
+        query: GrammarBuilderI,
         values: RowValues[],
         uniqueBy: string[],
         update: Array<string | RowValues>
@@ -432,10 +453,29 @@ class SqlServerGrammar extends Grammar {
     /**
      * Prepare the bindings for an update statement.
      */
-    public prepareBindingsForUpdate(bindings: BindingTypes, values: RowValues): Binding[] {
+    public prepareBindingsForUpdate(query: GrammarBuilderI, bindings: BindingTypes, values: RowValues): any[] {
+        return this.mergeBindingsAndValue(
+            this.prepareBindingsForMerge(query, bindings),
+            bindings.expressions.concat(this.prepareValuesForMerge(query, values))
+        );
+    }
+
+    /**
+     * Prepare Bindings for merge
+     */
+    protected prepareBindingsForMerge(_query: GrammarBuilderI, bindings: BindingTypes): Binding[][] {
+        return Object.keys(bindings)
+            .filter(key => !['select', 'expressions'].includes(key))
+            .map(key => bindings[key as keyof BindingTypes]);
+    }
+
+    /**
+     * Prepare values for merge
+     */
+    protected prepareValuesForMerge(_query: GrammarBuilderI, values: RowValues): any[] {
         const [combinedValues, jsonKeys] = this.combineJsonValues(values);
 
-        const valuesOfValues = Object.keys(combinedValues).reduce((acc: any[], key: string) => {
+        return Object.keys(combinedValues).reduce((acc: any[], key: string) => {
             if (!jsonKeys.includes(key)) {
                 acc.push(
                     this.mustBeJsonStringified(combinedValues[key])
@@ -456,12 +496,6 @@ class SqlServerGrammar extends Grammar {
 
             return acc;
         }, []);
-
-        const cleanBindings = Object.keys(bindings)
-            .filter(key => !['select'].includes(key))
-            .map(key => bindings[key as keyof BindingTypes]);
-
-        return valuesOfValues.concat(cleanBindings.flat(Infinity) as Binding[]);
     }
 
     /**
@@ -532,4 +566,4 @@ class SqlServerGrammar extends Grammar {
     }
 }
 
-export default SqlServerGrammar;
+export default SqlserverGrammar;

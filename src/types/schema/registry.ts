@@ -1,6 +1,7 @@
 import ColumnDefinition from '../../schema/definitions/column-definition';
 import CommandDefinition from '../../schema/definitions/commands/command-definition';
-import { Stringable } from '../query/builder';
+import { Stringable } from '../generics';
+import GrammarBuilderI from '../query/grammar-builder';
 
 export interface CommandRegistryI {
     [key: string]: any;
@@ -35,6 +36,18 @@ export interface IndexRegistryI extends ColumnsRegistryI {
     initiallyImmediate?: boolean;
 }
 
+export interface ViewRegistryI extends CommandRegistryI {
+    algorithm?: Stringable;
+    temporary?: Boolean;
+    as: GrammarBuilderI;
+    check?: boolean;
+    checkType?: Stringable;
+    definer?: Stringable;
+    columnNames?: Stringable[];
+    recursive?: boolean;
+    viewAttribute?: Stringable;
+}
+
 export interface ForeignKeyRegistryI extends IndexRegistryI {
     on: Stringable;
     onDelete?: Stringable;
@@ -58,7 +71,7 @@ export type CommandType =
     | 'dropFulltext'
     | 'dropSpatialIndex'
     | 'dropForeign'
-    | 'dropIfExists'
+    | 'dropTableIfExists'
     | 'primary'
     | 'unique'
     | 'index'
@@ -251,7 +264,7 @@ export interface ColumnRegistryI {
      */
     startingValue?: number | bigint;
     /**
-     * Create a stored generated column (MySQL/PostgreSQL/SQLite)
+     * Create a stored generated column (MySQL/PostgreSQL/Sqlite)
      */
     storedAs?: Stringable | null;
     /**
@@ -279,7 +292,7 @@ export interface ColumnRegistryI {
      */
     useCurrentOnUpdate?: boolean;
     /**
-     * Create a virtual generated column (MySQL/PostgreSQL/SQLite)
+     * Create a virtual generated column (MySQL/PostgreSQL/Sqlite)
      */
     virtualAs?: Stringable | null;
 }

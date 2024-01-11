@@ -1,18 +1,17 @@
 import { Pdo, PdoConnectionI } from 'lupdo';
 import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
-import { PostgresConfig } from '../types/config';
-import ConnectorI from '../types/connector';
+import { FlattedConnectionConfig, PostgresConfig } from '../types/config';
 import { merge, parseSearchPath } from '../utils';
 import Connector from './connector';
 
-class PostgresConnector extends Connector implements ConnectorI {
+class PostgresConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect<T extends PostgresConfig>(config: T): Pdo {
-        const attributes = this.getAttributes<PostgresConfig>(config);
-        const poolOptions = this.getPoolOptions<PostgresConfig>(config);
+    public connect(config: FlattedConnectionConfig<PostgresConfig>): Pdo {
+        const attributes = this.getAttributes(config);
+        const poolOptions = this.getPoolOptions(config);
 
         const originalCreated = poolOptions.created;
 
@@ -79,7 +78,7 @@ class PostgresConnector extends Connector implements ConnectorI {
         // First we'll create the basic DSN and connection instance connecting to the
         // using the configuration option specified by the developer. We will also
         // set the default character set on the connections to UTF-8 by default.
-        return this.createConnection<PostgresOptions>('pgsql', options, poolOptions, attributes);
+        return this.createConnection('pgsql', options, poolOptions, attributes);
     }
 
     /**

@@ -4,10 +4,16 @@
 
 -   [Introduction](#introduction)
 -   [Tables](#tables)
+    -   [Showing Tables](#showing-tables)
     -   [Creating Tables](#creating-tables)
     -   [Updating Tables](#updating-tables)
     -   [Renaming / Dropping Tables](#renaming-and-dropping-tables)
+-   [Views](#views)
+    -   [Showing Views](#showing-views)
+    -   [Creating Views](#creating-views)
+    -   [Dropping Views](#droping-views)
 -   [Columns](#columns)
+    -   [Showing Columns](#showing-columns)
     -   [Creating Columns](#creating-columns)
     -   [Available Column Types](#available-column-types)
     -   [Column Modifiers](#column-modifiers)
@@ -15,11 +21,17 @@
     -   [Renaming Columns](#renaming-columns)
     -   [Dropping Columns](#dropping-columns)
 -   [Indexes](#indexes)
+    -   [Showing Indexes](#showing-indexes)
     -   [Creating Indexes](#creating-indexes)
     -   [Renaming Indexes](#renaming-indexes)
     -   [Dropping Indexes](#dropping-indexes)
     -   [Foreign Key Constraints](#foreign-key-constraints)
-
+        -   [Showing Foreign Keys](#showing-foreign-keys)
+        -   [Creating Foreign Keys](#creating-foreign-keys)
+        -   [Dropping Foreign Keys](#dropping-foreign-keys)
+-   [Types](#types)
+    -   [Showing Types](#showing-types)
+    -   [Dropping Type](#dropping-types)
 ## Introduction
 
 The Ludb `Schema` provides database agnostic support for creating and manipulating tables across all of Ludb's supported database systems.
@@ -108,7 +120,7 @@ await Schema.table('users', table => {
 });
 ```
 
-### Renaming / Dropping Tables
+### Renaming and Dropping Tables
 
 To rename an existing database table, use the `rename` method:
 
@@ -995,6 +1007,8 @@ If you pass an array of columns into a method that drops indexes, the convention
 ```
 
 ### Foreign Key Constraints
+
+#### Creating Foreign Keys
 
 Ludb also provides support for creating foreign key constraints, which are used to force referential integrity at the database level. For example, let's define a `user_id` column on the `posts` table that references the `id` column on a `users` table:
 

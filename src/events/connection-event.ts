@@ -7,10 +7,16 @@ abstract class ConnectionEvent {
     public connectionName: string;
 
     /**
+     * The reference id
+     */
+    public referenceId: string;
+
+    /**
      * Create a new event instance.
      */
     constructor(public connection: ConnectionSessionI) {
         this.connectionName = connection.getName();
+        this.referenceId = connection.getReference();
     }
 }
 

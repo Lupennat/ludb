@@ -107,4 +107,7 @@ dist
 *.code-workspace
 
 # Sqlite Local files
-.sqlite*
+sqlite3*
+
+# api docs
+docs

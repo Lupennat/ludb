@@ -1,11 +1,15 @@
-import { Stringable } from '../../types/query/builder';
+import { Stringable } from '../../types/generics';
 import { ColumnIndex, ColumnRegistryI, ColumnType } from '../../types/schema/registry';
 import { createColumnRegistry } from '../registries';
 
 class ColumnDefinition {
     protected registry: ColumnRegistryI;
 
-    constructor(type: ColumnType, public name: Stringable, parameters: Partial<ColumnRegistryI>) {
+    constructor(
+        type: ColumnType,
+        public name: Stringable,
+        parameters: Partial<ColumnRegistryI>
+    ) {
         this.registry = createColumnRegistry(type);
         Object.assign(this.registry, parameters);
     }
@@ -201,7 +205,7 @@ class ColumnDefinition {
     }
 
     /**
-     *  Create a stored generated column (MySQL/PostgreSQL/SQLite)
+     *  Create a stored generated column (MySQL/PostgreSQL/Sqlite)
      */
     public storedAs(expression: Stringable): this {
         return this.addToRegistry('storedAs', expression);
@@ -215,14 +219,14 @@ class ColumnDefinition {
     }
 
     /**
-     *  Remove a stored generated column (MySQL/PostgreSQL/SQLite)
+     *  Remove a stored generated column (MySQL/PostgreSQL/Sqlite)
      */
     public unsetStoredAs(): this {
         return this.addToRegistry('storedAs', null);
     }
 
     /**
-     * Unset a virtual generated column (MySQL/PostgreSQL/SQLite)
+     * Unset a virtual generated column (MySQL/PostgreSQL/Sqlite)
      */
     public unsetVirtualAs(): this {
         return this.addToRegistry('virtualAs', null);
@@ -250,7 +254,7 @@ class ColumnDefinition {
     }
 
     /**
-     * Create a virtual generated column (MySQL/PostgreSQL/SQLite)
+     * Create a virtual generated column (MySQL/PostgreSQL/Sqlite)
      */
     public virtualAs(expression: Stringable): this {
         return this.addToRegistry('virtualAs', expression);

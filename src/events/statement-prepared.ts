@@ -8,7 +8,10 @@ class StatementPrepared extends ConnectionEvent {
     /**
      * Create a new event instance.
      */
-    public constructor(connection: ConnectionSessionI, public statement: PdoStatementI) {
+    public constructor(
+        connection: ConnectionSessionI,
+        public statement: PdoStatementI
+    ) {
         super(connection);
     }
 }

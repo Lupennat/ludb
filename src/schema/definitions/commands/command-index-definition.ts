@@ -1,4 +1,4 @@
-import { Stringable } from '../../../types/query/builder';
+import { Stringable } from '../../../types/generics';
 import { IndexRegistryI } from '../../../types/schema/registry';
 import CommandDefinition from './command-definition';
 

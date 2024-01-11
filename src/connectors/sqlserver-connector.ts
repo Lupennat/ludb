@@ -1,17 +1,16 @@
 import { Pdo } from 'lupdo';
 import { MssqlOptions } from 'lupdo-mssql';
-import { SqlServerConfig } from '../types/config';
-import ConnectorI from '../types/connector';
+import { FlattedConnectionConfig, SqlserverConfig } from '../types/config';
 import { merge } from '../utils';
 import Connector from './connector';
 
-class SqlServerConnector extends Connector implements ConnectorI {
+class SqlserverConnector extends Connector {
     /**
      * Establish a database connection.
      */
-    public connect<T extends SqlServerConfig>(config: T): Pdo {
-        const attributes = this.getAttributes<SqlServerConfig>(config);
-        const poolOptions = this.getPoolOptions<SqlServerConfig>(config);
+    public connect(config: FlattedConnectionConfig<SqlserverConfig>): Pdo {
+        const attributes = this.getAttributes(config);
+        const poolOptions = this.getPoolOptions(config);
 
         const options: MssqlOptions = {
             server: config.host,
@@ -39,13 +38,13 @@ class SqlServerConnector extends Connector implements ConnectorI {
             };
         }
 
-        return this.createConnection<MssqlOptions>(
+        return this.createConnection(
             'mssql',
-            merge(options, config.lupdo_options ?? {}),
+            merge<MssqlOptions>(options, config.lupdo_options ?? {}),
             poolOptions,
             attributes
         );
     }
 }
 
-export default SqlServerConnector;
+export default SqlserverConnector;

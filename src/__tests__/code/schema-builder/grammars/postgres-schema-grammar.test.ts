@@ -1,11 +1,11 @@
-import Builder from '../../../../schema/builders/builder';
+import QueryBuilder from '../../../../schema/builders/builder';
 import ForeignIdColumnDefinition from '../../../../schema/definitions/foreign-id-column-definition';
 import PostgresSchemaGrammar from '../../../../schema/grammars/postgres-grammar';
-import { getConnection, getPostgresBlueprint } from '../../fixtures/mocked';
+import { getPostgresBlueprint, getPostgresConnection } from '../../fixtures/mocked';
 
 describe('Posgtres Schema Grammar', () => {
     it('Works Basic Create Table', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.create();
         blueprint.increments('id');
@@ -30,7 +30,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Create Table With Auto Increment Starting Value', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.create();
         blueprint.increments('id').startingValue(1000);
@@ -46,7 +46,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Add Columns With Multiple Auto Increment Starting Value', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.id().from(100);
         blueprint.increments('code').from(200);
@@ -61,7 +61,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Create Table And Comment Column', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.create();
         blueprint.increments('id');
@@ -76,7 +76,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Create Temporary Table', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.create();
         blueprint.temporary();
@@ -91,7 +91,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Table', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.drop();
         const statements = blueprint.toSql(connection);
@@ -101,9 +101,9 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Table If Exists', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
-        blueprint.dropIfExists();
+        blueprint.dropTableIfExists();
         const statements = blueprint.toSql(connection);
 
         expect(1).toBe(statements.length);
@@ -111,7 +111,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Column', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.dropColumn('foo');
         let statements = blueprint.toSql(connection);
@@ -135,7 +135,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Primary', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropPrimary();
         const statements = blueprint.toSql(connection);
@@ -145,7 +145,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Unique', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropUnique('foo');
         const statements = blueprint.toSql(connection);
@@ -155,7 +155,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropIndex('foo');
         const statements = blueprint.toSql(connection);
@@ -165,7 +165,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Full Text', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropFulltext(['foo']);
         const statements = blueprint.toSql(connection);
@@ -175,7 +175,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Spatial Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.dropSpatialIndex(['coordinates']);
         const statements = blueprint.toSql(connection);
@@ -185,7 +185,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Foreign', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropForeign('foo');
         const statements = blueprint.toSql(connection);
@@ -195,7 +195,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Timestamps', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropTimestamps();
         const statements = blueprint.toSql(connection);
@@ -205,7 +205,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Timestamps Tz', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropTimestampsTz();
         const statements = blueprint.toSql(connection);
@@ -215,7 +215,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop SoftDeletes', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropSoftDeletes();
         const statements = blueprint.toSql(connection);
@@ -225,7 +225,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop SoftDeletes Tz', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dropSoftDeletesTz('column');
         const statements = blueprint.toSql(connection);
@@ -235,7 +235,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Drop Morphs', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('photos');
         blueprint.dropMorphs('imageable');
         const statements = blueprint.toSql(connection);
@@ -246,7 +246,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Rename Table', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.rename('foo');
         const statements = blueprint.toSql(connection);
@@ -256,7 +256,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Rename Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.renameIndex('foo', 'bar');
         const statements = blueprint.toSql(connection);
@@ -266,7 +266,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Primary Key', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.primary('foo');
         const statements = blueprint.toSql(connection);
@@ -276,7 +276,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Unique Key', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.unique('foo', 'bar');
         const statements = blueprint.toSql(connection);
@@ -286,7 +286,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.index(['foo', 'bar'], 'baz');
         const statements = blueprint.toSql(connection);
@@ -296,7 +296,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Index With Algorithm', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.index(['foo', 'bar'], 'baz', 'hash');
         const statements = blueprint.toSql(connection);
@@ -306,7 +306,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Fulltext Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.fulltext('body');
         const statements = blueprint.toSql(connection);
@@ -318,7 +318,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Fulltext Index Multiple Columns', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.fulltext(['body', 'title']);
         const statements = blueprint.toSql(connection);
@@ -330,7 +330,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Fulltext Index With Language', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.fulltext('body').language('spanish');
         const statements = blueprint.toSql(connection);
@@ -342,7 +342,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Fulltext Index With Fluency', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.string('body').fulltext();
         const statements = blueprint.toSql(connection);
@@ -354,7 +354,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Spatial Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.spatialIndex('coordinates');
         const statements = blueprint.toSql(connection);
@@ -364,7 +364,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Fluent Spatial Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.point('coordinates').spatialIndex();
         const statements = blueprint.toSql(connection);
@@ -374,7 +374,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Raw Index', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.rawIndex('(function(column))', 'raw_index');
         const statements = blueprint.toSql(connection);
@@ -384,7 +384,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Incrementing ID', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.increments('id');
         const statements = blueprint.toSql(connection);
@@ -394,7 +394,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Small Incrementing ID', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.smallIncrements('id');
         const statements = blueprint.toSql(connection);
@@ -404,7 +404,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Medium Incrementing ID', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.mediumIncrements('id');
         const statements = blueprint.toSql(connection);
@@ -414,7 +414,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding ID', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.id();
         let statements = blueprint.toSql(connection);
@@ -431,7 +431,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Foreign ID', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         const foreignId = blueprint.foreignId('foo');
         blueprint.foreignId('company_id').constrained();
@@ -452,7 +452,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Foreign Id Specifying Index Name In Constraint', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.foreignId('company_id').constrained(undefined, undefined, 'my_index');
         const statements = blueprint.toSql(connection);
@@ -465,7 +465,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Big Incrementing ID', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.bigIncrements('id');
         const statements = blueprint.toSql(connection);
@@ -475,7 +475,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding String', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.string('foo');
         let statements = blueprint.toSql(connection);
@@ -499,7 +499,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Column Modifying', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users', table => {
             table.integer('code').autoIncrement().from(10).comment('my comment').change();
         });
@@ -575,7 +575,7 @@ describe('Posgtres Schema Grammar', () => {
 
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support modifying generated columns.');
+        }).toThrow('This database driver does not support modifying generated columns.');
 
         blueprint = getPostgresBlueprint('users', table => {
             table.timestamp('added_at', 2).useCurrent().storedAs('foo is not null').change();
@@ -583,11 +583,11 @@ describe('Posgtres Schema Grammar', () => {
 
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This database driver does not support modifying generated columns.');
+        }).toThrow('This database driver does not support modifying generated columns.');
     });
 
     it('Works Adding String Without Length Limit', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.string('foo');
         let statements = blueprint.toSql(connection);
@@ -595,7 +595,7 @@ describe('Posgtres Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "foo" varchar(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getPostgresBlueprint('users');
         blueprint.string('foo');
@@ -605,12 +605,12 @@ describe('Posgtres Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table "users" add column "foo" varchar not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 
     it('Works Adding Char Without Length Limit', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.char('foo');
         let statements = blueprint.toSql(connection);
@@ -618,7 +618,7 @@ describe('Posgtres Schema Grammar', () => {
         expect(1).toBe(statements.length);
         expect('alter table "users" add column "foo" char(255) not null').toBe(statements[0]);
 
-        Builder.withoutDefaultStringLength();
+        QueryBuilder.withoutDefaultStringLength();
 
         blueprint = getPostgresBlueprint('users');
         blueprint.char('foo');
@@ -628,12 +628,12 @@ describe('Posgtres Schema Grammar', () => {
             expect(1).toBe(statements.length);
             expect('alter table "users" add column "foo" char not null').toBe(statements[0]);
         } finally {
-            Builder.withDefaultStringLength(255);
+            QueryBuilder.withDefaultStringLength(255);
         }
     });
 
     it('Works Adding Text', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.text('foo');
         const statements = blueprint.toSql(connection);
@@ -643,7 +643,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Medium Text', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.mediumText('foo');
         const statements = blueprint.toSql(connection);
@@ -653,7 +653,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Long Text', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.longText('foo');
         const statements = blueprint.toSql(connection);
@@ -663,7 +663,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Big Integer', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.bigInteger('foo');
         let statements = blueprint.toSql(connection);
@@ -680,7 +680,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Integer', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.integer('foo');
         let statements = blueprint.toSql(connection);
@@ -697,7 +697,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Medium Integer', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.mediumInteger('foo');
         let statements = blueprint.toSql(connection);
@@ -714,7 +714,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Tiny Integer', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.tinyInteger('foo');
         let statements = blueprint.toSql(connection);
@@ -731,7 +731,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Small Integer', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.smallInteger('foo');
         let statements = blueprint.toSql(connection);
@@ -748,7 +748,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Float', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.float('foo', 5, 2);
         const statements = blueprint.toSql(connection);
@@ -758,7 +758,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Double', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.double('foo', 15, 8);
         const statements = blueprint.toSql(connection);
@@ -768,7 +768,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Decimal', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.decimal('foo', 5, 2);
         const statements = blueprint.toSql(connection);
@@ -778,7 +778,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Boolean', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.boolean('foo');
         const statements = blueprint.toSql(connection);
@@ -788,7 +788,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Enum', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.enum('role', ['member', 'admin']);
         const statements = blueprint.toSql(connection);
@@ -800,16 +800,16 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Set', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.set('role', ['member', 'admin']);
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the set type.');
+        }).toThrow('This Database driver does not support the set type.');
     });
 
     it('Works Adding Date', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.date('foo');
         const statements = blueprint.toSql(connection);
@@ -819,7 +819,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Year', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.year('birth_year');
         const statements = blueprint.toSql(connection);
@@ -828,7 +828,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Json', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.json('foo');
         const statements = blueprint.toSql(connection);
@@ -838,7 +838,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Jsonb', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.jsonb('foo');
         const statements = blueprint.toSql(connection);
@@ -848,7 +848,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTime('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -857,7 +857,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time Current', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTime('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
@@ -868,7 +868,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time With Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTime('created_at', 1);
         const statements = blueprint.toSql(connection);
@@ -879,7 +879,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time With Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTime('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -888,7 +888,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time Tz Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTimeTz('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -897,7 +897,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time Tz Current', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTimeTz('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
@@ -908,7 +908,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time Tz With Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTimeTz('created_at', 1);
         const statements = blueprint.toSql(connection);
@@ -917,7 +917,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Date Time Tz With Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.dateTimeTz('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -926,7 +926,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Time', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.time('created_at');
         const statements = blueprint.toSql(connection);
@@ -935,7 +935,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Time With Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.time('created_at', 1);
         const statements = blueprint.toSql(connection);
@@ -944,7 +944,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Time With Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.time('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -953,7 +953,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Time Tz', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timeTz('created_at', 0);
         const statements = blueprint.toSql(connection);
@@ -962,7 +962,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Time Tz With Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timeTz('created_at', 1);
         const statements = blueprint.toSql(connection);
@@ -971,7 +971,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Time Tz With Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timeTz('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -980,7 +980,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestamp('created_at');
         const statements = blueprint.toSql(connection);
@@ -991,7 +991,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp Current', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestamp('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
@@ -1002,7 +1002,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp With Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestamp('created_at', 1);
         const statements = blueprint.toSql(connection);
@@ -1013,7 +1013,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp With Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestamp('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -1022,7 +1022,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp Tz With Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestampTz('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -1031,7 +1031,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp Tz Current', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestampTz('created_at').useCurrent();
         const statements = blueprint.toSql(connection);
@@ -1042,7 +1042,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp Tz With Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestampTz('created_at', 1);
         const statements = blueprint.toSql(connection);
@@ -1051,7 +1051,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamp Tz With Null Precision', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestampTz('created_at', null);
         const statements = blueprint.toSql(connection);
@@ -1060,7 +1060,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Datetimes', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.datetimes(0);
         const statements = blueprint.toSql(connection);
@@ -1071,7 +1071,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamps', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestamps(0);
         const statements = blueprint.toSql(connection);
@@ -1082,7 +1082,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Timestamps Tz', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.timestampsTz(0);
         const statements = blueprint.toSql(connection);
@@ -1093,7 +1093,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding SoftDeletes Datetime', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.softDeletesDatetime();
         const statements = blueprint.toSql(connection);
@@ -1102,7 +1102,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding SoftDeletes', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.softDeletes('column', 0);
         const statements = blueprint.toSql(connection);
@@ -1111,7 +1111,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding SoftDeletes Tz', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.softDeletesTz('column', 0);
         const statements = blueprint.toSql(connection);
@@ -1120,7 +1120,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Binary', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.binary('foo');
         const statements = blueprint.toSql(connection);
@@ -1130,7 +1130,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Uuid', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.uuid('foo');
         const statements = blueprint.toSql(connection);
@@ -1140,7 +1140,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Uuid Defaults Column Name', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.uuid();
         const statements = blueprint.toSql(connection);
@@ -1150,7 +1150,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Ulid', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.ulid('foo');
         const statements = blueprint.toSql(connection);
@@ -1160,7 +1160,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Ulid Defaults Column Name', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.ulid();
         const statements = blueprint.toSql(connection);
@@ -1170,7 +1170,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Foreign Uuid', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         const foreignUuid = blueprint.foreignUuid('foo');
         blueprint.foreignUuid('company_id').constrained();
@@ -1191,7 +1191,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Foreign Ulid', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         const foreignUlid = blueprint.foreignUlid('foo');
         blueprint.foreignUlid('company_id').constrained();
@@ -1212,7 +1212,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Generated As', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.increments('foo').generatedAs();
         let statements = blueprint.toSql(connection);
@@ -1255,7 +1255,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Virtual As', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.integer('foo').nullable();
         blueprint.boolean('bar').virtualAs('foo is not null');
@@ -1267,7 +1267,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Stored As', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.integer('foo').nullable();
         blueprint.boolean('bar').storedAs('foo is not null');
@@ -1279,7 +1279,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Ip Address', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.ipAddress('foo');
         const statements = blueprint.toSql(connection);
@@ -1289,7 +1289,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Ip Address Defaults Column Name', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.ipAddress();
         const statements = blueprint.toSql(connection);
@@ -1299,7 +1299,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Mac Address', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.macAddress('foo');
         const statements = blueprint.toSql(connection);
@@ -1309,7 +1309,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Mac Address Defaults Column Name', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('users');
         blueprint.macAddress();
         const statements = blueprint.toSql(connection);
@@ -1319,7 +1319,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Compile Foreign', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.foreign('parent_id').references('id').on('parents').onDelete('cascade').deferrable();
         let statements = blueprint.toSql(connection);
@@ -1345,13 +1345,14 @@ describe('Posgtres Schema Grammar', () => {
             .references('id')
             .on('parents')
             .noActionOnDelete()
+            .noActionOnUpdate()
             .deferrable(false)
             .initiallyImmediate();
         statements = blueprint.toSql(connection);
 
         expect(1).toBe(statements.length);
         expect(
-            'alter table "users" add constraint "users_parent_id_foreign" foreign key ("parent_id") references "parents" ("id") on delete no action not deferrable'
+            'alter table "users" add constraint "users_parent_id_foreign" foreign key ("parent_id") references "parents" ("id") on delete no action on update no action not deferrable'
         ).toBe(statements[0]);
 
         blueprint = getPostgresBlueprint('users');
@@ -1380,7 +1381,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Compile Unique', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         let blueprint = getPostgresBlueprint('users');
         blueprint.unique('key').deferrable();
         let statements = blueprint.toSql(connection);
@@ -1417,7 +1418,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Geometry', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.geometry('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1427,7 +1428,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Point', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.point('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1437,7 +1438,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Line String', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.lineString('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1447,7 +1448,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Polygon', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.polygon('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1457,7 +1458,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Geometry Collection', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.geometryCollection('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1469,7 +1470,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Multi Point', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.multiPoint('coordinates').isGeometry();
         const statements = blueprint.toSql(connection);
@@ -1479,7 +1480,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Multi Line String', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.multiLineString('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1491,7 +1492,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Multi Polygon', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.multiPolygon('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1501,7 +1502,7 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Multi PolygonZ', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('geo');
         blueprint.multiPolygonZ('coordinates');
         const statements = blueprint.toSql(connection);
@@ -1513,23 +1514,23 @@ describe('Posgtres Schema Grammar', () => {
     });
 
     it('Works Adding Computed', () => {
-        const connection = getConnection().sessionSchema();
+        const connection = getPostgresConnection().sessionSchema();
         const blueprint = getPostgresBlueprint('products');
         blueprint.computed('discounted_virtual', 'price - 5').persisted();
         expect(() => {
             blueprint.toSql(connection);
-        }).toThrowError('This Database driver does not support the computed type');
+        }).toThrow('This Database driver does not support the computed type');
     });
 
     it('Works Create Database', () => {
-        let connection = getConnection().sessionSchema();
+        let connection = getPostgresConnection().sessionSchema();
         jest.spyOn(connection, 'getConfig').mockReturnValueOnce('utf8_foo');
 
         let statement = new PostgresSchemaGrammar().compileCreateDatabase('my_database_a', connection);
 
         expect('create database "my_database_a" encoding "utf8_foo"').toBe(statement);
 
-        connection = getConnection().sessionSchema();
+        connection = getPostgresConnection().sessionSchema();
         jest.spyOn(connection, 'getConfig').mockReturnValueOnce('utf8_bar');
 
         statement = new PostgresSchemaGrammar().compileCreateDatabase('my_database_b', connection);
@@ -1547,37 +1548,21 @@ describe('Posgtres Schema Grammar', () => {
         expect('drop database if exists "my_database_b"').toBe(statement);
     });
 
-    it('Works Drop All Tables Escapes Table Names', () => {
-        const statement = new PostgresSchemaGrammar().compileDropAllTables(['alpha', 'beta', 'gamma']);
+    it('Works Drop Tables Escapes Table Names', () => {
+        const statement = new PostgresSchemaGrammar().compileDropTables(['alpha', 'beta', 'gamma']);
 
         expect('drop table "alpha","beta","gamma" cascade').toBe(statement);
     });
 
-    it('Works Drop All Views Escapes Table Names', () => {
-        const statement = new PostgresSchemaGrammar().compileDropAllViews(['alpha', 'beta', 'gamma']);
+    it('Works Drop Views Escapes Table Names', () => {
+        const statement = new PostgresSchemaGrammar().compileDropViews(['alpha', 'beta', 'gamma']);
 
         expect('drop view "alpha","beta","gamma" cascade').toBe(statement);
     });
 
-    it('Works Drop All Types Escapes Table Names', () => {
-        const statement = new PostgresSchemaGrammar().compileDropAllTypes(['alpha', 'beta', 'gamma']);
+    it('Works Drop Types Escapes Table Names', () => {
+        const statement = new PostgresSchemaGrammar().compileDropTypes(['alpha', 'beta', 'gamma']);
 
         expect('drop type "alpha","beta","gamma" cascade').toBe(statement);
-    });
-
-    it('Works Compile Table Exists', () => {
-        const statement = new PostgresSchemaGrammar().compileTableExists();
-
-        expect(
-            "select * from information_schema.tables where table_catalog = ? and table_schema = ? and table_name = ? and table_type = 'BASE TABLE'"
-        ).toBe(statement);
-    });
-
-    it('Works Compile Column Listing', () => {
-        const statement = new PostgresSchemaGrammar().compileColumnListing();
-
-        expect(
-            'select column_name from information_schema.columns where table_catalog = ? and table_schema = ? and table_name = ?'
-        ).toBe(statement);
     });
 });

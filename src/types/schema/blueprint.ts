@@ -1,12 +1,12 @@
-import { ConnectionSessionI } from '..';
 import ColumnDefinition from '../../schema/definitions/column-definition';
 import CommandDefinition from '../../schema/definitions/commands/command-definition';
 import CommandForeignKeyDefinition from '../../schema/definitions/commands/command-foreign-key-definition';
 import CommandIndexDefinition from '../../schema/definitions/commands/command-index-definition';
 import ForeignIdColumnDefinition from '../../schema/definitions/foreign-id-column-definition';
-import { Stringable } from '../query/builder';
-import { BlueprintCallback } from './builder';
-import GrammarI from './grammar';
+import Grammar from '../../schema/grammars/grammar';
+import { ConnectionSessionI } from '../connection';
+import { Stringable } from '../generics';
+import { BlueprintCallback } from './builder/schema-builder';
 import RegistryI, {
     ColumnRegistryI,
     ColumnType,
@@ -99,7 +99,7 @@ export default interface BlueprintI {
     /**
      * Indicate that the table should be dropped if it exists.
      */
-    dropIfExists(): CommandDefinition;
+    dropTableIfExists(): CommandDefinition;
 
     /**
      * Indicate that the given columns should be dropped.
@@ -635,12 +635,17 @@ export default interface BlueprintI {
     /**
      * Get the blueprint grammar.
      */
-    getGrammar(): GrammarI;
+    getGrammar(): Grammar;
 
     /**
      * Get the table the blueprint describes.
      */
     getTable(): Stringable;
+
+    /**
+     * Get the table prefix.
+     */
+    getPrefix(): Stringable;
 
     /**
      * Get the columns on the blueprint.

@@ -13,7 +13,7 @@
     </a>
 </p>
 
-# Ludb (BETA Release)
+# Ludb (Beta Release)
 
 > Ludb offers an (almost) identical api to [Laravel Database](https://laravel.com/docs/database).
 
@@ -46,15 +46,17 @@ import { DatabaseManager } from 'ludb';
     -   [Events](#events)
     -   [Listening For Query Events](#listening-for-query-events)
     -   [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time)
+-   [Cache](#cache)
 -   [Database Transactions](#database-transactions)
 -   [Differences With Laravel](#differences-with-laravel)
 -   [Under The Hood](#under-the-hood)
+-   [Api](https://ludb.lupennat.com/api)
 
 ## Introduction
 
 Almost every modern web application interacts with a database. Ludb makes interacting with databases extremely simple across a variety of supported databases using raw SQL, a [fluent query builder](BUILDER.md). Currently, Ludb provides first-party support for five databases:
 
--   MariaDB 10.3+ ([Version Policy](https://mariadb.org/about/#maintenance-policy))
+-   MariaDB 10.3+ ([Version Policy](https://mariaconnection.org/about/#maintenance-policy))
 -   MySQL 5.7+ ([Version Policy](https://en.wikipedia.org/wiki/MySQL#Release_history))
 -   PostgreSQL 10.0+ ([Version Policy](https://www.postgresql.org/support/versioning/))
 -   SQLite 3.8.8+
@@ -71,11 +73,11 @@ Once you have configured your database connection, you may retrieve the [Query B
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName); // without connectionName it will use default connection
-const query = DB.table('users');
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
+const query = connection.table('users');
 // or
-const query = DB.query();
+const query = connection.query();
 ```
 
 ### Schema Builder
@@ -85,9 +87,9 @@ Once you have configured your database connection, you may retrieve the [Schema 
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName); // without connectionName it will use default connection
-const Schema = DB.getSchemaBuilder();
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
+const Schema = connection.getSchemaBuilder();
 ```
 
 ## Running SQL Queries
@@ -97,16 +99,16 @@ Once you have configured your database connection, you may run queries using the
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName); // without connectionName it will use default connection
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
 ```
 
 #### Running A Select Query
 
-To run a basic SELECT query, you may use the `select` method on the `DB`:
+To run a basic SELECT query, you may use the `select` method on the `connecttion`:
 
 ```ts
-users = await DB.select('select * from users where active = ?', [1]);
+users = await connection.select('select * from users where active = ?', [1]);
 ```
 
 The first argument passed to the `select` method is the SQL query, while the second argument is any parameter bindings that need to be bound to the query. Typically, these are the values of the `where` clause constraints. Parameter binding provides protection against SQL injection.
@@ -117,7 +119,7 @@ The `select` method will always return an `array` of results. Each result within
 interface User {
     name: string;
 }
-users = await DB.select<User>('select * from users where active = ?', [1]);
+users = await connection.select<User>('select * from users where active = ?', [1]);
 for (const user of users) {
     console.log(user.name);
 }
@@ -128,7 +130,7 @@ for (const user of users) {
 Sometimes your database query may result in a single, scalar value. Instead of being required to retrieve the query's scalar result from a record object, Ludb allows you to retrieve this value directly using the `scalar` method:
 
 ```ts
-burgers = await DB.scalar("select count(case when food = 'burger' then 1 end) as burgers from menu");
+burgers = await connection.scalar("select count(case when food = 'burger' then 1 end) as burgers from menu");
 ```
 
 #### Using Named Bindings
@@ -136,15 +138,15 @@ burgers = await DB.scalar("select count(case when food = 'burger' then 1 end) as
 Instead of using `?` to represent your parameter bindings, you may execute a query using named bindings:
 
 ```ts
-results = await DB.select('select * from users where id = :id', { id: 1 });
+results = await connection.select('select * from users where id = :id', { id: 1 });
 ```
 
 #### Running An Insert Statement
 
-To execute an `insert` statement, you may use the `insert` method on the `DB`. Like `select`, this method accepts the SQL query as its first argument and bindings as its second argument:
+To execute an `insert` statement, you may use the `insert` method on the `connecttion`. Like `select`, this method accepts the SQL query as its first argument and bindings as its second argument:
 
 ```ts
-await DB.insert('insert into users (id, name) values (?, ?)', [1, 'Marc']);
+await connection.insert('insert into users (id, name) values (?, ?)', [1, 'Marc']);
 ```
 
 #### Running An Update Statement
@@ -152,7 +154,7 @@ await DB.insert('insert into users (id, name) values (?, ?)', [1, 'Marc']);
 The `update` method should be used to update existing records in the database. The number of rows affected by the statement is returned by the method:
 
 ```ts
-affected = await DB.update('update users set votes = 100 where name = ?', ['Anita']);
+affected = await connection.update('update users set votes = 100 where name = ?', ['Anita']);
 ```
 
 #### Running A Delete Statement
@@ -160,23 +162,23 @@ affected = await DB.update('update users set votes = 100 where name = ?', ['Anit
 The `delete` method should be used to delete records from the database. Like `update`, the number of rows affected will be returned by the method:
 
 ```ts
-deleted = await DB.delete('delete from users');
+deleted = await connection.delete('delete from users');
 ```
 
 #### Running A General Statement
 
-Some database statements do not return any value. For these types of operations, you may use the `statement` method on the `DB`:
+Some database statements do not return any value. For these types of operations, you may use the `statement` method on the `connecttion`:
 
 ```ts
-await DB.statement('drop table users');
+await connection.statement('drop table users');
 ```
 
 #### Running An Unprepared Statement
 
-Sometimes you may want to execute an SQL statement without binding any values. You may use the `DB` `unprepared` method to accomplish this:
+Sometimes you may want to execute an SQL statement without binding any values. You may use the `connecttion` `unprepared` method to accomplish this:
 
 ```ts
-await DB.unprepared('update users set votes = 100 where name = "Dries"');
+await connection.unprepared('update users set votes = 100 where name = "Dries"');
 ```
 
 > **Warning**  
@@ -184,10 +186,10 @@ await DB.unprepared('update users set votes = 100 where name = "Dries"');
 
 #### Implicit Commits
 
-When using the `DB` `statement` and `unprepared` methods within transactions you must be careful to avoid statements that cause [implicit commits](https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html). These statements will cause the database engine to indirectly commit the entire transaction, leaving Ludb unaware of the database's transaction level. An example of such a statement is creating a database table:
+When using the `connecttion` `statement` and `unprepared` methods within transactions you must be careful to avoid statements that cause [implicit commits](https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html). These statements will cause the database engine to indirectly commit the entire transaction, leaving Ludb unaware of the database's transaction level. An example of such a statement is creating a database table:
 
 ```ts
-await DB.unprepared('create table a (col varchar(1) null)');
+await connection.unprepared('create table a (col varchar(1) null)');
 ```
 
 Please refer to the MySQL manual for [a list of all statements](https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html) that trigger implicit commits.
@@ -198,24 +200,24 @@ Ludb and Lupdo can detect the right type of binded value through the Javascript 
 You can bypass the problem using the `TypedBinding` object of Lupdo; Ludb make it super easy to implement it providing a complete set of TypedBinding through `bindTo` Api, an example:
 
 ```ts
-await DB.insert('insert into users (id, name, nullablestring) values (?, ?)', [1, 'Marc', DB.bindTo.string(null)]);
+await connection.insert('insert into users (id, name, nullablestring) values (?, ?)', [1, 'Marc', connection.bindTo.string(null)]);
 ```
 
 ### Using Multiple Database Connections
 
-If your application defines multiple connections in your configuration object, you may access each connection via the `connection` method provided by the `DB`. The connection name passed to the `connection` method should correspond to one of the connections listed in your configuration:
+If your application defines multiple connections in your configuration object, you may access each connection via the `connection` method provided by the `connecttion`. The connection name passed to the `connection` method should correspond to one of the connections listed in your configuration:
 
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection('sqlite').select(/* ... */);
+const DB = new DatabaseManager(config);
+const connection = DB.connection('sqlite').select(/* ... */);
 ```
 
 You may access the raw, underlying Lupdo instance of a connection using the `getPdo` method on a connection instance:
 
 ```ts
-pdo = DB.connection().getPdo();
+pdo = connection.connection('connectionName').getPdo();
 ```
 
 ### Events
@@ -245,34 +247,34 @@ Lupdo emit 4 event when a transaction is used, every transaction event expose on
 
 ### Listening For Query Events
 
-If you would like to specify a closure that is invoked for each SQL query executed by your application, you may use the `DB` `listen` method. This method can be useful for logging queries or debugging.
+If you would like to specify a closure that is invoked for each SQL query executed by your application, you may use the `connecttion` `listen` method. This method can be useful for logging queries or debugging.
 
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection('sqlite').listen(query => {
+const DB = new DatabaseManager(config);
+const connection = DB.connection('sqlite').listen(query => {
     // query.sql;
     // query.bindings;
     // query.time;
 });
 ```
 
-You can also detach a listener using `DB` `unlisten` method:
+You can also detach a listener using `connecttion` `unlisten` method:
 
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
+const DB = new DatabaseManager(config);
 
 const TempListener = query => {
     // query.sql;
     // query.bindings;
     // query.time;
-    dbManager.connection('sqlite').unlisten(TempListener);
+    DB.connection('sqlite').unlisten(TempListener);
 };
 
-const DB = dbManager.connection('sqlite').listen(TempListener);
+const connection = DB.connection('sqlite').listen(TempListener);
 ```
 
 By Default `DatabaseManager` will use an `EventEmitter` instance to manage events. You can provide a custom instance of EventEmitter through constructor.
@@ -283,8 +285,8 @@ import EventEmitter from 'node:events';
 
 const emitter = new EventEmitter();
 
-const dbManager = new DatabaseManager(config, emitter);
-const DB = dbManager.connection('sqlite').listen(query => {
+const DB = new DatabaseManager(config, emitter);
+const connection = DB.connection('sqlite').listen(query => {
     // query.sql;
     // query.bindings;
     // query.time;
@@ -294,10 +296,10 @@ const DB = dbManager.connection('sqlite').listen(query => {
 ### Monitoring Cumulative Query Time
 
 A common performance bottleneck of modern web applications is the amount of time they spend querying databases.
-The `DB` `listen` method can be helpful to make any kind of monitoring. An example of monitoring single query time execution:
+The `connecttion` `listen` method can be helpful to make any kind of monitoring. An example of monitoring single query time execution:
 
 ```ts
-dbManager.connection('sqlite').listen(query => {
+DB.connection('sqlite').listen(query => {
     if (query.time > 500 && !query.inTransaction) {
         console.log('warning');
     }
@@ -307,7 +309,7 @@ dbManager.connection('sqlite').listen(query => {
 An example of monitoring a session query time execution (all transaction queries are executed in a single session):
 
 ```ts
-dbManager.connection('sqlite').listen(query => {
+DB.connection('sqlite').listen(query => {
     if (query.sessionTime > 500 && !query.inTransaction) {
         console.log('warning');
     }
@@ -320,17 +322,18 @@ Sometimes you want to know when your application spends too much time querying t
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { DatabaseManager, QueryExecuted } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
+const DB = new DatabaseManager(config);
 const app: Express = express();
 
 const beforeMiddleware = (req: Request, res: Response, next: NextFunction) => {
     let totalTime = 0;
     let hasRun = false;
     const queryExecuted = [];
-    req.queryLogListener = (query: QueryExecuted) => {
-        if (!hasRun && !query.inTransaction) {
-            totalTime += query.time;
-            queryExecuted.push(query);
+    req.referenceQueryId = 'uniqueid-for-req';
+    req.queryLogListener = (event: QueryExecuted) => {
+        if (event.referenceId ===  req.referenceQueryId && !hasRun && !event.inTransaction) {
+            totalTime += event.time;
+            queryExecuted.push(event);
 
             if (totalTime > 500) {
                 hasRun = true;
@@ -338,30 +341,36 @@ const beforeMiddleware = (req: Request, res: Response, next: NextFunction) => {
             }
         }
     };
-    dbManager.connection().listen(req.queryLogListener);
+    DB.connection('connectionName').listen(req.queryLogListener);
     next();
 };
 
 const responseHandler = (req: Request, res: Response, next: NextFunction) => {
-    // do stuff with database
+    // do stuff with database using reference
+    // DB.connection('connectionName').reference(req.referenceQueryId).select(...)
     res.status(200).send({ response: 'ok' });
     next();
 };
 
 const afterMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    dbManager.connection().unlisten(req.queryLogListener);
+    DB.connection('connectionName').unlisten(req.queryLogListener);
     next();
 };
 
 app.get('/', beforeMiddleware, responseHandler, afterMiddleware);
 ```
 
+
+## Cache
+
+Ludb support caching queries for select operations `selectOne`, `scalar`, `selectFromWriteConnection` and `select`, [here](CACHE.md) you can find more information about caching 
+
 ## Database Transactions
 
-You may use the `transaction` method provided by the `DB` to run a set of operations within a database transaction. If an exception is thrown within the transaction closure, the transaction will automatically be rolled back and the exception is re-thrown. If the closure executes successfully, the transaction will automatically be committed. You don't need to worry about manually rolling back or committing while using the `transaction` method:
+You may use the `transaction` method provided by the `connecttion` to run a set of operations within a database transaction. If an exception is thrown within the transaction closure, the transaction will automatically be rolled back and the exception is re-thrown. If the closure executes successfully, the transaction will automatically be committed. You don't need to worry about manually rolling back or committing while using the `transaction` method:
 
 ```ts
-await DB.transaction(async session => {
+await connection.transaction(async session => {
     await session.update('update users set votes = 1');
 
     await session.delete('delete from posts');
@@ -376,7 +385,7 @@ await DB.transaction(async session => {
 The `transaction` method accepts an optional second argument which defines the number of times a transaction should be retried when a deadlock occurs. Once these attempts have been exhausted, an exception will be thrown:
 
 ```ts
-await DB.transaction(async session => {
+await connection.transaction(async session => {
     await session.update('update users set votes = 1');
 
     await session.delete('delete from posts');
@@ -385,10 +394,10 @@ await DB.transaction(async session => {
 
 #### Manually Using Transactions
 
-If you would like to begin a transaction manually and have complete control over rollbacks and commits, you may use the `beginTransaction` method provided by the `DB`:
+If you would like to begin a transaction manually and have complete control over rollbacks and commits, you may use the `beginTransaction` method provided by the `connecttion`:
 
 ```ts
-session = await DB.beginTransaction();
+session = await connection.beginTransaction();
 ```
 
 You can rollback the transaction via the `rollBack` method:
@@ -409,8 +418,9 @@ session.commit();
 ## Differences With Laravel
 
 -   The `DatabaseManager` instance do not proxy methods to default connection, you always need to call `connection(name)` method to access method of `Connection`.
+-   The `DatabaseManager` do not expose functionality to extend registered drivers.
 -   Methods `whenQueryingForLongerThan` and `allowQueryDurationHandlersToRunAgain` do not exist, [Monitoring Cumulative Query Time](#monitoring-cumulative-query-time) offer a valid alternative.
--   Method `getQueryLog` does not exists, logging query is used only internally for `pretend` method.
+-   Methods `getQueryLog` and `getRawQueryLog` do not exist, logging query is used only internally for `pretend` method.
 -   Methods `beginTransaction` and `useWriteConnectionWhenReading` return a `ConnectionSession` you must use the session instead the original connection for the queries you want to execute them within the transaction or against the write pdo.
 -   Callbacks for methods `transaction` and `pretend` are called with a `ConnectionSession` you must use the session instead the original connection inside the callback if you want to execute the queries within the transaction or to pretend the execution.
 -   Query Builder return `Array` instead of `Collection`
@@ -435,16 +445,16 @@ An example of `transaction` method:
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName);
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
 
-await DB.transaction(async session => {
+await connection.transaction(async session => {
     await session.update('update users set votes = 1');
 
     await session.delete('delete from posts');
 });
 
-const users = await DB.table('users').get();
+const users = await connection.table('users').get();
 ```
 
 An example of `beginTransaction` method:
@@ -452,9 +462,9 @@ An example of `beginTransaction` method:
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName);
-const session = await DB.beginTransaction();
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
+const session = await connection.beginTransaction();
 try {
     await session.update('update users set votes = 1');
     await session.delete('delete from posts');
@@ -463,7 +473,7 @@ try {
     await session.rollBack();
 }
 
-const users = DB.table('users').get();
+const users = connection.table('users').get();
 ```
 
 An example of `pretend` method:
@@ -471,14 +481,14 @@ An example of `pretend` method:
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName);
-const queries = await DB.pretend(async session => {
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
+const queries = await connection.pretend(async session => {
     await session.table('users').get();
     await session.table('posts').get();
 });
 console.log(queries);
-const users = DB.table('users').get();
+const users = connection.table('users').get();
 ```
 
 An example of `useWriteConnectionWhenReading` method:
@@ -486,12 +496,12 @@ An example of `useWriteConnectionWhenReading` method:
 ```ts
 import { DatabaseManager } from 'ludb';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName);
-await DB.table('users').where('id', 10).update({ name: 'Claudio' });
-const session = DB.useWriteConnectionWhenReading();
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
+await connection.table('users').where('id', 10).update({ name: 'Claudio' });
+const session = connection.useWriteConnectionWhenReading();
 const userFromWrite = session.table('users').find(10);
-const userFromRead = DB.table('users').find(10);
+const userFromRead = connection.table('users').find(10);
 ```
 
 An example of `temporary` with Schema:
@@ -500,9 +510,9 @@ An example of `temporary` with Schema:
 import { DatabaseManager } from 'ludb';
 import * as crypto from 'crypto';
 
-const dbManager = new DatabaseManager(config);
-const DB = dbManager.connection(connectionName);
-const Schema = DB.getSchemaBuilder();
+const DB = new DatabaseManager(config);
+const connection = DB.connection(connectionName);
+const Schema = connection.getSchemaBuilder();
 
 await Schema.table('orders', table => {
     table.string('hash_id').index();
@@ -526,11 +536,11 @@ await connection.table('orders').chunkById(1000, async orders => {
         })
         .join(',');
 
-    await connection.insert(DB.raw(`INSERT INTO temp_mappings(id, reference) VALUES ${values}`));
+    await connection.insert(connection.raw(`INSERT INTO temp_mappings(id, reference) VALUES ${values}`));
 });
 
 await connection
     .table('orders')
     .join('temp_mappings', 'temp_mappgings.id', 'orders.id')
-    .update({ hash_id: DB.raw('temp_mappings.hash_id') });
+    .update({ hash_id: connection.raw('temp_mappings.hash_id') });
 ```

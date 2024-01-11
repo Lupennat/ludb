@@ -1,153 +1,166 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStatementI } from 'lupdo';
 import PdoRowData from 'lupdo/dist/typings/types/pdo-raw-data';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
-import Connection from '../../../connections/connection';
+import CacheManager from '../../../cache-manager';
 import ConnectionSession, { RunCallback } from '../../../connections/connection-session';
-import ConnectionFactory from '../../../connectors/connection-factory';
 import DatabaseManager from '../../../database-manager';
-import Builder from '../../../query/builder';
-import Grammar from '../../../query/grammars/grammar';
-import MySqlGrammar from '../../../query/grammars/mysql-grammar';
-import PostgresGrammar from '../../../query/grammars/postgres-grammar';
-import SQLiteGrammar from '../../../query/grammars/sqlite-grammar';
-import SqlServerGrammar from '../../../query/grammars/sqlserver-grammar';
+import { ExpressionContract, GrammarBuilder } from '../../../query';
 import JoinClause from '../../../query/join-clause';
+import QueryBuilder from '../../../query/query-builder';
 import Blueprint from '../../../schema/blueprint';
 import SchemaBuilder from '../../../schema/builders/builder';
-import PostgresBuilder from '../../../schema/builders/postgres-builder';
-import { default as SQLiteSchemaBuilder } from '../../../schema/builders/sqlite-builder';
+import { default as SqliteSchemaBuilder } from '../../../schema/builders/sqlite-builder';
 import ColumnDefinition from '../../../schema/definitions/column-definition';
 import SchemaGrammar from '../../../schema/grammars/grammar';
-import MySqlSchemaGrammar from '../../../schema/grammars/mysql-grammar';
+import MysqlSchemaGrammar from '../../../schema/grammars/mysql-grammar';
 import PostgresSchemaGrammar from '../../../schema/grammars/postgres-grammar';
-import SQLiteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
-import SqlServerSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
-import { DriverFLattedConfig, ReadWriteType } from '../../../types/config';
+import SqliteSchemaGrammar from '../../../schema/grammars/sqlite-grammar';
+import SqlserverSchemaGrammar from '../../../schema/grammars/sqlserver-grammar';
+import {
+    CacheConfiguration,
+    CacheDriverI,
+    QueryCache,
+    QueryCacheConnection,
+    QueryCacheManager,
+    QueryCacheResponse,
+    QueryCacheStore
+} from '../../../types/cache';
 import DriverConnectionI from '../../../types/connection';
-import ConnectorI from '../../../types/connector';
-import BuilderI, { Arrayable, Binding } from '../../../types/query/builder';
+import { DBConfig } from '../../../types/database-manager';
+import { Binding, BindingExclude, BindingExcludeObject } from '../../../types/generics';
+import GrammarBuilderI, { Arrayable } from '../../../types/query/grammar-builder';
 import JoinClauseI from '../../../types/query/join-clause';
 import BlueprintI from '../../../types/schema/blueprint';
-import { BlueprintCallback } from '../../../types/schema/builder';
-import GrammarI from '../../../types/schema/grammar';
-import FakePdo from './fake-pdo';
-export { FakeConnection } from './fake-pdo';
+import { BlueprintCallback } from '../../../types/schema/builder/schema-builder';
+import {
+    MockedConnection,
+    MockedMysqlConnection,
+    MockedPostgresConnection,
+    MockedSqliteConnection,
+    MockedSqlserverConnection
+} from './mocked-connections';
 
-Pdo.addDriver('fake', FakePdo);
-
-export const pdo = new Pdo('fake', {});
-export const schemaPdo = new Pdo('fake', {});
-
-export function getConnection(): Connection {
-    return new Connection(
-        pdo,
-        schemaPdo,
-        {
-            driver: 'fake',
-            name: 'fake',
-            database: 'database',
-            prefix: 'prefix',
-            pool: {
-                killResource: false
-            }
-        },
-        'database',
-        'prefix'
-    );
-}
-export function getConnection2(): Connection {
-    return new Connection(
-        pdo,
-        schemaPdo,
-        {
-            driver: 'fake',
-            name: 'fake2',
-            database: 'database2',
-            prefix: 'prefix2',
-            pool: {
-                killResource: false
-            }
-        },
-        'database2',
-        'prefix2'
-    );
+export class MockedBuilder extends QueryBuilder {
+    public getBeforeQueryCallbacks(): any[] {
+        return this.beforeQueryCallbacks;
+    }
 }
 
-const connection = getConnection();
+export function getSqliteConnection(prefix = 'prefix_'): MockedSqliteConnection {
+    return new MockedSqliteConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
+}
 
-export function getBuilder(): BuilderI {
-    return new Builder(connection.session(), new Grammar());
+export function getPostgresConnection(prefix = 'prefix_'): MockedPostgresConnection {
+    return new MockedPostgresConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
+}
+
+export function getSqlserverConnection(prefix = 'prefix_'): MockedSqlserverConnection {
+    return new MockedSqlserverConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
+}
+
+export function getMysqlConnection(prefix = 'prefix_'): MockedMysqlConnection {
+    return new MockedMysqlConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
+}
+
+export function getConnection(prefix = 'prefix_'): MockedConnection {
+    return new MockedConnection('fake', {
+        database: 'database',
+        prefix: prefix,
+        pool: {
+            killResource: false
+        }
+    });
+}
+
+export function getConnection2(): MockedConnection {
+    return new MockedConnection('fake2', {
+        database: 'database2',
+        prefix: 'prefix2_',
+        pool: {
+            killResource: false
+        }
+    });
+}
+
+export function getGrammarBuilder(): GrammarBuilderI {
+    return new GrammarBuilder(getConnection('').session());
+}
+
+export function getBuilder(): MockedBuilder {
+    return new MockedBuilder(getConnection('').session());
 }
 
 export function getJoin(table?: string): JoinClauseI {
     return new JoinClause(getBuilder(), 'inner', table ?? 'table');
 }
 
-export function getBuilderAlternative(): BuilderI {
-    const connection = new Connection(
-        pdo,
-        schemaPdo,
-        {
-            driver: 'fake',
-            name: 'fake',
-            database: 'alternative',
-            prefix: 'prefix',
-            pool: {
-                killResource: false
-            }
-        },
-        'alternative',
-        'prefix'
-    );
-    return new Builder(connection.session(), new Grammar());
+export function getBuilderAlternative(): MockedBuilder {
+    const connection = new MockedConnection('fake', {
+        database: 'alternative',
+        prefix: 'prefix2_',
+        pool: {
+            killResource: false
+        }
+    });
+    return new MockedBuilder(connection.session());
 }
 
-export function getPostgresBuilder(): BuilderI {
-    return new Builder(connection.session(), new PostgresGrammar());
+export function getPostgresBuilder(): MockedBuilder {
+    return new MockedBuilder(getPostgresConnection('').session());
 }
 
-export function getSqlServerBuilder(): BuilderI {
-    return new Builder(connection.session(), new SqlServerGrammar());
+export function getSqlserverBuilder(): MockedBuilder {
+    return new MockedBuilder(getSqlserverConnection('').session());
 }
 
-export function getMySqlBuilder(): BuilderI {
-    return new Builder(connection.session(), new MySqlGrammar());
+export function getMysqlBuilder(): MockedBuilder {
+    return new MockedBuilder(getMysqlConnection('').session());
 }
 
-export function getSQLiteBuilder(): BuilderI {
-    return new Builder(connection.session(), new SQLiteGrammar());
+export function getSqliteBuilder(): MockedBuilder {
+    return new MockedBuilder(getSqliteConnection('').session());
 }
 
 export function getPostgresBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
     return new Blueprint(table, new PostgresSchemaGrammar(), callback, prefix);
 }
 
-export function getSqlServerBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
-    return new Blueprint(table, new SqlServerSchemaGrammar(), callback, prefix);
+export function getSqlserverBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
+    return new Blueprint(table, new SqlserverSchemaGrammar(), callback, prefix);
 }
 
-export function getMySqlBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
-    return new Blueprint(table, new MySqlSchemaGrammar(), callback, prefix);
+export function getMysqlBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
+    return new Blueprint(table, new MysqlSchemaGrammar(), callback, prefix);
 }
 
-export function getSQLiteBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
-    return new Blueprint(table, new SQLiteSchemaGrammar(), callback, prefix);
-}
-
-export class MockedFactory extends ConnectionFactory {
-    public createConnector(config: DriverFLattedConfig): ConnectorI {
-        return super.createConnector(config);
-    }
-    public createConnection(
-        driver: string,
-        connection: Pdo,
-        schemaConnection: Pdo,
-        config: DriverFLattedConfig,
-        database: string,
-        prefix: string
-    ): DriverConnectionI {
-        return super.createConnection(driver, connection, schemaConnection, config, database, prefix);
-    }
+export function getSqliteBlueprint(table: string, callback?: BlueprintCallback, prefix?: string): BlueprintI {
+    return new Blueprint(table, new SqliteSchemaGrammar(), callback, prefix);
 }
 
 export class MockedSchemaBuilder extends SchemaBuilder {
@@ -158,14 +171,74 @@ export class MockedSchemaBuilder extends SchemaBuilder {
 
 export function blueprintResolver(
     table: string,
-    grammar: GrammarI,
+    grammar: SchemaGrammar,
     callback?: BlueprintCallback,
     prefix?: string
 ): BlueprintI {
     return new Blueprint(table, grammar, callback, prefix);
 }
 
+export class MockedCacheManager extends CacheManager {
+    public generateQueryCache(
+        connectionName: string,
+        queryCacheConnection: QueryCacheConnection
+    ): QueryCacheManager | undefined {
+        return super.generateQueryCache(connectionName, queryCacheConnection);
+    }
+
+    public getCacheConfigs(): any {
+        return this.cacheConfig;
+    }
+
+    public getCachemap(): any {
+        return this.cacheMap;
+    }
+
+    public getCaches(): any {
+        return this.caches;
+    }
+
+    public generateHash(
+        query: string,
+        bindings: BindingExclude<ExpressionContract>[] | BindingExcludeObject<ExpressionContract>
+    ): string {
+        return super.generateHash(query, bindings);
+    }
+
+    public getCacheConfig(connectionName: string): Omit<CacheConfiguration, 'resolver'> {
+        return super.getCacheConfig(connectionName);
+    }
+
+    public getCacheName(connectionName: string): string | undefined {
+        return super.getCacheName(connectionName);
+    }
+
+    public getCache(connectionName: string): CacheDriverI | undefined {
+        return super.getCache(connectionName);
+    }
+}
+
+export class MockedCacheDriver implements CacheDriverI {
+    async connect(): Promise<boolean> {
+        return true;
+    }
+
+    async disconnect(): Promise<void> {}
+
+    async isExpired(_time: number, _duration: number): Promise<boolean> {
+        return false;
+    }
+
+    async get(_queryCache: QueryCache): Promise<QueryCacheResponse | undefined> {
+        return undefined;
+    }
+
+    async store(_queryCacheStore: QueryCacheStore): Promise<void> {}
+}
+
 export class MockedConnectionSession extends ConnectionSession {
+    public referenceId: string = '';
+
     public hasPdoTransaction(): boolean {
         return this.pdoTransaction != null;
     }
@@ -188,6 +261,10 @@ export class MockedConnectionSession extends ConnectionSession {
 
     public enableQueryLog(): void {
         super.enableQueryLog();
+    }
+
+    public disableQueryLog(): void {
+        super.disableQueryLog();
     }
 
     public logQuery(query: string, bindings: Binding[], time: number): void {
@@ -221,92 +298,129 @@ export class MockedConnectionSession extends ConnectionSession {
     }
 }
 
-export function mockedSessionWithResults(
-    connection: Connection,
-    results: PdoRowData[],
-    columns: string[]
-): MockedConnectionSession {
-    class MockedConnectionSessionWithResults extends MockedConnectionSession {
-        public prepared(
-            statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
-        ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
-            statement = super.prepared(statement);
-            const dictionary = results.map(row => {
-                const obj: Dictionary = {};
-                for (let x = 0; x < row.length; x++) {
-                    const col = columns[x];
-                    if (col) {
-                        obj[col] = row[x];
-                    }
-                }
-                return obj;
-            });
-            jest.spyOn(statement, 'fetchDictionary').mockImplementation(() => {
-                return {
-                    get: () => {
-                        return dictionary.shift() ?? null;
-                    },
-                    all: () => {
-                        return dictionary;
-                    },
-                    group: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    unique: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    [Symbol.iterator]() {
-                        return {
-                            next: () => {
-                                return { done: true, value: undefined };
-                            },
-                            return: () => {
-                                return { done: true, value: undefined };
-                            }
-                        };
-                    }
-                };
-            });
-            jest.spyOn(statement, 'fetchColumn').mockImplementation((column: number) => {
-                return {
-                    get: () => {
-                        const val = results.shift();
-                        return val ? val[column] : null;
-                    },
-                    all: () => {
-                        return results.map(row => {
-                            return row[column];
-                        });
-                    },
-                    group: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    unique: () => {
-                        const map = new Map();
-                        return map;
-                    },
-                    [Symbol.iterator]() {
-                        return {
-                            next: () => {
-                                return { done: true, value: undefined };
-                            },
-                            return: () => {
-                                return { done: true, value: undefined };
-                            }
-                        };
-                    }
-                };
-            });
-            return statement;
-        }
+export class MockedConnectionSessionWithResults extends MockedConnectionSession {
+    protected __results: PdoRowData[] = [];
+    protected __columns: string[] = [];
+    protected __dictionary: Dictionary[] = [];
+
+    constructor(driverConnection: DriverConnectionI, results: PdoRowData[], columns: string[]) {
+        super(driverConnection, false);
+        this.__results = results;
+        this.__columns = columns;
+        this.generateDictionary();
     }
-    return new MockedConnectionSessionWithResults(connection);
+
+    protected generateDictionary(): void {
+        this.__dictionary = this.__results.map(row => {
+            const obj: Dictionary = {};
+            for (let x = 0; x < row.length; x++) {
+                const col = this.__columns[x];
+                if (col) {
+                    obj[col] = row[x];
+                }
+            }
+            return obj;
+        });
+    }
+
+    public prepared(
+        statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
+    ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
+        statement = super.prepared(statement);
+
+        jest.spyOn(statement, 'fetchDictionary').mockImplementation(() => {
+            return {
+                get: () => {
+                    return this.__dictionary.shift() ?? null;
+                },
+                all: () => {
+                    return this.__dictionary;
+                },
+                group: () => {
+                    const map = new Map();
+                    return map;
+                },
+                unique: () => {
+                    const map = new Map();
+                    return map;
+                },
+                [Symbol.iterator]() {
+                    return {
+                        next: () => {
+                            return { done: true, value: undefined };
+                        },
+                        return: () => {
+                            return { done: true, value: undefined };
+                        }
+                    };
+                }
+            };
+        });
+        jest.spyOn(statement, 'fetchColumn').mockImplementation((column: number) => {
+            return {
+                get: () => {
+                    const val = this.__results.shift();
+                    return val ? val[column] : null;
+                },
+                all: () => {
+                    return this.__results.map(row => {
+                        return row[column];
+                    });
+                },
+                group: () => {
+                    const map = new Map();
+                    return map;
+                },
+                unique: () => {
+                    const map = new Map();
+                    return map;
+                },
+                [Symbol.iterator]() {
+                    return {
+                        next: () => {
+                            return { done: true, value: undefined };
+                        },
+                        return: () => {
+                            return { done: true, value: undefined };
+                        }
+                    };
+                }
+            };
+        });
+        return statement;
+    }
+}
+export class MockedConnectionSessionWithResultsSets extends MockedConnectionSessionWithResults {
+    protected __cursor = 0;
+    protected __resultsSet: PdoRowData[][] = [];
+    protected __columnsSet: string[][] = [];
+
+    constructor(driverConnection: DriverConnectionI, results: PdoRowData[][], columns: string[][]) {
+        super(driverConnection, results[0], columns[0]);
+        this.__resultsSet = results;
+        this.__columnsSet = columns;
+    }
+
+    public prepared(
+        statement: PdoPreparedStatementI | PdoTransactionPreparedStatementI
+    ): PdoPreparedStatementI | PdoTransactionPreparedStatementI {
+        const stmt = super.prepared(statement);
+        jest.spyOn(stmt, 'nextRowset').mockImplementation(() => {
+            if (this.__columnsSet.length - 1 < this.__cursor + 1) {
+                return false;
+            }
+            this.__cursor++;
+            this.__results = this.__resultsSet[this.__cursor];
+            this.__columns = this.__columnsSet[this.__cursor];
+            this.generateDictionary();
+
+            return true;
+        });
+        return stmt;
+    }
 }
 
-export class MockedSQLiteSchemaBuilder extends SQLiteSchemaBuilder {
+export class MockedSqliteSchemaBuilder extends SqliteSchemaBuilder {
     /**
      * write file on FileSystem
      */
@@ -450,18 +564,8 @@ export class MockedGrammar extends SchemaGrammar {
     }
 }
 
-export class MockedDatabaseManager extends DatabaseManager {
-    public configure(connection: DriverConnectionI, type: ReadWriteType | null): DriverConnectionI {
-        return super.configure(connection, type);
-    }
-}
-
-export class MockedPostgresBuilder extends PostgresBuilder {
-    public async getAllTablesFromConnection(): Promise<Array<{ tablename: string; qualifiedname: string | null }>> {
-        return super.getAllTablesFromConnection();
-    }
-
-    public async getAllViewsFromConnection(): Promise<Array<{ viewname: string; qualifiedname: string | null }>> {
-        return super.getAllViewsFromConnection();
+export class MockedDatabaseManager<const Config extends DBConfig> extends DatabaseManager<Config> {
+    public createConnection<const T extends keyof Config['connections'] & string>(name: T): any {
+        return super.createConnection(name);
     }
 }

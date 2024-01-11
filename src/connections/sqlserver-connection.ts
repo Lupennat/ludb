@@ -1,14 +1,40 @@
-import SqlServerGrammar from '../query/grammars/sqlserver-grammar';
+import SqlserverConnector from '../connectors/sqlserver-connector';
+import SqlserverGrammar from '../query/grammars/sqlserver-grammar';
 import SchemaBuilder from '../schema/builders/sqlserver-builder';
 import SchemaGrammar from '../schema/grammars/sqlserver-grammar';
+import { SqlserverConfig } from '../types/config';
 import Connection from './connection';
 
-class SqlServerConnection extends Connection {
+class SqlserverConnection extends Connection<SqlserverConfig> {
     /**
-     * Get the default query grammar instance.
+     * The query grammar implementation.
      */
-    protected getDefaultQueryGrammar(): SqlServerGrammar {
-        return this.withTablePrefix(new SqlServerGrammar());
+    protected queryGrammar!: SqlserverGrammar;
+
+    /**
+     * The schema grammar implementation.
+     */
+    protected schemaGrammar!: SchemaGrammar;
+
+    /**
+     * create Connector
+     */
+    protected createConnector(): SqlserverConnector {
+        return new SqlserverConnector();
+    }
+
+    /**
+     * set Default Query Grammar
+     */
+    protected setDefaultQueryGrammar(): void {
+        this.queryGrammar = new SqlserverGrammar().setTablePrefix(this.tablePrefix);
+    }
+
+    /**
+     * set Default Schema Grammar
+     */
+    protected setDefaultSchemaGrammar(): void {
+        this.schemaGrammar = new SchemaGrammar().setTablePrefix(this.tablePrefix);
     }
 
     /**
@@ -19,11 +45,18 @@ class SqlServerConnection extends Connection {
     }
 
     /**
-     * Get the default schema grammar instance.
+     * Get the schema grammar used by the connection.
      */
-    protected getDefaultSchemaGrammar(): SchemaGrammar {
-        return new SchemaGrammar();
+    public getSchemaGrammar(): SchemaGrammar {
+        return this.schemaGrammar;
+    }
+
+    /**
+     * Get the query grammar used by the connection.
+     */
+    public getQueryGrammar(): SqlserverGrammar {
+        return this.queryGrammar;
     }
 }
 
-export default SqlServerConnection;
+export default SqlserverConnection;

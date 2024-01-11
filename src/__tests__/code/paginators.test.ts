@@ -2,7 +2,7 @@ import Cursor from '../../paginations/cursor';
 import CursorPaginator from '../../paginations/cursor-paginator';
 import LengthAwarePaginator from '../../paginations/length-aware-paginator';
 import Paginator from '../../paginations/paginator';
-import { Objectable } from '../../types/query/builder';
+import { Objectable } from '../../types/query/grammar-builder';
 
 describe('Paginators', () => {
     it('Works Length Aware Paginator', async () => {
@@ -218,7 +218,7 @@ describe('Paginators', () => {
 
         expect(() => {
             cursor.parameter('test');
-        }).toThrowError('Unable to find parameter [test] in pagination item.');
+        }).toThrow('Unable to find parameter [test] in pagination item.');
 
         expect(Cursor.fromEncoded('wrongencoded')).toBeNull();
     });
@@ -288,7 +288,7 @@ describe('Paginators', () => {
         expect(() => {
             // @ts-expect-error simulate not object value
             paginator.getCursorForItem(new Test());
-        }).toThrowError('Only plain objects are supported when cursor paginating items.');
+        }).toThrow('Only plain objects are supported when cursor paginating items.');
 
         class Test2 implements Objectable<{ id: number }> {
             id = 2;

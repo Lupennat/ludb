@@ -1,8 +1,9 @@
-import { BetweenColumnsTuple, BetweenTuple } from '../types/query/builder';
+import { BetweenColumnsTuple, BetweenTuple } from '../types/query/grammar-builder';
 import JoinClauseI from '../types/query/join-clause';
 import RegistryI, {
     Aggregate,
     BindingTypes,
+    Cte,
     Having,
     HavingBetween,
     Order,
@@ -21,6 +22,7 @@ export default function createRegistry(): RegistryI {
     return {
         useWritePdo: false,
         bindings: {
+            expressions: [],
             select: [],
             from: [],
             join: [],
@@ -34,6 +36,7 @@ export default function createRegistry(): RegistryI {
         aggregate: null,
         columns: null,
         distinct: false,
+        expressions: [],
         from: '',
         indexHint: null,
         joins: [],
@@ -42,13 +45,15 @@ export default function createRegistry(): RegistryI {
         havings: [],
         orders: [],
         limit: null,
+        recursionLimit: null,
         offset: null,
         unions: [],
+        unionExpressions: [],
         unionLimit: null,
         unionOffset: null,
         unionOrders: [],
-        lock: null,
-        beforeQueryCallbacks: []
+        unionRecursionLimit: null,
+        lock: null
     };
 }
 
@@ -135,6 +140,18 @@ function cloneUnions(unions: Union[]): Union[] {
     }, []);
 }
 
+function cloneExpressions(expressions: Cte[]): Cte[] {
+    return expressions.reduce((carry: Cte[], expression: Cte) => {
+        const { cycle, columns, ...rest } = expression;
+        carry.push({
+            ...rest,
+            columns: columns.slice(),
+            cycle: cycle ? { ...cycle } : cycle
+        });
+        return carry;
+    }, []);
+}
+
 function cloneBindings(bindings: BindingTypes, bindingsToExclude: (keyof BindingTypes)[]): BindingTypes {
     const clonedBindings = {} as BindingTypes;
 
@@ -175,6 +192,10 @@ function cloneBase(
         cloned.distinct = typeof registry.distinct === 'boolean' ? registry.distinct : registry.distinct.slice();
     }
 
+    if (!propertiesToExclude.includes('expressions')) {
+        cloned.expressions = cloneExpressions(registry.expressions);
+    }
+
     if (!propertiesToExclude.includes('from')) {
         cloned.from = registry.from;
     }
@@ -207,6 +228,10 @@ function cloneBase(
         cloned.limit = registry.limit;
     }
 
+    if (!propertiesToExclude.includes('recursionLimit')) {
+        cloned.recursionLimit = registry.recursionLimit;
+    }
+
     if (!propertiesToExclude.includes('offset')) {
         cloned.offset = registry.offset;
     }
@@ -227,12 +252,16 @@ function cloneBase(
         cloned.unionOrders = cloneOrders(registry.unionOrders);
     }
 
-    if (!propertiesToExclude.includes('lock')) {
-        cloned.lock = registry.lock;
+    if (!propertiesToExclude.includes('unionExpressions')) {
+        cloned.unionExpressions = cloneExpressions(registry.unionExpressions);
     }
 
-    if (!propertiesToExclude.includes('beforeQueryCallbacks')) {
-        cloned.beforeQueryCallbacks = registry.beforeQueryCallbacks.slice();
+    if (!propertiesToExclude.includes('unionRecursionLimit')) {
+        cloned.unionRecursionLimit = registry.unionRecursionLimit;
+    }
+
+    if (!propertiesToExclude.includes('lock')) {
+        cloned.lock = registry.lock;
     }
 
     return cloned;

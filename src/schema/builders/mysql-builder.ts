@@ -1,122 +1,166 @@
-import Builder from './builder';
+import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
+import MysqlConnection from '../../connections/mysql-connection';
+import { ConnectionSessionI } from '../../types/connection';
+import { Stringable } from '../../types/generics';
+import MysqlSchemaBuilderI from '../../types/schema/builder/mysql-schema-builder';
+import {
+    MysqlColumnDictionary,
+    MysqlForeignKeyDictionary,
+    MysqlIndexDictionary,
+    MysqlTableDictionary,
+    MysqlViewDictionary
+} from '../../types/schema/generics';
+import QueryBuilder from './builder';
 
-class MySqlBuilder extends Builder {
+type MysqlColumnDefinition = {
+    name: string;
+    type_name: string;
+    type: string;
+    collation: string;
+    nullable: string;
+    default: PdoColumnValue;
+    extra: string;
+    comment: string;
+};
+
+type MysqlIndexDefinition = {
+    name: string;
+    columns: string;
+    type: string;
+    unique: number;
+};
+
+type MysqlForeignKeyDefinition = {
+    name: string;
+    columns: string;
+    foreign_schema: string;
+    foreign_table: string;
+    foreign_columns: string;
+    on_update: string;
+    on_delete: string;
+};
+
+class MysqlBuilder extends QueryBuilder<ConnectionSessionI<MysqlConnection>> implements MysqlSchemaBuilderI {
     /**
      * Create a database in the schema.
      */
     public async createDatabase(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileCreateDatabase(name, this.connection));
+        return await this.getConnection().statement(this.getGrammar().compileCreateDatabase(name, this.connection));
     }
 
     /**
      * Drop a database from the schema if the database exists.
      */
     public async dropDatabaseIfExists(name: string): Promise<boolean> {
-        return await this.connection.statement(this.grammar.compileDropDatabaseIfExists(name));
-    }
-
-    /**
-     * Determine if the given table exists.
-     */
-    public async hasTable(table: string): Promise<boolean> {
-        const [database, realTable] = this.parsDatabaseAndTable(table);
-        return (
-            (
-                await this.connection.selectFromWriteConnection(this.grammar.compileTableExists(), [
-                    database,
-                    `${this.connection.getTablePrefix()}${realTable}`
-                ])
-            ).length > 0
-        );
-    }
-
-    /**
-     * Get the column listing for a given table.
-     */
-    public async getColumnListing(table: string): Promise<string[]> {
-        const [database, realTable] = this.parsDatabaseAndTable(table);
-
-        const results = await this.connection.selectFromWriteConnection<{ column_name: string }>(
-            this.grammar.compileColumnListing(),
-            [database, `${this.connection.getTablePrefix()}${realTable}`]
-        );
-
-        return results.map(result => result.column_name);
-    }
-
-    /**
-     * Get the data type for the given column name.
-     */
-    public async getColumnType(table: string, column: string): Promise<string> {
-        const [database, realTable] = this.parsDatabaseAndTable(table);
-        const result = await this.connection.selectOne<{ data_type: string }>(
-            this.grammar.compileColumnType(),
-            [database, `${this.connection.getTablePrefix()}${realTable}`, column],
-            false
-        );
-
-        if (result === null) {
-            throw new Error(
-                `column "${column}" not found on table "${`${this.connection.getTablePrefix()}${realTable}`}" with database "${database}".`
-            );
-        }
-
-        return result.data_type;
+        return await this.getConnection().statement(this.getGrammar().compileDropDatabaseIfExists(name));
     }
 
     /**
      * Drop all tables from the database.
      */
-    public async dropAllTables(): Promise<void> {
-        const tables = await this.getAllTables();
+    public async dropTables(): Promise<void> {
+        const tables = (await this.getTables()).map(table => table.name);
         if (tables.length > 0) {
             await this.disableForeignKeyConstraints();
-            await this.connection.statement(this.grammar.compileDropAllTables(tables));
+            await this.getConnection().statement(this.getGrammar().compileDropTables(tables));
             await this.enableForeignKeyConstraints();
         }
     }
 
     /**
+     * Drop a view from the schema.
+     */
+    public async dropView(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropView(name));
+    }
+
+    /**
+     * Drop a view from the schema if it exists.
+     */
+    public async dropViewIfExists(name: Stringable): Promise<boolean> {
+        return await this.getConnection().statement(this.getGrammar().compileDropViewIfExists(name));
+    }
+
+    /**
      * Drop all views from the database.
      */
-    public async dropAllViews(): Promise<void> {
-        const views = await this.getAllViews();
+    public async dropViews(): Promise<void> {
+        const views = (await this.getViews()).map(view => view.name);
+
         if (views.length > 0) {
-            await this.connection.statement(this.grammar.compileDropAllViews(views));
+            await this.getConnection().statement(this.getGrammar().compileDropViews(views));
         }
     }
 
     /**
-     * Get all of the table names for the database.
+     * Get the tables that belong to the database.
      */
-    public async getAllTables(): Promise<string[]> {
-        return await this.connection.selectColumn<string>(0, this.grammar.compileGetAllTables());
+    public async getTables(): Promise<MysqlTableDictionary[]> {
+        return await this.getTablesFromDatabase<MysqlTableDictionary>(this.getConnection().getDatabaseName());
     }
 
     /**
-     * Get all of the view names for the database.
+     * Get the views that belong to the database.
      */
-    public async getAllViews(): Promise<string[]> {
-        return await this.connection.selectColumn<string>(0, this.grammar.compileGetAllViews());
+    public async getViews(): Promise<MysqlViewDictionary[]> {
+        return await this.getViewsFromDatabase<MysqlViewDictionary>(this.getConnection().getDatabaseName());
     }
 
     /**
-     * Parse the database object reference and extract the database, and table.
+     * Get the columns for a given table.
      */
-    protected parsDatabaseAndTable(reference: string): [string, string] {
-        const parts = reference.split('.');
+    public async getColumns(table: string): Promise<MysqlColumnDictionary[]> {
+        const columns = await this.getColumnsFromDatabase<MysqlColumnDefinition>(
+            table,
+            this.getConnection().getDatabaseName()
+        );
 
-        let database = this.connection.getDatabaseName();
+        return columns.map<MysqlColumnDictionary>((column: MysqlColumnDefinition) => {
+            const { extra, nullable, ...keys } = column;
+            return { ...keys, nullable: nullable === 'YES', auto_increment: extra === 'auto_increment' };
+        });
+    }
 
-        // If the reference contains a database name, we will use that instead of the
-        // default database name for the connection. This allows the database name
-        // to be specified in the query instead of at the full connection level.
-        if (parts.length === 2) {
-            database = parts.shift() as string;
-        }
+    /**
+     * Get the indexes for a given table.
+     */
+    public async getIndexes(table: string): Promise<MysqlIndexDictionary[]> {
+        const indexes = await this.getIndexesFromDatabase<MysqlIndexDefinition>(
+            table,
+            this.getConnection().getDatabaseName()
+        );
 
-        return [database, parts[0]];
+        return indexes.map<MysqlIndexDictionary>((index: MysqlIndexDefinition) => {
+            return {
+                name: index.name.toLowerCase(),
+                type: index.type.toLowerCase(),
+                columns: index.columns.split(','),
+                unique: Boolean(index.unique),
+                primary: index.name.toLowerCase() === 'primary'
+            };
+        });
+    }
+
+    /**
+     * Get the foreign keys for a given table.
+     */
+    public async getForeignKeys(table: string): Promise<MysqlForeignKeyDictionary[]> {
+        const foreignKeys = await this.getForeignKeysFromDatabase<MysqlForeignKeyDefinition>(
+            table,
+            this.getConnection().getDatabaseName()
+        );
+
+        return foreignKeys.map<MysqlForeignKeyDictionary>((foreignKey: MysqlForeignKeyDefinition) => {
+            const { columns, foreign_columns, on_update, on_delete, ...keys } = foreignKey;
+            return {
+                ...keys,
+                columns: columns.split(','),
+                foreign_columns: foreign_columns.split(','),
+                on_delete: on_delete.toLowerCase(),
+                on_update: on_update.toLowerCase()
+            };
+        });
     }
 }
 
-export default MySqlBuilder;
+export default MysqlBuilder;

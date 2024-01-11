@@ -2,23 +2,18 @@ import { Pdo, PdoPreparedStatementI, PdoTransactionI, PdoTransactionPreparedStat
 import PdoColumnValue from 'lupdo/dist/typings/types/pdo-column-value';
 import { Dictionary } from 'lupdo/dist/typings/types/pdo-statement';
 import EventEmitter from 'node:events';
+import CacheManager from '../cache-manager';
 import QueryExecuted from '../events/query-executed';
-import BuilderContract from '../query/builder-contract';
+import { Grammar } from '../query';
 import ExpressionContract from '../query/expression-contract';
+import { SchemaGrammar } from '../schema';
 import BindToI from './bind-to';
-import { FlattedConnectionConfig, ReadWriteType } from './config';
-import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable, SubQuery } from './query/builder';
-import GrammarI from './query/grammar';
-import SchemaBuilderI from './schema/builder';
-import SchemaGrammarI from './schema/grammar';
-
-export type ConnectionResolver = <T extends FlattedConnectionConfig>(
-    pdo: Pdo,
-    schemaPdo: Pdo,
-    config: T,
-    database: string,
-    tablePrefix: string
-) => DriverConnectionI;
+import { CacheSessionOptions } from './cache';
+import ConnectionConfig from './config';
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from './generics';
+import { QueryAbleCallback } from './query/grammar-builder';
+import QueryBuilderI from './query/query-builder';
+import SchemaBuilderI from './schema/builder/schema-builder';
 
 export type BeforeExecutingCallback = (
     query: string,
@@ -26,145 +21,21 @@ export type BeforeExecutingCallback = (
     connection: unknown
 ) => void | Promise<void>;
 
-export type QueryExecutedCallback = (event: QueryExecuted) => void | Promise<void>;
-
-export type PretendingCallback = (session: ConnectionSessionI) => void | Promise<void>;
-
-export type TransactionCallback = (session: ConnectionSessionI) => void | Promise<void>;
-
 export interface LoggedQuery {
     query: string;
     bindings: Binding[] | BindingObject;
 }
 
-export default interface DriverConnectionI
-    extends Omit<ConnectionSessionI, 'isSchema' | 'transactionLevel' | 'commit' | 'rollBack' | 'getDriverConnection'> {
-    /**
-     * Get the current PDO connection.
-     */
-    getPdo(): Pdo;
-
-    /**
-     * Get the current PDO connection used for reading.
-     */
-    getReadPdo(): Pdo;
-
-    /**
-     * Set the query grammar to the default implementation.
-     */
-    useDefaultQueryGrammar(): this;
-
-    /**
-     * Start Connection session for Builder
-     */
-    session(): ConnectionSessionI;
-
-    /**
-     * Start Connection session for SchemaBuilder
-     */
-    sessionSchema(): ConnectionSessionI;
-
-    /**
-     * Reconnect to the database.
-     */
-    reconnect(): Promise<this>;
-
-    /**
-     * Disconnect from the underlying PDO connection.
-     */
-    disconnect(): Promise<void>;
-
-    /**
-     * Set the schema grammar to the default implementation.
-     */
-    useDefaultSchemaGrammar(): this;
-
-    /**
-     * Get a schema builder instance for the connection.
-     */
-    getSchemaBuilder(): SchemaBuilderI;
-
-    /**
-     * Register a hook to be run just before a database query is executed.
-     */
-    beforeExecuting(callback: BeforeExecutingCallback): this;
-
-    /**
-     * Register a database query listener with the connection.
-     */
-    listen(callback: QueryExecutedCallback): void;
-
-    /**
-     * Remove a database query listener with the connection.
-     */
-    unlisten(callback: QueryExecutedCallback): void;
-
-    /**
-     * Set the Schema PDO connection.
-     */
-    setSchemaPdo(pdo: Pdo): this;
-
-    /**
-     * Set the PDO connection.
-     */
-    setPdo(pdo: Pdo): this;
-
-    /**
-     * Set the PDO connection used for reading.
-     */
-    setReadPdo(pdo: Pdo): this;
-
-    /**
-     * Set the query grammar used by the connection.
-     */
-    setQueryGrammar(grammar: GrammarI): this;
-
-    /**
-     * Set the schema grammar used by the connection.
-     */
-    setSchemaGrammar(grammar: SchemaGrammarI): this;
-
-    /**
-     * Set the event dispatcher instance on the connection.
-     */
-    setEventDispatcher(dispatcher: EventEmitter): this;
-
-    /**
-     * Unset the event dispatcher for this connection.
-     */
-    unsetEventDispatcher(): this;
-
-    /**
-     * Set the name of the connected database.
-     */
-    setDatabaseName(database: string): this;
-
-    /**
-     * Set the read / write type of the connection.
-     */
-    setReadWriteType(readWriteType: ReadWriteType | null): this;
-
-    /**
-     * Set the table prefix in use by the connection.
-     */
-    setTablePrefix(prefix: string): this;
-
-    /**
-     * Set the table prefix and return the grammar.
-     */
-    withTablePrefix(grammar: GrammarI): GrammarI;
-}
-
-export interface ConnectionSessionI {
+interface BaseConnection {
     /**
      * Begin a fluent query against a database table.
      */
-    table(table: SubQuery<BuilderContract>, as?: string): BuilderContract;
+    table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI;
 
     /**
      * Get a new query builder instance.
      */
-    query(): BuilderContract;
+    query(): QueryBuilderI;
 
     /**
      * Run a select statement and return a single result.
@@ -189,6 +60,15 @@ export interface ConnectionSessionI {
      * Run a select statement against the database.
      */
     select<T = Dictionary>(query: string, bindings?: Binding[] | BindingObject, useReadPdo?: boolean): Promise<T[]>;
+
+    /**
+     * Run a select statement against the database.
+     */
+    selectResultSets<T = Dictionary>(
+        query: string,
+        bindings?: Binding[] | BindingObject,
+        useReadPdo?: boolean
+    ): Promise<T[][]>;
 
     /**
      * Run a select statement against the database and get Column.
@@ -249,41 +129,6 @@ export interface ConnectionSessionI {
     unprepared(query: string): Promise<boolean>;
 
     /**
-     * Execute the given callback in "dry run" mode.
-     */
-    pretend(callback: PretendingCallback): Promise<LoggedQuery[]>;
-
-    /**
-     * Execute a Closure within a transaction.
-     */
-    transaction(callback: TransactionCallback, attempts?: number): Promise<void>;
-
-    /**
-     * Start a new database transaction.
-     */
-    beginTransaction(): Promise<this>;
-
-    /**
-     * Commit the active database transaction.
-     */
-    commit(): Promise<void>;
-
-    /**
-     * Rollback the active database transaction.
-     */
-    rollBack(toLevel?: number): Promise<void>;
-
-    /**
-     * Get the number of active transactions.
-     */
-    transactionLevel(): number;
-
-    /**
-     * Indicate that the connection should use the write PDO connection for reads.
-     */
-    useWriteConnectionWhenReading(value?: boolean): this;
-
-    /**
      * Bind values to their parameters in the given statement.
      */
     bindValues(
@@ -319,11 +164,6 @@ export interface ConnectionSessionI {
     getName(): string;
 
     /**
-     * Get the database connection full name.
-     */
-    getNameWithReadWriteType(): string;
-
-    /**
      * Return all hook to be run just before a database query is executed.
      */
     getBeforeExecuting(): BeforeExecutingCallback[];
@@ -331,29 +171,14 @@ export interface ConnectionSessionI {
     /**
      * Get an option from the configuration options.
      */
-    getConfig<T extends FlattedConnectionConfig>(): T;
+    getConfig<T extends ConnectionConfig>(): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
     getConfig<T>(option?: string, defaultValue?: T): T;
 
     /**
-     * Detect if session is for Schema Builder
+     * Get the cache manager used by the connection.
      */
-    isSchema(): boolean;
-
-    /**
-     * Get the PDO driver name.
-     */
-    getDriverName(): string;
-
-    /**
-     * Get the schema grammar used by the connection.
-     */
-    getSchemaGrammar(): SchemaGrammarI;
-
-    /**
-     * Get the query grammar used by the connection.
-     */
-    getQueryGrammar(): GrammarI;
+    getCacheManager(): CacheManager | undefined;
 
     /**
      * Get the event dispatcher used by the connection.
@@ -371,11 +196,6 @@ export interface ConnectionSessionI {
     getTablePrefix(): string;
 
     /**
-     * Get the Driver Connection of current session
-     */
-    getDriverConnection(): DriverConnectionI;
-
-    /**
      * Get a new raw query expression.
      */
     raw(value: string | bigint | number): ExpressionContract;
@@ -384,4 +204,197 @@ export interface ConnectionSessionI {
      * Get the bind to object.
      */
     get bindTo(): BindToI;
+}
+
+export default interface DriverConnectionI extends BaseConnection {
+    /**
+     * Define Cache Strategy for current session
+     */
+    cache(cache: CacheSessionOptions): ConnectionSessionI<DriverConnectionI>;
+
+    /**
+     * Get the current PDO connection.
+     */
+    getPdo(): Pdo;
+
+    /**
+     * Get the current PDO connection used for reading.
+     */
+    getReadPdo(): Pdo;
+
+    /**
+     * Set Reference for current session
+     */
+    reference(reference: string): ConnectionSessionI<DriverConnectionI>;
+
+    /**
+     * Start Connection session for QueryBuilder
+     */
+    session(): ConnectionSessionI<DriverConnectionI>;
+
+    /**
+     * Start Connection session for SchemaBuilder
+     */
+    sessionSchema(): ConnectionSessionI<DriverConnectionI>;
+
+    /**
+     * Reconnect to the database.
+     */
+    reconnect(): Promise<this>;
+
+    /**
+     * Disconnect from the underlying PDO connection.
+     */
+    disconnect(): Promise<void>;
+
+    /**
+     * Get a schema builder instance for the connection.
+     */
+    getSchemaBuilder(): SchemaBuilderI<ConnectionSessionI<DriverConnectionI>>;
+
+    /**
+     * Register a hook to be run just before a database query is executed.
+     */
+    beforeExecuting(callback: BeforeExecutingCallback): this;
+
+    /**
+     * Register a database query listener with the connection.
+     */
+    listen(callback: (event: QueryExecuted) => void | Promise<void>): void;
+
+    /**
+     * Remove a database query listener with the connection.
+     */
+    unlisten(callback: (event: QueryExecuted) => void | Promise<void>): void;
+
+    /**
+     * Set the event dispatcher instance on the connection.
+     */
+    setEventDispatcher(dispatcher: EventEmitter): this;
+
+    /**
+     * Unset the event dispatcher for this connection.
+     */
+    unsetEventDispatcher(): this;
+
+    /**
+     * Set the cache manager instance on the connection.
+     */
+    setCacheManager(cacheManager: CacheManager): this;
+
+    /**
+     * Unset the cache manager for this connection.
+     */
+    unsetCacheManager(): this;
+
+    /**
+     * Get the schema grammar used by the connection.
+     */
+    getSchemaGrammar(): SchemaGrammar;
+
+    /**
+     * Get the query grammar used by the connection.
+     */
+    getQueryGrammar(): Grammar;
+
+    /**
+     * Execute the given callback in "dry run" mode.
+     */
+    pretend(callback: (session: ConnectionSessionI<DriverConnectionI>) => void | Promise<void>): Promise<LoggedQuery[]>;
+
+    /**
+     * Execute a Closure within a transaction.
+     */
+    transaction(
+        callback: (session: ConnectionSessionI<DriverConnectionI>) => void | Promise<void>,
+        attempts?: number
+    ): Promise<void>;
+
+    /**
+     * Start a new database transaction.
+     */
+    beginTransaction(): Promise<ConnectionSessionI<DriverConnectionI>>;
+
+    /**
+     * Indicate that the connection should use the write PDO connection for reads.
+     */
+    useWriteConnectionWhenReading(value?: boolean): ConnectionSessionI<DriverConnectionI>;
+}
+
+export interface ConnectionSessionI<DriverConnection extends DriverConnectionI = DriverConnectionI>
+    extends BaseConnection {
+    /**
+     * Define Cache Strategy for current session
+     */
+    cache(cache: CacheSessionOptions): this;
+
+    /**
+     * Set Reference for current session
+     */
+    reference(reference: string): this;
+
+    /**
+     * Get Reference for current session
+     */
+    getReference(): string;
+
+    /**
+     * Get the Driver Connection of current session
+     */
+    getDriverConnection(): DriverConnection;
+
+    /**
+     * Detect if session is for Schema QueryBuilder
+     */
+    isSchema(): boolean;
+
+    /**
+     * Execute the given callback in "dry run" mode.
+     */
+    pretend(callback: (session: this) => void | Promise<void>): Promise<LoggedQuery[]>;
+
+    /**
+     * Execute a Closure within a transaction.
+     */
+    transaction(callback: (session: this) => void | Promise<void>, attempts?: number): Promise<void>;
+
+    /**
+     * Start a new database transaction.
+     */
+    beginTransaction(): Promise<this>;
+
+    /**
+     * Get the number of active transactions.
+     */
+    transactionLevel(): number;
+
+    /**
+     * Commit the active database transaction.
+     */
+    commit(): Promise<void>;
+
+    /**
+     * Rollback the active database transaction.
+     */
+    rollBack(toLevel?: number): Promise<void>;
+
+    /**
+     * Execute the given callback without "pretending".
+     */
+    withoutPretending<T>(callback: () => T | Promise<T>): Promise<T>;
+
+    /**
+     * Indicate that the connection should use the write PDO connection for reads.
+     */
+    useWriteConnectionWhenReading(value?: boolean): this;
+
+    /**
+     * Get the schema grammar used by the connection.
+     */
+    getSchemaGrammar(): ReturnType<DriverConnection['getSchemaGrammar']>;
+
+    /**
+     * Get the query grammar used by the connection.
+     */
+    getQueryGrammar(): ReturnType<DriverConnection['getQueryGrammar']>;
 }
