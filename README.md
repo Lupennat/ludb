@@ -23,15 +23,11 @@
 
 The Ludb type definitions are included in the lucontainer npm package.
 
-You also need to install lupdo-drivers:
+You also need to install lupdo-drivers needed:
 
 > npm install lupdo-mssql lupdo-mysql lupdo-postgres lupdo-sqlite
 
 ```ts
-import 'lupdo-mysql';
-import 'lupdo-mssql';
-import 'lupdo-postgres';
-import 'lupdo-sqlite';
 import { DatabaseManager } from 'ludb';
 ```
 
