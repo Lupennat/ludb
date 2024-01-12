@@ -1,7 +1,7 @@
 import { compareVersions } from 'compare-versions';
 import { Pdo, PdoConnectionI } from 'lupdo';
-import { MysqlOptions } from 'lupdo-mysql';
 import { FlattedConnectionConfig, MysqlConfig } from '../types/config';
+import { LupdoMysqlOptions } from '../types/lupdo-drivers/mysql';
 import { merge } from '../utils';
 import Connector from './connector';
 
@@ -34,7 +34,7 @@ class MysqlConnector extends Connector {
             await Promise.all(promises);
         };
 
-        const options: MysqlOptions = merge(
+        const options: LupdoMysqlOptions = merge(
             {
                 user: config.username,
                 password: config.password,

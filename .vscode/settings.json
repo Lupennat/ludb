@@ -1,21 +1,6 @@
 {
     "eslint.validate": ["javascript", "typescript"],
     "eslint.packageManager": "npm",
-    "[yaml]": {
-        "editor.formatOnSave": false
-    },
-    "[json]": {
-        "editor.formatOnSave": false
-    },
-    "[jsonc]": {
-        "editor.formatOnSave": false
-    },
-    "[javascript]": {
-        "editor.formatOnSave": false
-    },
-    "[typescript]": {
-        "editor.formatOnSave": false
-    },
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": "explicit"
     },

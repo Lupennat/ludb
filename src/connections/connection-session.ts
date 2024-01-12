@@ -1072,10 +1072,13 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
     /**
      * Get an option from the configuration options.
      */
-    getConfig<T extends ConnectionConfig>(): T;
-    getConfig<T>(option?: string, defaultValue?: T): T;
-    getConfig<T>(option?: string, defaultValue?: T): T {
-        return this.getDriverConnection().getConfig<T>(option, defaultValue);
+    public getConfig<T extends ConnectionConfig>(): T;
+    public getConfig<T>(option: string): T;
+    public getConfig<T>(option: string, defaultValue: T): T;
+    public getConfig<T>(option?: string, defaultValue?: T): T {
+        // it's safe to force any to avoid type error
+        // at least one overload is always matched
+        return this.getDriverConnection().getConfig<T>(option as any, defaultValue as any);
     }
 
     /**

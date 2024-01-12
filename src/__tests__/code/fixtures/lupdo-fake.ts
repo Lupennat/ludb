@@ -81,3 +81,7 @@ class FakePdoDriver extends PdoDriver {
 }
 
 Pdo.addDriver('fake', FakePdoDriver);
+Pdo.addDriver('mysql', FakePdoDriver);
+Pdo.addDriver('sqlite', FakePdoDriver);
+Pdo.addDriver('pgsql', FakePdoDriver);
+Pdo.addDriver('sqlsrv', FakePdoDriver);

@@ -568,4 +568,8 @@ export class MockedDatabaseManager<const Config extends DBConfig> extends Databa
     public createConnection<const T extends keyof Config['connections'] & string>(name: T): any {
         return super.createConnection(name);
     }
+
+    public loadDriver(driver: string): void {
+        super.loadDriver(driver);
+    }
 }

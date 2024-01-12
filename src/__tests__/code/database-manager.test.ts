@@ -212,6 +212,19 @@ describe('Database Manager', () => {
         expect(db.supportedDrivers()).toEqual(['mysql', 'pgsql', 'sqlite', 'sqlsrv']);
     });
 
+    it('Works Load Drivers', () => {
+        const db = new MockedDatabaseManager({
+            connections: {}
+        });
+        db.loadDriver('sqlite');
+        db.loadDriver('mysql');
+        db.loadDriver('pgsql');
+        db.loadDriver('sqlsrv');
+        expect(() => {
+            db.loadDriver('not_loadable');
+        }).toThrow('unsupported lupdo driver');
+    });
+
     it('Works Available Drivers', () => {
         jest.spyOn(Pdo, 'getAvailableDrivers').mockReturnValueOnce(['mysql', 'pgsql']);
         const db = new DatabaseManager({
@@ -227,11 +240,12 @@ describe('Database Manager', () => {
         jest.spyOn(Pdo, 'getAvailableDrivers').mockReturnValueOnce(['mysql', 'pgsql']);
         const db = new DatabaseManager({
             connections: {
-                sqlite: { driver: 'sqlite', database: ':memory:' }
+                // @ts-expect-error wrong driver
+                wrong: { driver: 'wrong', database: ':memory:' }
             }
         });
         expect(() => {
-            db.connection('sqlite');
-        }).toThrow('Lupdo driver is missing, please install driver for "sqlite"');
+            db.connection('wrong');
+        }).toThrow('Lupdo driver is missing, please install driver for "wrong"');
     });
 });

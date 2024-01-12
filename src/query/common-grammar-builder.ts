@@ -406,7 +406,7 @@ abstract class CommonGrammarBuilder<
     ): this {
         return this.baseJoin(type, table, first, join => {
             // it's safe to force any to avoid type error
-            // overload is more flexible on not exposed method onImplementation
+            // at least one overload is always matched
             join.on(first as any, operatorOrSecond as any, second as any);
         });
     }
@@ -464,7 +464,7 @@ abstract class CommonGrammarBuilder<
     ): this {
         return this.baseJoin(type, table, first, join => {
             // it's safe to force any to avoid type error
-            // overload is more flexible on not exposed method whereImplementation
+            // at least one overload is always matched
             join.where(first as any, operatorOrSecond as any, second as any);
         });
     }

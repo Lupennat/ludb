@@ -1,6 +1,6 @@
 import { Pdo } from 'lupdo';
-import { MssqlOptions } from 'lupdo-mssql';
 import { FlattedConnectionConfig, SqlserverConfig } from '../types/config';
+import { LupdoSqlserverOptions } from '../types/lupdo-drivers/sqlserver';
 import { merge } from '../utils';
 import Connector from './connector';
 
@@ -12,7 +12,7 @@ class SqlserverConnector extends Connector {
         const attributes = this.getAttributes(config);
         const poolOptions = this.getPoolOptions(config);
 
-        const options: MssqlOptions = {
+        const options: LupdoSqlserverOptions = {
             server: config.host,
             options: {
                 encrypt: config.encrypt,
@@ -39,8 +39,8 @@ class SqlserverConnector extends Connector {
         }
 
         return this.createConnection(
-            'mssql',
-            merge<MssqlOptions>(options, config.lupdo_options ?? {}),
+            'sqlsrv',
+            merge<LupdoSqlserverOptions>(options, config.lupdo_options ?? {}),
             poolOptions,
             attributes
         );

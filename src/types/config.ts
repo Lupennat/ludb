@@ -1,10 +1,10 @@
-import { MssqlIsolationLevel, MssqlOptions } from 'lupdo-mssql';
-import { MysqlOptions } from 'lupdo-mysql';
-import { PostgresOptions } from 'lupdo-postgres';
-import { SqliteOptions } from 'lupdo-sqlite';
 import PdoAttributes from 'lupdo/dist/typings/types/pdo-attributes';
 import { PoolOptions } from 'lupdo/dist/typings/types/pdo-pool';
 import { CacheConfiguration } from './cache';
+import { LupdoMysqlOptions } from './lupdo-drivers/mysql';
+import { LupdoPostgresOptions } from './lupdo-drivers/postgres';
+import { LupdoSqliteOptions } from './lupdo-drivers/sqlite';
+import { ISOLATION_LEVEL, LupdoSqlserverOptions } from './lupdo-drivers/sqlserver';
 
 interface DatabaseConnectionOptions {
     /**
@@ -85,7 +85,7 @@ interface MysqlConnectionOptions extends DatabaseConnectionOptions {
     /**
      * lupdo-mysql options
      */
-    lupdo_options?: MysqlOptions;
+    lupdo_options?: LupdoMysqlOptions;
     /**
      * use prefix for schema builder
      */
@@ -153,7 +153,7 @@ interface SqliteConnectionOptions {
     /**
      * lupdo-sqlite options
      */
-    lupdo_options?: SqliteOptions;
+    lupdo_options?: LupdoSqliteOptions;
     /**
      * use prefix for schema builder
      */
@@ -234,7 +234,7 @@ interface PostgresConnectionOptions extends DatabaseConnectionOptions {
     /**
      * lupdo-postgres options
      */
-    lupdo_options?: PostgresOptions;
+    lupdo_options?: LupdoPostgresOptions;
 }
 
 export interface PostgresReadAndWriteOptions extends ReadAndWriteConnectionOptions<PostgresConnectionOptions> {}
@@ -278,7 +278,7 @@ interface SqlserverConnectionOptions extends DatabaseConnectionOptions {
     /**
      * transaction isolation level
      */
-    isolation_level?: MssqlIsolationLevel;
+    isolation_level?: ISOLATION_LEVEL;
     /**
      * app name
      */
@@ -294,7 +294,7 @@ interface SqlserverConnectionOptions extends DatabaseConnectionOptions {
     /**
      * lupdo-mssql options
      */
-    lupdo_options?: MssqlOptions;
+    lupdo_options?: LupdoSqlserverOptions;
 }
 
 export interface SqlserverReadAndWriteOptions extends ReadAndWriteConnectionOptions<SqlserverConnectionOptions> {}

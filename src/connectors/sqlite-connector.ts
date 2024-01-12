@@ -1,7 +1,8 @@
 import { Pdo, PdoConnectionI } from 'lupdo';
-import { SqliteOptions } from 'lupdo-sqlite';
+
 import { existsSync } from 'node:fs';
 import { FlattedConnectionConfig, SqliteConfig } from '../types/config';
+import { LupdoSqliteOptions } from '../types/lupdo-drivers/sqlite';
 import { merge } from '../utils';
 import Connector from './connector';
 
@@ -27,7 +28,7 @@ class SqliteConnector extends Connector {
             await Promise.all(promises);
         };
 
-        const options: SqliteOptions = merge(
+        const options: LupdoSqliteOptions = merge(
             {
                 readonly: config.readonly ?? false,
                 path: config.database,
