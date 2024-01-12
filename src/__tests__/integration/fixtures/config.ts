@@ -94,11 +94,11 @@ export const config = {
 
 export const DB = new DatabaseManager({ connections: config });
 
-export function isMysql8() {
+export function isMysql8(): boolean {
     return currentGenericDB === 'mysql8';
 }
 
-export function isPostgres16() {
+export function isPostgres16(): boolean {
     return currentGenericDB === 'postgres16';
 }
 

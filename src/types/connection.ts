@@ -172,8 +172,8 @@ interface BaseConnection {
      * Get an option from the configuration options.
      */
     getConfig<T extends ConnectionConfig>(): T;
-    getConfig<T>(option?: string, defaultValue?: T): T;
-    getConfig<T>(option?: string, defaultValue?: T): T;
+    getConfig<T>(option: string): T;
+    getConfig<T>(option: string, defaultValue: T): T;
 
     /**
      * Get the cache manager used by the connection.

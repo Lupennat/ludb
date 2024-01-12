@@ -45,12 +45,35 @@ class DatabaseManager<const Config extends DBConfig> {
         return this.connections[name] as ExtractConnection<Config['connections'][T]>;
     }
 
+    protected loadDriver(driver: string): void {
+        switch (driver) {
+            case 'mysql':
+                require('lupdo-mysql');
+                break;
+            case 'sqlite':
+                require('lupdo-sqlite');
+                break;
+            case 'pgsql':
+                require('lupdo-postgres');
+                break;
+            case 'sqlsrv':
+                require('lupdo-mssql');
+                break;
+            default:
+                throw new Error('unsupported lupdo driver');
+        }
+    }
+
     protected createConnection<const T extends keyof Config['connections'] & string>(name: T): any {
         const config = this.config.connections[name];
         const driver = config.driver;
 
         if (!this.availableDrivers().includes(driver)) {
-            throw new Error(`Lupdo driver is missing, please install driver for "${driver}"`);
+            try {
+                this.loadDriver(driver);
+            } catch (error) {
+                throw new Error(`Lupdo driver is missing, please install driver for "${driver}"`);
+            }
         }
 
         switch (driver) {

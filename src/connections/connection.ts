@@ -354,8 +354,9 @@ abstract class Connection<const Config extends ConnectionConfig = ConnectionConf
     /**
      * Get an option from the configuration options.
      */
-    public getConfig(): Config;
-    public getConfig<T>(option?: string, defaultValue?: T): T;
+    public getConfig<T extends ConnectionConfig>(): T;
+    public getConfig<T>(option: string): T;
+    public getConfig<T>(option: string, defaultValue: T): T;
     public getConfig<T>(option?: string, defaultValue?: T): Config {
         if (option == null) {
             return this.config;

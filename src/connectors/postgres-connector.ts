@@ -1,7 +1,7 @@
 import { Pdo, PdoConnectionI } from 'lupdo';
-import { PostgresOptions } from 'lupdo-postgres';
 import { readFileSync } from 'node:fs';
 import { FlattedConnectionConfig, PostgresConfig } from '../types/config';
+import { LupdoPostgresOptions } from '../types/lupdo-drivers/postgres';
 import { merge, parseSearchPath } from '../utils';
 import Connector from './connector';
 
@@ -62,7 +62,7 @@ class PostgresConnector extends Connector {
                 ssl = Object.values(ssl).filter(Boolean).length === 0 ? undefined : ssl;
         }
 
-        const options: PostgresOptions = merge<PostgresOptions>(
+        const options = merge<LupdoPostgresOptions>(
             {
                 user: config.username,
                 database: config.database,

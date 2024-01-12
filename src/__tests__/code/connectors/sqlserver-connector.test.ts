@@ -1,9 +1,19 @@
 import { Pdo } from 'lupdo';
 import SqlserverConnection from '../../../connections/sqlserver-connection';
 import SqlserverConnector from '../../../connectors/sqlserver-connector';
+import { ISOLATION_LEVEL } from '../../../types';
 
 describe('Sqlserver Connector', () => {
     const pdo = new Pdo('fake', {});
+
+    it('Works Sqlserver Isolation Level Enum', () => {
+        expect(ISOLATION_LEVEL.NO_CHANGE).toBe(0);
+        expect(ISOLATION_LEVEL.READ_UNCOMMITTED).toBe(1);
+        expect(ISOLATION_LEVEL.READ_COMMITTED).toBe(2);
+        expect(ISOLATION_LEVEL.REPEATABLE_READ).toBe(3);
+        expect(ISOLATION_LEVEL.SERIALIZABLE).toBe(4);
+        expect(ISOLATION_LEVEL.SNAPSHOT).toBe(5);
+    });
 
     it('Works Sqlserver Connect Calls Create Connection With Proper Arguments', () => {
         new SqlserverConnection('fake', { host: 'foo', database: 'bar', port: 111 });
@@ -11,7 +21,7 @@ describe('Sqlserver Connector', () => {
         const spiedConnection = jest.spyOn(connector, 'createConnection').mockReturnValue(pdo);
         connector.connect({ host: 'foo', database: 'bar', port: 111 });
         expect(spiedConnection).toHaveBeenLastCalledWith(
-            'mssql',
+            'sqlsrv',
             {
                 options: {
                     appName: undefined,
@@ -54,7 +64,7 @@ describe('Sqlserver Connector', () => {
             }
         });
         expect(spiedConnection).toHaveBeenLastCalledWith(
-            'mssql',
+            'sqlsrv',
             {
                 authentication: {
                     options: {
@@ -91,7 +101,7 @@ describe('Sqlserver Connector', () => {
             username: 'sa'
         });
         expect(spiedConnection).toHaveBeenLastCalledWith(
-            'mssql',
+            'sqlsrv',
             {
                 authentication: { options: { password: undefined, userName: 'sa' }, type: 'default' },
                 options: {
@@ -116,7 +126,7 @@ describe('Sqlserver Connector', () => {
             password: 'secret'
         });
         expect(spiedConnection).toHaveBeenLastCalledWith(
-            'mssql',
+            'sqlsrv',
             {
                 authentication: { options: { password: 'secret', userName: undefined }, type: 'default' },
                 options: {
