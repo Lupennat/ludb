@@ -11,6 +11,13 @@ class QueryBuilder extends BaseQueryBuilder implements QueryBuilderI {
     }
 
     /**
+     * Create a new query instance for nested where condition.
+     */
+    public forNestedWhere(): QueryBuilderI {
+        return super.forNestedWhere();
+    }
+
+    /**
      * Get a new instance of the query builder.
      */
     public newQuery(): QueryBuilderI {
