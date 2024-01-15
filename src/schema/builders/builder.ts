@@ -4,7 +4,7 @@ import { GrammarBuilder } from '../../query';
 import DriverConnectionI, { ConnectionSessionI } from '../../types/connection';
 import { Stringable } from '../../types/generics';
 import BlueprintI from '../../types/schema/blueprint';
-import QueryBuilderI, {
+import SchemaBuilderI, {
     BlueprintCallback,
     BlueprintResolver,
     MorphKeyType,
@@ -23,7 +23,7 @@ import Blueprint from '../blueprint';
 import CommandViewDefinition from '../definitions/commands/command-view-definition';
 
 class QueryBuilder<Session extends ConnectionSessionI<DriverConnectionI> = ConnectionSessionI<DriverConnectionI>>
-    implements QueryBuilderI<Session>
+    implements SchemaBuilderI<Session>
 {
     /**
      * The schema grammar instance.

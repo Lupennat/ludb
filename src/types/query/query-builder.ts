@@ -263,7 +263,7 @@ export default interface QueryBuilderI extends GrammarBuilderI {
      */
     insertUsing(
         columns: Stringable[],
-        query: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable
+        query: QueryAbleCallback<GrammarBuilderI> | GrammarBuilderI | Stringable
     ): Promise<number>;
 
     /**

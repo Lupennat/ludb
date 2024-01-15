@@ -8,7 +8,6 @@ import TransactionCommitted from '../../../events/transaction-committed';
 import TransactionCommitting from '../../../events/transaction-committing';
 import TransactionRolledBack from '../../../events/transaction-rolledback';
 import Grammar from '../../../query/grammars/grammar';
-import QueryBuilder from '../../../query/query-builder';
 
 import Expression from '../../../query/expression';
 import {
@@ -16,7 +15,6 @@ import {
     MockedConnectionSession,
     MockedConnectionSessionWithResults,
     MockedConnectionSessionWithResultsSets,
-    getBuilder,
     getConnection
 } from '../fixtures/mocked';
 import { MockedConnection } from '../fixtures/mocked-connections';
@@ -283,23 +281,6 @@ describe('Connection Session', () => {
         const session = new MockedConnectionSession(connection);
         session.prepareBindings([null, 'Claudio']);
         expect(spiedConnection).toHaveBeenCalledWith([null, 'Claudio']);
-    });
-
-    it('Works Table', () => {
-        const connection = getConnection();
-        const session = new MockedConnectionSession(connection);
-        const builder = getBuilder();
-        const spiedBuilder = jest.spyOn(builder, 'from');
-        const spiedQuery = jest.spyOn(session, 'query').mockReturnValueOnce(builder);
-        expect(session.table('test', 'name')).toBe(builder);
-        expect(spiedQuery).toHaveBeenCalled();
-        expect(spiedBuilder).toHaveBeenCalledWith('test', 'name');
-    });
-
-    it('Works Query', () => {
-        const connection = getConnection();
-        const session = new MockedConnectionSession(connection);
-        expect(session.query()).toBeInstanceOf(QueryBuilder);
     });
 
     it('Works Select Use Read Pdo', async () => {

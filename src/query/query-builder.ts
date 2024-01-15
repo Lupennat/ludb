@@ -3,7 +3,7 @@ import Cursor from '../paginations/cursor';
 import CursorPaginator from '../paginations/cursor-paginator';
 import LengthAwarePaginator from '../paginations/length-aware-paginator';
 import Paginator from '../paginations/paginator';
-import { CacheSessionOptions } from '../types';
+import { CacheSessionOptions } from '../types/cache';
 import { Binding, Stringable } from '../types/generics';
 import PaginatorI, {
     CursorPaginatorI,
@@ -1045,7 +1045,7 @@ class QueryBuilder extends CommonGrammarBuilder implements QueryBuilderI {
      */
     public async insertUsing(
         columns: Stringable[],
-        query: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable
+        query: QueryAbleCallback<GrammarBuilderI> | GrammarBuilderI | Stringable
     ): Promise<number> {
         this.applyBeforeQueryCallbacks();
 
