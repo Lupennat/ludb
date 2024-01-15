@@ -19,14 +19,11 @@ import TransactionCommitted from '../events/transaction-committed';
 import TransactionCommitting from '../events/transaction-committing';
 import TransactionRolledBack from '../events/transaction-rolledback';
 import ExpressionContract from '../query/expression-contract';
-import QueryBuilder from '../query/query-builder';
 import BindToI from '../types/bind-to';
 import { CacheSessionOptions } from '../types/cache';
 import ConnectionConfig from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
-import { Binding, BindingExclude, BindingExcludeObject, BindingObject, Stringable } from '../types/generics';
-import { QueryAbleCallback } from '../types/query/grammar-builder';
-import QueryBuilderI from '../types/query/query-builder';
+import { Binding, BindingExclude, BindingExcludeObject, BindingObject } from '../types/generics';
 import { causedByConcurrencyError, causedByLostConnection } from '../utils';
 
 export type RunCallback<T> = (query: string, bindings: Binding[] | BindingObject) => Promise<T>;
@@ -122,20 +119,6 @@ class ConnectionSession<DriverConnection extends DriverConnectionI = DriverConne
      */
     public getReference(): string {
         return this.referenceId;
-    }
-
-    /**
-     * Begin a fluent query against a database table.
-     */
-    public table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI {
-        return this.query().from(table, as);
-    }
-
-    /**
-     * Get a new query builder instance.
-     */
-    public query(): QueryBuilderI {
-        return new QueryBuilder(this);
     }
 
     /**

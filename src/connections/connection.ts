@@ -6,11 +6,12 @@ import EventEmitter from 'node:events';
 import { bindTo } from '../bindings';
 import CacheManager from '../cache-manager';
 import QueryExecuted from '../events/query-executed';
+import { QueryBuilder } from '../query';
 import ExpressionContract from '../query/expression-contract';
 import Grammar from '../query/grammars/grammar';
 import SchemaGrammar from '../schema/grammars/grammar';
-import { CacheSessionOptions } from '../types';
 import BindToI from '../types/bind-to';
+import { CacheSessionOptions } from '../types/cache';
 import ConnectionConfig, { FlattedConnectionConfig, ReadAndWriteConnectionOptions } from '../types/config';
 import DriverConnectionI, { BeforeExecutingCallback, ConnectionSessionI, LoggedQuery } from '../types/connection';
 import ConnectorI from '../types/connector';
@@ -440,14 +441,14 @@ abstract class Connection<const Config extends ConnectionConfig = ConnectionConf
      * Begin a fluent query against a database table.
      */
     public table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI {
-        return this.session().table(table, as);
+        return this.query().from(table, as);
     }
 
     /**
      * Get a new query builder instance.
      */
     public query(): QueryBuilderI {
-        return this.session().query();
+        return new QueryBuilder(this.session());
     }
 
     /**

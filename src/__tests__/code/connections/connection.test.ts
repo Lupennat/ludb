@@ -20,6 +20,7 @@ import SqliteBuilder from '../../../schema/builders/sqlite-builder';
 import SqlserverBuilder from '../../../schema/builders/sqlserver-builder';
 import SchemaGrammar from '../../../schema/grammars/grammar';
 import {
+    getBuilder,
     getConnection,
     getMysqlConnection,
     getPostgresConnection,
@@ -334,16 +335,19 @@ describe('Connection', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
         jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'table');
-        expect(connection.table('test', 'name')).toBeInstanceOf(QueryBuilder);
-        expect(spiedSession).toHaveBeenCalledWith('test', 'name');
+        const builder = getBuilder();
+        const spiedBuilder = jest.spyOn(builder, 'from');
+        const spiedQuery = jest.spyOn(connection, 'query').mockReturnValueOnce(builder);
+
+        expect(connection.table('test', 'name')).toBe(builder);
+        expect(spiedQuery).toHaveBeenCalled();
+        expect(spiedBuilder).toHaveBeenCalledWith('test', 'name');
     });
 
     it('Works Query', () => {
         const connection = getConnection();
         const session = new ConnectionSession(connection);
-        jest.spyOn(connection, 'session').mockReturnValue(session);
-        const spiedSession = jest.spyOn(session, 'query');
+        const spiedSession = jest.spyOn(connection, 'session').mockReturnValue(session);
         expect(connection.query()).toBeInstanceOf(QueryBuilder);
         expect(spiedSession).toHaveBeenCalledTimes(1);
     });

@@ -28,16 +28,6 @@ export interface LoggedQuery {
 
 interface BaseConnection {
     /**
-     * Begin a fluent query against a database table.
-     */
-    table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI;
-
-    /**
-     * Get a new query builder instance.
-     */
-    query(): QueryBuilderI;
-
-    /**
      * Run a select statement and return a single result.
      */
     selectOne<T = Dictionary>(
@@ -207,6 +197,16 @@ interface BaseConnection {
 }
 
 export default interface DriverConnectionI extends BaseConnection {
+    /**
+     * Begin a fluent query against a database table.
+     */
+    table(table: QueryAbleCallback<QueryBuilderI> | QueryBuilderI | Stringable, as?: string): QueryBuilderI;
+
+    /**
+     * Get a new query builder instance.
+     */
+    query(): QueryBuilderI;
+
     /**
      * Define Cache Strategy for current session
      */
