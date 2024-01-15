@@ -111,6 +111,13 @@ class JoinClause<Parent extends GrammarBuilderI = GrammarBuilderI>
     }
 
     /**
+     * Create a new query instance for nested where condition.
+     */
+    public forNestedWhere(): JoinClauseI {
+        return super.forNestedWhere();
+    }
+
+    /**
      * Clone the query.
      */
     public clone(): JoinClauseI {

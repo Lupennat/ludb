@@ -1,6 +1,6 @@
 {
     "name": "ludb",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "description": "Nodejs Query Builder",
     "author": "Claudio Pennati <claudio.pennati@gmail.com>",
     "license": "MIT",

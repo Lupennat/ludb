@@ -2123,7 +2123,7 @@ abstract class CommonGrammarBuilder<
     /**
      * Create a new query instance for nested where condition.
      */
-    public forNestedWhere(): this {
+    public forNestedWhere(): any {
         return this.newQuery().from(this.registry.from);
     }
 
