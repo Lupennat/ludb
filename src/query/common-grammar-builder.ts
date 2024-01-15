@@ -90,7 +90,35 @@ abstract class CommonGrammarBuilder<
      * Create a new query builder instance.
      */
     constructor(protected connection: SessionConnection) {
-        this.registry = createRegistry();
+        this.registry = this.createRegisty();
+    }
+
+    /**
+     * Create new registry
+     */
+    protected createRegisty(): RegistryI {
+        return createRegistry();
+    }
+
+    /**
+     * Clone the registry.
+     */
+    protected cloneRegistry(): RegistryI {
+        return cloneRegistry(this.registry);
+    }
+
+    /**
+     * Clone registry without properties
+     */
+    public cloneRegistryWithoutProperties(properties: (keyof RegistryI)[]): RegistryI {
+        return cloneRegistryWithoutProperties(this.registry, properties);
+    }
+
+    /**
+     * Clone regitry without bindings.
+     */
+    public cloneRegistryWithoutBindings(except: (keyof BindingTypes)[]): any {
+        return cloneRegistryWithoutBindings(this.registry, except);
     }
 
     /**
@@ -3316,7 +3344,7 @@ abstract class CommonGrammarBuilder<
      * Clone the query.
      */
     public clone(): any {
-        return this.cloneBeforeQueryCallbacks(this.newQuery().setRegistry(cloneRegistry(this.registry)));
+        return this.cloneBeforeQueryCallbacks(this.newQuery().setRegistry(this.cloneRegistry()));
     }
 
     /**
@@ -3324,7 +3352,7 @@ abstract class CommonGrammarBuilder<
      */
     public cloneWithout(properties: (keyof RegistryI)[]): any {
         return this.cloneBeforeQueryCallbacks(
-            this.newQuery().setRegistry(cloneRegistryWithoutProperties(this.registry, properties))
+            this.newQuery().setRegistry(this.cloneRegistryWithoutProperties(properties))
         );
     }
 
@@ -3332,9 +3360,7 @@ abstract class CommonGrammarBuilder<
      * Clone the query without the given bindings.
      */
     public cloneWithoutBindings(except: (keyof BindingTypes)[]): any {
-        return this.cloneBeforeQueryCallbacks(
-            this.newQuery().setRegistry(cloneRegistryWithoutBindings(this.registry, except))
-        );
+        return this.cloneBeforeQueryCallbacks(this.newQuery().setRegistry(this.cloneRegistryWithoutBindings(except)));
     }
 
     /**

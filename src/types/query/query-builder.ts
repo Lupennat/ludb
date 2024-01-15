@@ -6,7 +6,7 @@ import PaginatorI, { CursorPaginatorI, LengthAwarePaginatorI } from '../paginati
 import GrammarBuilderI, { NumericValues, QueryAbleCallback, RowValues } from './grammar-builder';
 import RegistryI, { BindingTypes } from './registry';
 
-export default interface QueryBuilderI extends GrammarBuilderI {
+export interface BaseQueryBuilderI extends GrammarBuilderI {
     /**
      * Define Cache Strategy for current builder
      */
@@ -329,7 +329,9 @@ export default interface QueryBuilderI extends GrammarBuilderI {
      * Use the "write" PDO connection when executing the query.
      */
     useWritePdo(): this;
+}
 
+export default interface QueryBuilderI extends BaseQueryBuilderI {
     /**
      * Create a new query instance for nested where condition.
      */
