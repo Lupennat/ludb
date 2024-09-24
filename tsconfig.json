@@ -1,14 +1,20 @@
 {
-    "extends": "./typescript/tsconfig.base.json",
     "compilerOptions": {
-        "lib": ["es2020"],
         "module": "commonjs",
-        "target": "es2020",
-        "outDir": "./dist/cjs",
-        "strict": true,
-        "esModuleInterop": true,
+        "declaration": true,
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "target": "ES2021",
+        "sourceMap": true,
+        "baseUrl": "./",
+        "incremental": true,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node"
+        "strictNullChecks": true,
+        "noImplicitAny": false,
+        "strictBindCallApply": false,
+        "forceConsistentCasingInFileNames": false,
+        "noFallthroughCasesInSwitch": false
     }
 }

@@ -6,57 +6,57 @@ import { SqlserverConfig } from '../types/config';
 import Connection from './connection';
 
 class SqlserverConnection extends Connection<SqlserverConfig> {
-    /**
-     * The query grammar implementation.
-     */
-    protected queryGrammar!: SqlserverGrammar;
+  /**
+   * The query grammar implementation.
+   */
+  protected queryGrammar!: SqlserverGrammar;
 
-    /**
-     * The schema grammar implementation.
-     */
-    protected schemaGrammar!: SchemaGrammar;
+  /**
+   * The schema grammar implementation.
+   */
+  protected schemaGrammar!: SchemaGrammar;
 
-    /**
-     * create Connector
-     */
-    protected createConnector(): SqlserverConnector {
-        return new SqlserverConnector();
-    }
+  /**
+   * create Connector
+   */
+  protected createConnector(): SqlserverConnector {
+    return new SqlserverConnector();
+  }
 
-    /**
-     * set Default Query Grammar
-     */
-    protected setDefaultQueryGrammar(): void {
-        this.queryGrammar = new SqlserverGrammar().setTablePrefix(this.tablePrefix);
-    }
+  /**
+   * set Default Query Grammar
+   */
+  protected setDefaultQueryGrammar(): void {
+    this.queryGrammar = new SqlserverGrammar().setTablePrefix(this.tablePrefix);
+  }
 
-    /**
-     * set Default Schema Grammar
-     */
-    protected setDefaultSchemaGrammar(): void {
-        this.schemaGrammar = new SchemaGrammar().setTablePrefix(this.tablePrefix);
-    }
+  /**
+   * set Default Schema Grammar
+   */
+  protected setDefaultSchemaGrammar(): void {
+    this.schemaGrammar = new SchemaGrammar().setTablePrefix(this.tablePrefix);
+  }
 
-    /**
-     * Get a schema builder instance for the connection.
-     */
-    public getSchemaBuilder(): SchemaBuilder {
-        return new SchemaBuilder(this.sessionSchema());
-    }
+  /**
+   * Get a schema builder instance for the connection.
+   */
+  public getSchemaBuilder(): SchemaBuilder {
+    return new SchemaBuilder(this.sessionSchema());
+  }
 
-    /**
-     * Get the schema grammar used by the connection.
-     */
-    public getSchemaGrammar(): SchemaGrammar {
-        return this.schemaGrammar;
-    }
+  /**
+   * Get the schema grammar used by the connection.
+   */
+  public getSchemaGrammar(): SchemaGrammar {
+    return this.schemaGrammar;
+  }
 
-    /**
-     * Get the query grammar used by the connection.
-     */
-    public getQueryGrammar(): SqlserverGrammar {
-        return this.queryGrammar;
-    }
+  /**
+   * Get the query grammar used by the connection.
+   */
+  public getQueryGrammar(): SqlserverGrammar {
+    return this.queryGrammar;
+  }
 }
 
 export default SqlserverConnection;

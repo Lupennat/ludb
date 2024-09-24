@@ -1,26 +1,14 @@
-version: '3'
 services:
     mysql57:
         image: 'mysql:5.7'
         command: --default-authentication-plugin=mysql_native_password --sync_binlog=0 --innodb_doublewrite=OFF  --innodb-flush-log-at-trx-commit=0 --innodb-flush-method=nosync
-        ports:
-            - '5307:3306'
         environment:
             MYSQL_DATABASE: 'tempdb'
             MYSQL_ROOT_PASSWORD: "root"
             MYSQL_USER: "lupdo"
             MYSQL_PASSWORD: "lupdo@s3cRet"
         healthcheck:
-            test:
-                [
-                    'CMD',
-                    '/usr/bin/mysql',
-                    '-hlocalhost',
-                    '-ulupdo',
-                    '-plupdo@s3cRet',
-                    '-e',
-                    'SELECT 1'
-                ]
+            test: [ 'CMD', '/usr/bin/mysql', '-hlocalhost', '-ulupdo', '-plupdo@s3cRet', '-e', 'SELECT 1' ]
             interval: 30s
             timeout: 5s
             retries: 3
@@ -38,33 +26,22 @@ services:
             - 'until /usr/bin/mysql -hmysql57 -ulupdo -plupdo@s3cRet -e "SELECT 1"; do sleep 5; done'
 
     mysql8:
-        image: 'mysql:8'
+        image: 'mysql:8.0'
         command: --default-authentication-plugin=mysql_native_password --sync_binlog=0 --innodb_doublewrite=OFF  --innodb-flush-log-at-trx-commit=0 --innodb-flush-method=nosync
-        ports:
-            - '5308:3306'
         environment:
             MYSQL_DATABASE: 'tempdb'
             MYSQL_ROOT_PASSWORD: "root"
             MYSQL_USER: "lupdo"
             MYSQL_PASSWORD: "lupdo@s3cRet"
         healthcheck:
-            test:
-                [
-                    'CMD',
-                    '/usr/bin/mysql',
-                    '-hlocalhost',
-                    '-ulupdo',
-                    '-plupdo@s3cRet',
-                    '-e',
-                    'SELECT 1'
-                ]
+            test: [ 'CMD', '/usr/bin/mysql', '-hlocalhost', '-ulupdo', '-plupdo@s3cRet', '-e', 'SELECT 1' ]
             interval: 30s
             timeout: 5s
             retries: 3
         restart: always
 
     waitmysql8:
-        image: 'mysql:8'
+        image: 'mysql:8.0'
         links:
             - mysql8
         depends_on:
@@ -77,24 +54,13 @@ services:
     maria1003:
         image: 'mariadb:10.3'
         command: --default-authentication-plugin=mysql_native_password --sync_binlog=0 --innodb_doublewrite=OFF  --innodb-flush-log-at-trx-commit=0 --innodb-flush-method=nosync
-        ports:
-            - '31003:3306'
         environment:
             MYSQL_DATABASE: 'tempdb'
             MYSQL_ROOT_PASSWORD: "root"
             MYSQL_USER: "lupdo"
             MYSQL_PASSWORD: "lupdo@s3cRet"
         healthcheck:
-            test:
-                [
-                    'CMD',
-                    '/usr/bin/mysql',
-                    '-hlocalhost',
-                    '-ulupdo',
-                    '-plupdo@s3cRet',
-                    '-e',
-                    'SELECT 1'
-                ]
+            test: [ 'CMD', '/usr/bin/mysql', '-hlocalhost', '-ulupdo', '-plupdo@s3cRet', '-e', 'SELECT 1' ]
             interval: 30s
             timeout: 5s
             retries: 3
@@ -114,24 +80,13 @@ services:
     maria1011:
         image: 'mariadb:10.11'
         command: --default-authentication-plugin=mysql_native_password --sync_binlog=0 --innodb_doublewrite=OFF  --innodb-flush-log-at-trx-commit=0 --innodb-flush-method=nosync
-        ports:
-            - '31011:3306'
         environment:
             MYSQL_DATABASE: 'tempdb'
             MYSQL_ROOT_PASSWORD: "root"
             MYSQL_USER: "lupdo"
             MYSQL_PASSWORD: "lupdo@s3cRet"
         healthcheck:
-            test:
-                [
-                    'CMD',
-                    '/usr/bin/mysql',
-                    '-hlocalhost',
-                    '-ulupdo',
-                    '-plupdo@s3cRet',
-                    '-e',
-                    'SELECT 1'
-                ]
+            test: [ 'CMD', '/usr/bin/mysql', '-hlocalhost', '-ulupdo', '-plupdo@s3cRet', '-e', 'SELECT 1' ]
             interval: 30s
             timeout: 5s
             retries: 3
@@ -151,8 +106,6 @@ services:
     postgres12:
         image: postgis/postgis:12-3.4-alpine
         command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
-        ports:
-            - '25431:5432'
         environment:
             - PGUSER=ludpo
             - PGPASSWORD=lupdos3cRet
@@ -175,8 +128,6 @@ services:
     postgres16:
         image: postgis/postgis:16-3.4-alpine
         command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
-        ports:
-            - '25435:5432'
         environment:
             - PGUSER=ludpo
             - PGPASSWORD=lupdos3cRet
@@ -195,38 +146,14 @@ services:
             - bash
             - -c
             - 'until /usr/local/bin/psql postgres://lupdo:lupdos3cRet@postgres16/tempdb -c "SELECT 1"; do sleep 5; done'
-    
-    sqlsrv17:
-        image: mcr.microsoft.com/mssql/server:2017-latest
-        ports:
-            - '21433:1433'
-        environment:
-            - ACCEPT_EULA=Y
-            - SA_PASSWORD=lupdo@s3cRet
-        healthcheck:
-            test: /opt/mssql-tools/bin/sqlcmd -S sqlsrv17 -U sa -P 'lupdo@s3cRet' -Q 'select 1'
-
-    waitsqlsrv17:
-        image: mcr.microsoft.com/mssql/server:2017-latest
-        links:
-            - sqlsrv17
-        depends_on:
-            - sqlsrv17
-        entrypoint:
-            - bash
-            - -c
-            - 'until /opt/mssql-tools/bin/sqlcmd -S sqlsrv17 -U sa -P lupdo@s3cRet -d master; do sleep 5; done'
-
 
     sqlsrv22:
         image: mcr.microsoft.com/mssql/server:2022-latest
-        ports:
-            - '21435:1433'
         environment:
             - ACCEPT_EULA=Y
             - SA_PASSWORD=lupdo@s3cRet
         healthcheck:
-            test: /opt/mssql-tools/bin/sqlcmd -S sqlsrv22 -U sa -P 'lupdo@s3cRet' -Q 'select 1'
+            test: /opt/mssql-tools18bin/sqlcmd -S sqlsrv22 -U sa -P 'lupdo@s3cRet' -Q 'select 1'
 
     waitsqlsrv22:
         image: mcr.microsoft.com/mssql/server:2022-latest
@@ -237,4 +164,4 @@ services:
         entrypoint:
             - bash
             - -c
-            - 'until /opt/mssql-tools/bin/sqlcmd -S sqlsrv22 -U sa -P lupdo@s3cRet -d master; do sleep 5; done'
+            - 'until /opt/mssql-tools18/bin/sqlcmd -S sqlsrv22 -U sa -P lupdo@s3cRet -d master; do sleep 5; done'

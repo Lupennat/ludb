@@ -1,0 +1,151 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+	"name": "Ludb",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"dockerComposeFile": [
+		"./docker-compose.yml",
+		"../docker-compose.yml"
+	],
+	"service": "devcontainer",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+	},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [
+		"mysql57:3306",
+		"mysql8:3306",
+		"maria1003:3306",
+		"maria1011:3306",
+		"postgres12:5432",
+		"postgres16:5432",
+		"sqlsrv17:1433",
+		"sqlsrv22:1433"
+	],
+	"postCreateCommand": "npm ci",
+	"postStartCommand": "cat /dev/null > ${containerWorkspaceFolder}/sqlite3.db",
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"esbenp.prettier-vscode",
+				"dbaeumer.vscode-eslint",
+				"orta.vscode-jest",
+				"GitHub.vscode-github-actions",
+				"DavidAnson.vscode-markdownlint",
+				"ms-azuretools.vscode-docker",
+				"eamodio.gitlens"
+			],
+			"settings": {
+				"[jsonc]": {
+					"editor.defaultFormatter": "vscode.json-language-features",
+					"editor.formatOnSave": true
+				},
+				"[json]": {
+					"editor.defaultFormatter": "vscode.json-language-features",
+					"editor.formatOnSave": true
+				},
+				"[markdown]": {
+					"editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+					"editor.formatOnSave": true
+				},
+				"[dockercompose]": {
+					"editor.formatOnSave": true,
+					"editor.insertSpaces": true,
+					"editor.tabSize": 2,
+					"editor.autoIndent": "advanced",
+					"editor.defaultFormatter": "ms-azuretools.vscode-docker"
+				},
+				"[javascript]": {
+					"editor.codeActionsOnSave": {
+						"source.fixAll.eslint": "explicit"
+					}
+				},
+				"[typescript]": {
+					"editor.codeActionsOnSave": {
+						"source.fixAll.eslint": "explicit"
+					}
+				},
+				"typescript.preferences.importModuleSpecifier": "relative",
+				"launch": {
+					"version": "0.2.0",
+					"configurations": [
+						{
+							"name": "Debug NestJs",
+							"type": "node",
+							"request": "attach",
+							"port": 9229
+						}
+					],
+					"compounds": []
+				},
+				"jest.coverageColors": {
+					"covered": "rgba(9, 156, 65, 0.4)",
+					"uncovered": "rgba(121, 31, 10, 0.4)",
+					"partially-covered": "rgba(235, 198, 52, 0.4)"
+				},
+				"jest.runMode": {
+					"type": "on-demand",
+					"coverage": false
+				},
+				"jest.virtualFolders": [
+					{
+						"name": "coverage",
+						"jestCommandLine": "npm run test:coverage --",
+						"runMode": {
+							"type": "on-demand",
+							"coverage": true
+						}
+					},
+					{
+						"name": "unit",
+						"jestCommandLine": "npm run test:unit --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration mysql 5.7",
+						"jestCommandLine": "npm run test:integration:mysql57 --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration mysql 8",
+						"jestCommandLine": "npm run test:integration:mysql8 --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration maria 10.03",
+						"jestCommandLine": "npm run test:integration:maria1003 --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration maria 10.11",
+						"jestCommandLine": "npm run test:integration:maria1011 --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration sqlite",
+						"jestCommandLine": "npm run test:integration:sqlite --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration postgres 12",
+						"jestCommandLine": "npm run test:integration:postgres12 --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration postgres 16",
+						"jestCommandLine": "npm run test:integration:postgres16 --",
+						"runMode": "on-demand"
+					},
+					{
+						"name": "integration sqlsrv 22",
+						"jestCommandLine": "npm run test:integration:sqlsrv22 --",
+						"runMode": "on-demand"
+					},
+				]
+			}
+		}
+	}
+}
