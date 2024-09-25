@@ -67,7 +67,7 @@
         "test:integration:sqlsrv22": "DB=sqlsrv22 jest --passWithNoTests --selectProjects integration --runInBand"
     },
     "engines": {
-        "node": "^16.10.0 || >=18.0.0"
+        "node": ">=18.0.0"
     },
     "devDependencies": {
         "@types/jest": "^29.5.2",

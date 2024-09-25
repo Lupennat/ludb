@@ -12,8 +12,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x]
-        database-type: [ mysql57, mysql8, maria1003, maria1011, sqlite, postgres12, postgres16, sqlsrv17, sqlsrv22 ]
+        node-version: [22.x]
+        database-type:
+          [
+            mysql57,
+            mysql8,
+            maria1003,
+            maria1011,
+            sqlite,
+            postgres12,
+            postgres16,
+            sqlsrv17,
+            sqlsrv22,
+          ]
 
     steps:
       - uses: actions/checkout@v3
@@ -26,17 +37,17 @@ jobs:
       - name: Start Database(s)
         if: ${{ matrix.database-type != 'sqlite' }}
         run: |
-            docker-compose \
-              --file "docker-compose.yml" \
-              up \
-                --detach \
-                --build \
-                "${{ matrix.database-type }}"
+          docker-compose \
+            --file "docker-compose.yml" \
+            up \
+              --detach \
+              --build \
+              "${{ matrix.database-type }}"
 
       - name: Start Database(s)
         if: ${{ matrix.database-type == 'sqlite' }}
         run: |
-            npm run sqlite:up
+          npm run sqlite:up
 
       - name: Run npm install
         run: npm ci
@@ -44,10 +55,10 @@ jobs:
       - name: Initialize Database
         if: ${{ matrix.database-type != 'sqlite' }}
         run: |
-            docker-compose \
-              --file "docker-compose.yml" \
-              up \
-                "wait${{ matrix.database-type }}"
+          docker-compose \
+            --file "docker-compose.yml" \
+            up \
+              "wait${{ matrix.database-type }}"
 
       - name: Build and test
         run: |
@@ -56,7 +67,7 @@ jobs:
         env:
           CI: true
           DB: ${{ matrix.database-type }}
-          TZ: "Africa/Algiers"
+          TZ: 'Africa/Algiers'
 
       - name: Stop Database(s)
         if: ${{ matrix.database-type != 'sqlite' }}
@@ -64,7 +75,7 @@ jobs:
           docker-compose \
             --file "docker-compose.yml" \
             down
-      
+
       - name: Stop Database(s)
         if: ${{ matrix.database-type == 'sqlite' }}
         run: |

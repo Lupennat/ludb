@@ -1,6 +1,6 @@
 services:
   devcontainer:
-    image: mcr.microsoft.com/devcontainers/typescript-node:1-16-bookworm
+    image: mcr.microsoft.com/devcontainers/typescript-node:18
     volumes:
       - ../:/workspaces/ludb
     command: sleep infinity
