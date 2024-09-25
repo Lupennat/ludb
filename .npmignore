@@ -1,5 +1,6 @@
 # Generated Files
 coverage/
+sqlite3*
 
 # Source code
 src/
@@ -12,12 +13,14 @@ test/
 *.test.js
 
 # Configs
+.devcontainer/
 .github/
 .vscode/
 .travis.yml
+docker-compose.yml
 tsconfig.json
 typescript/
-.eslintrc.yml
+.eslintrc.js
 .prettierrc.yml
 .huskyrc.json
 .nvmrc

@@ -9,12 +9,16 @@
         "target": "ES2021",
         "sourceMap": true,
         "baseUrl": "./",
+        "outDir": "./dist",
         "incremental": true,
         "skipLibCheck": true,
         "strictNullChecks": true,
         "noImplicitAny": false,
         "strictBindCallApply": false,
         "forceConsistentCasingInFileNames": false,
-        "noFallthroughCasesInSwitch": false
+        "noFallthroughCasesInSwitch": false,
+    },
+    "watchOptions": {
+        "watchFile": "fixedPollingInterval"
     }
 }
